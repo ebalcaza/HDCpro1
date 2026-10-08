@@ -1,0 +1,344 @@
+/*   SCRIPT SQL  - Tablas con Restricciones -   */
+
+CREATE TABLE ROL
+       (
+       ID_ROL BIGINT NOT NULL,                              
+       NOMBRE NCHAR(200) NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_ROL
+               )
+       );
+
+
+
+CREATE TABLE PROVINCIA
+       (
+       ID_PROVINCIA BIGINT NOT NULL,                              
+       NOMBRE NVARCHAR(250) NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_PROVINCIA
+               )
+       );
+
+
+
+CREATE TABLE UNIDAD_MEDIDA
+       (
+       ID_UNIDAD_MEDIDA BIGINT NOT NULL,                              
+       NOMBRE NVARCHAR(50) NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_UNIDAD_MEDIDA
+               )
+       );
+
+
+
+CREATE TABLE ALCANCE
+       (
+       ID_ALCANCE BIGINT NOT NULL,                              
+       NOMBRE NVARCHAR(200) NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_ALCANCE
+               )
+       );
+
+
+
+CREATE TABLE USUARIO
+       (
+       ID_USUARIO BIGINT NOT NULL,                              
+       ID_ROL BIGINT NOT NULL,                              
+       EMAIL NVARCHAR(100) NOT NULL,                              
+       CONTRASENA NVARCHAR(250) NOT NULL,                              
+       TELEFONO VARCHAR(30) NOT NULL,                              
+       FECHA_ALTA SMALLDATETIME NOT NULL,                              
+       FECHA_BAJA SMALLDATETIME NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_USUARIO
+               ),
+       FOREIGN KEY
+               (
+               ID_ROL
+               )
+          REFERENCES ROL
+               (
+               ID_ROL
+               )
+       );
+
+
+
+CREATE TABLE ORGANIZACION
+       (
+       ID_USUARIO BIGINT NOT NULL,                              
+       RAZON_SOCIAL NVARCHAR(250) NOT NULL,                              
+       CUIT VARCHAR(70) NOT NULL,                              
+       AREA NVARCHAR(100) NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_USUARIO
+               ),
+       FOREIGN KEY
+               (
+               ID_USUARIO
+               )
+          REFERENCES USUARIO
+               (
+               ID_USUARIO
+               )
+       );
+
+
+
+CREATE TABLE INDIVIDUO
+       (
+       ID_USUARIO BIGINT NOT NULL,                              
+       NOMBRES NVARCHAR(200) NOT NULL,                              
+       APELLIDOS NVARCHAR(250) NOT NULL,                              
+       FECHA_NACIMIENTO SMALLDATETIME NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_USUARIO
+               ),
+       FOREIGN KEY
+               (
+               ID_USUARIO
+               )
+          REFERENCES USUARIO
+               (
+               ID_USUARIO
+               )
+       );
+
+
+
+CREATE TABLE PERMISOS
+       (
+       ID_PERMISO BIGINT NOT NULL,                              
+       ID_ROL BIGINT NULL,                              
+       NOMBRE NVARCHAR(250) NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_PERMISO
+               ),
+       FOREIGN KEY
+               (
+               ID_ROL
+               )
+          REFERENCES ROL
+               (
+               ID_ROL
+               )
+       );
+
+
+
+CREATE TABLE DISTRITO
+       (
+       ID_DISTRITO BIGINT NOT NULL,                              
+       ID_PROVINCIA BIGINT NOT NULL,                              
+       NOMBRE NVARCHAR(250) NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_DISTRITO
+               ),
+       FOREIGN KEY
+               (
+               ID_PROVINCIA
+               )
+          REFERENCES PROVINCIA
+               (
+               ID_PROVINCIA
+               )
+       );
+
+
+
+CREATE TABLE CIUDAD
+       (
+       ID_CIUDAD BIGINT NOT NULL,                              
+       ID_DISTRITO BIGINT NOT NULL,                              
+       NOMBRE BIGINT NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_CIUDAD
+               ),
+       FOREIGN KEY
+               (
+               ID_DISTRITO
+               )
+          REFERENCES DISTRITO
+               (
+               ID_DISTRITO
+               )
+       );
+
+
+
+CREATE TABLE DOMICILIO
+       (
+       ID_DOMICILIO BIGINT NOT NULL,                              
+       ID_CIUDAD BIGINT NOT NULL,                              
+       ID_USUARIO BIGINT NOT NULL,                              
+       CALLE NVARCHAR(200) NOT NULL,                              
+       NUMERO BIGINT NOT NULL,                              
+       DEPARTAMENTO NVARCHAR(20) NULL,                              
+       PISO NCHAR(20) NULL,                              
+       CODIGO_POSTAL NVARCHAR(15) NULL,                              
+       FECHA_ALTA SMALLDATETIME NOT NULL,                              
+       FECHA_BAJA SMALLDATETIME NOT NULL,                              
+       TOTAL_KG_CO2 BIGINT NULL,                              
+       PRIMARY KEY
+               (
+               ID_DOMICILIO
+               ),
+       FOREIGN KEY
+               (
+               ID_CIUDAD
+               )
+          REFERENCES CIUDAD
+               (
+               ID_CIUDAD
+               ),
+       FOREIGN KEY
+               (
+               ID_USUARIO
+               )
+          REFERENCES USUARIO
+               (
+               ID_USUARIO
+               )
+       );
+
+
+
+CREATE TABLE TIPO_EMISION
+       (
+       ID_TIPO_EMISION BIGINT NOT NULL,                              
+       ID_ALCANCE BIGINT NOT NULL,                              
+       NOMBRE NVARCHAR(50) NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_TIPO_EMISION
+               ),
+       FOREIGN KEY
+               (
+               ID_ALCANCE
+               )
+          REFERENCES ALCANCE
+               (
+               ID_ALCANCE
+               )
+       );
+
+
+
+CREATE TABLE FUENTE_EMISION
+       (
+       ID_FUENTE_EMISION BIGINT NOT NULL,                              
+       ID_UNIDAD_MEDIDA BIGINT NOT NULL,                              
+       ID_TIPO_EMISION BIGINT NOT NULL,                              
+       NOMBRE NVARCHAR(250) NOT NULL,                              
+       VALOR_FACTOR_EMISION DECIMAL(18,6) NOT NULL,                              
+       FECHA_ALTA SMALLDATETIME NOT NULL,                              
+       FECHA_BAJA SMALLDATETIME NULL,                              
+       FECHA_MODIFICACION SMALLDATETIME NULL,                              
+       PRIMARY KEY
+               (
+               ID_FUENTE_EMISION
+               ),
+       FOREIGN KEY
+               (
+               ID_UNIDAD_MEDIDA
+               )
+          REFERENCES UNIDAD_MEDIDA
+               (
+               ID_UNIDAD_MEDIDA
+               ),
+       FOREIGN KEY
+               (
+               ID_TIPO_EMISION
+               )
+          REFERENCES TIPO_EMISION
+               (
+               ID_TIPO_EMISION
+               )
+       );
+
+
+
+CREATE TABLE REGISTROS
+       (
+       ID_REGISTRO BIGINT NOT NULL,                              
+       ID_DOMICILIO BIGINT NOT NULL,                              
+       ID_FUENTE_EMISION BIGINT NOT NULL,                              
+       FECHA_CREACION DATETIME NOT NULL,                              
+       FECHA_ULTIMA_MODIFICACION DATETIME NOT NULL,                              
+       VALOR_FACTOR_EMISION DECIMAL(18,6) NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_REGISTRO
+               ),
+       FOREIGN KEY
+               (
+               ID_DOMICILIO
+               )
+          REFERENCES DOMICILIO
+               (
+               ID_DOMICILIO
+               ),
+       FOREIGN KEY
+               (
+               ID_FUENTE_EMISION
+               )
+          REFERENCES FUENTE_EMISION
+               (
+               ID_FUENTE_EMISION
+               )
+       );
+
+
+
+CREATE TABLE COLABORA
+       (
+       ID_USUARIO BIGINT NOT NULL,                              
+       ID_USUARIO_1 BIGINT NOT NULL,                              
+       PRIMARY KEY
+               (
+               ID_USUARIO,
+               ID_USUARIO_1
+               ),
+       FOREIGN KEY
+               (
+               ID_USUARIO
+               )
+          REFERENCES ORGANIZACION
+               (
+               ID_USUARIO
+               ),
+       FOREIGN KEY
+               (
+               ID_USUARIO_1
+               )
+          REFERENCES INDIVIDUO
+               (
+               ID_USUARIO
+               )
+       );
+
+
+
+ "ConnectionStrings": {
+    "DefaultConnection":"Server=EMILIOSK8\\SQLEXPRESS02;Database=prueba1;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "Jwt": {
+    "Clave": "emilioBalcaza22232425262728293031323334353637383940",
+    "Emisor": "backend.API",
+    "Audiencia": "frontend",
+    "ExpiraMinutos": 120
+
