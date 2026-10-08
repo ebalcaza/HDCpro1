@@ -1,0 +1,239 @@
+
+Objetivo
+Dar soporte a distintas investigaciones para permitir que los usuarios puedan calcular la Huella de Carbono a través de la aplicación web basándose en la medición de GEI generadas por una organización, individuo, evento o producto.
+Beneficios
+Acceso nacional a la medición de las emisiones de dióxido de carbono utilizando los consumos de los usuarios y los reportes generados.
+Permitir conocer en detalle la cantidad de contaminantes emitidos al ambiente y facilitar la toma de decisiones que permitan identificar posibles oportunidades de mejora.
+El sistema posibilitará comparar las emisiones registradas durante cada mes, generando reportes y visualizando el impacto que tienen los cambios implementados sobre los niveles de contaminación emitidos.
+
+Alcance
+Los usuarios de tipo individuo y organización gestionaran domicilios que utilizarán para medir la contaminación al generar los reportes de emisiones que detallan los registros de emision. También podrán agregar colaboradores que agreguen información a las emisiones emitidas en un domicilio. Además podrán gestionar la información de su perfil.
+Los usuarios de tipo individuo y organización podrán medir cuánto están aportando de contaminación al ambiente o a la huella de carbono, en uno o varios domicilios. Visualizarán diferentes detalles de las emisiones emitidas, y podrán generar registros de emisiones, guardarlos, y ver sus detalles, junto con gráficos de estadísticas de las emisiones.
+El administrador no solo podrá gestionar las cuentas de usuario. También podrá gestionar los factores de emisión, parametrizando el sistema. Además podrá generar diferentes reportes con diferentes filtros.
+
+Limitaciones
+Para utilizar la Huella de Carbono se necesita acceso a internet o mediante datos móviles.
+Puede ser utilizado solo mediante un navegador web.
+Los datos requeridos de los consumos para generar los reportes deberán ser cargados manualmente.
+Los consumos ingresados por los usuarios deben ser mensuales para un mejor aprovechamiento de las estadisticas.
+
+
++para la construccion del stack:
+debera ser construido con react, vite, bootstrap para el front y .net con c# para el back, en el deberan haber 4 capas, DAL, BLL, API y la capa Entity,
+con una base de datos en sql server,que ya tengo armada.
+En la base de datos hay 3 tablas, provincia, distrito y ciudad, que llenaras cuando creemos el proyecto con la informacion de la api "georef",
+de argentina.gob.ar
+*los usuarios de tipo individuo u organizacion podran tener usuarios que colaboran con informacion de las emisiones. proponme como solucionar esto.
+La idea es que un usuario pueda agregar como colaboradores de informacion a las emisiones de un periodo, a otros usuarios. pudiendo ajustar la informacion 
+requerida. La idea es que una persona que trabaja o asiste a tu domicilio declarado utiliza transportes que tambien suman a la contaminacion y eso tambien se mide.
+
+
+
+Estructura general del proyecto
+HDC/
+	frontend/
+	backend/
+
+
+API (Proyecto Web API)              -> Capa de Presentación
+BLL (Biblioteca de Clases C#)        -> Capa de Lógica de Negocio
+DAL (Biblioteca de Clases C#)        -> Capa de Acceso a datos
+Entity(DTOs) orm 			->Capa de entidades
+
+La estructura del frontend y del backend, con sus respectivas rutas e interfaces debe tener en cuenta todos los requisitos funcionales y no funcionales especificados anteriormente, teniendo en cuenta los diferentes tipos de usuario, además debe ser responsive adaptándose a distintos tipos de dispositivos, ya sea computadoras, celulares o tablets, así como también un estilo amigable y sencillo de usar para el usuario.
+
+
+
+
+Módulos
+
+
+Administrador
+Requisitos Funcionales
+RFA01: El usuario de tipo administrador agrega una nueva fuente de emisión ingresando los datos de la fuente de emisión.
+RFA02: El usuario de tipo administrador visualiza todas las fuentes de emisión, en una lista con los datos completos de cada fuente de emisión.
+RFA03: El usuario de tipo administrador edita una fuente de emisión previamente seleccionado.
+RFA04: El usuario de tipo administrador elimina una fuente de emisión previamente seleccionado.
+
+RFA05: El usuario de tipo administrador visualiza una lista de todos los usuarios registrados en la aplicación web.
+RFA06: El usuario de tipo administrador selecciona un usuario de la lista de todos los usuarios registrados para ver más información.
+
+
+RFA15: El usuario de tipo administrador agrega un nuevo tipo de usuario.
+RFA16: El usuario de tipo administrador edita un tipo de usuario.
+RFA17: El usuario de tipo administrador elimina un tipo de usuario.
+RFA18: El usuario de tipo administrador lista todos los tipos de usuarios.
+
+RFA19: El usuario de tipo administrador agrega un nuevo permiso de usuario.
+RFA20: El usuario de tipo administrador edita un permiso de usuario.
+RFA21: El usuario de tipo administrador elimina un permiso de usuario.
+RFA22: El usuario de tipo administrador lista todos los permisos de usuarios.
+
+RFA23: El usuario de tipo administrador agrega un nuevo tipo de emisión.
+RFA24: El usuario de tipo administrador edita un tipo de emisión.
+RFA25: El usuario de tipo administrador elimina un tipo de emisión.
+RFA26: El usuario de tipo administrador lista todos los tipo de emisión.
+
+RFA27: El usuario de tipo administrador agrega un nuevo tipo de unidad de medida.
+RFA28: El usuario de tipo administrador edita un tipo de unidad de medida.
+RFA29: El usuario de tipo administrador elimina un tipo de unidad de medida.
+RFA30: El usuario de tipo administrador lista todos los tipo de unidad de medida.
+
+
+RFA31: El usuario de tipo administrador agrega un nuevo tipo de alcance.
+RFA32: El usuario de tipo administrador edita un tipo de alcance.
+RFA33: El usuario de tipo administrador elimina un tipo de alcance.
+RFA34: El usuario de tipo administrador lista todos los tipo de alcance.
+Requisitos no Funcionales
+
+
+Usuario
+Requisitos Funcionales
+
+RFU01: El usuario de tipo individuo u organización se registra al sistema ingresando los datos de perfil correspondiente en la aplicación web.
+RFU02: El usuario inicia sesión en la aplicación web ingresando las credenciales de acceso.
+
+RFU03: El usuario de tipo individuo u organización añade a un usuario como colaborador.
+
+RFU04: El usuario visualiza los datos de su perfil correspondiente ingresando a "Mi Perfil".
+RFU05: El usuario edita los datos que sean necesarios, de su perfil ingresando a la sección “Mí perfil”.
+RFU06: El usuario de tipo individuo u organización agrega un nuevo domicilio a su perfil ingresando a "Domicilios".
+RFU07: El usuario de tipo individuo u organización visualiza todos los domicilios navegando en la sección "Domicilios".
+RFU08: El usuario de tipo individuo u organización visualiza todos los datos del domicilio.
+RFU09: El usuario de tipo individuo u organización edita los datos del domicilio de un domicilio seleccionado.
+RFU10: El usuario de tipo individuo u organización elimina un domicilio seleccionado.
+
+RFU11: El usuario individuo u organizacion visualiza como primera pantalla la seccion "Dashboard",
+donde visualiza diferentes cards con estadisticas de las emisiones generadas, filtradas por diferentes criterios, graficos
+porcentuales con sus leyendas y cantidades, graficos de curva para las emisiones generadas en el tiempo, para poder compararlas o analizarlas. 
+
+RFU12: El usuario individuo u organizacion visualiza la seccion "Mis emisiones", donde podra administrar los registros de emisiones.
+RFU13: El usuario de tipo individiuo u organizacion cierra sesion en el sistema, haciendo click la opcion correspondiente de la barra navbar.
+
+
+
+
+
+Requisitos no Funcionales
+
+Emisiones
+Requisitos Funcionales
+RFR01: El usuario de tipo individuo u organización crea un nuevo registro de emisiones ingresando los datos de consumo de un domicilio.
+RFR02: El usuario de tipo individuo, organizacion o administrador crea un registro de emisiones filtrando por diferentes métricas, para obtener diferentes estadísticas,
+y realizar comparaciones entre periodos, y visualizar graficos descriptivos de los porcentajes emitidos con sus diferentes caracteristicas.
+RFR03: El usuario de tipo individuo u organización edita los datos de consumo de un registro seleccionado en “Mis emisiones”.
+RFR04: El usuario de tipo individuo u organización elimina un registro seleccionado en “Mis emisiones”.
+RFR05: El usuario de tipo individuo u organización visualiza una lista de todos los registros de emisiones generados previamente en una tabla.
+RFR06: El usuario selecciona un reporte de la lista de todos los registros generados mostrando el detalle del reporte
+RFR07: El usuario descarga los datos del registro seleccionado en formato pdf, en su dispositivo.
+
+Requisitos no Funcionales
+RNFR01- RFR01,RFR02,RFR03,RFR04: El usuario debe haber iniciado sesión previamente.
+
+
+Glosario
+Administrador: Persona encargada de gestionar las cuentas de los usuarios e ingresar los datos de los factores de emisión.
+Agregar un nuevo factor de emisión: Se realiza la acción de agregar un nuevo factor de emisión a la aplicación web.
+Aplicación Web: Sistema de Software Web.
+Credenciales de acceso: Email (obligatorio) y contraseña (obligatorio).
+Datos de consumo: Nombre del factor de emisión (previamente cargado por la aplicación web), tipo de unidad (obligatorio), consumo (obligatorio) y alcance (previamente cargado por la aplicación web) 
+Datos de perfil individuo: Credenciales de acceso (obligatorio), nombres (obligatorio), apellidos (obligatorio), DNI (obligatorio), fecha de nacimiento (opcional), género (opcional), domicilio (obligatorio), vehículo (opcional).
+Datos de perfil organización: Razón social o nombre, área, descripción, cantidad de miembros.
+Datos del domicilio: Calle (obligatorio), altura (obligatorio), departamento (opcional), block (opcional), manzana (opcional), piso (opcional), ciudad (obligatorio), distrito (obligatorio), provincia (obligatorio), código postal (obligatorio), teléfono (opcional) y las fuentes de emisiones.
+Datos de la fuente de emisión: Nombre de la fuente(obligatorio), tipo de unidad (obligatorio), valor del factor de emisión (obligatorio) y tipo de emisión (obligatorio)
+Datos del vehículo: Tipo de vehículo (obligatorio), marca (obligatorio), modelo (obligatorio), patente (obligatorio) tipo de combustible (obligatorio) y tipo de uso (obligatorio)
+DNI: Documento nacional de Identidad (números)
+Domicilio: Contiene los datos del domicilio. Un usuario puede tener uno o más domicilios.
+Fuente de emisión: Son fuentes de consumo que generan contaminación. 
+Factor de emisión: Valor utilizado para realizar una cuenta y obtener la cantidad de kg de dióxido de carbono emitido datos del factor de emisión.
+Fuentes de consumo: Nombre (obligatorio), consumo (obligatorio).
+Más información: Datos de perfil individuo y datos de perfil organización.
+Permisos de usuarios: Son las acciones que podrá realizar cada tipo de usuario.
+Software: Conjunto de instrucciones, programas y datos que le indican a la computadora que tiene y que debe hacer.
+Tipo Usuario: Individuo, organización o administrador.
+Tipo de uso: Personal o institucional.
+Tipo de vehículo: Auto, motocicleta, camioneta o camión.
+Tipo de combustible: Nafta, gasoil o GNC.
+Tipo de unidad: m3, kg o L.
+Web: Consulta información y usa servicios a través de internet mediante páginas interconectadas
+
+
+
+en el usuario: de todos los registros de consumos creados vas a sacar la cantidad de kg de CO2 total, de los diferentes alcances, y vas a 
+crear graficos, donde muestres los detalles de los distintos alcances para que el usuario pueda observar
+cuanto porcentaje de contaminacion esta dada por cada alcance para poder compararlas, tambien quiero hacer otro
+grafico donde se muestre en el tiempo, el progreso de la contaminacion tipo grafico de curvas.
+todos estos graficos los voy a mostrar en la pantalla principal del usuario, cuando el entra, la primera pantalla
+que vera sera ésta, con "mini-cards" con los diferentes graficos y con sus leyendas, ver estadisticas,
+y demas datos utiles para el analisis de las emisiones.
+los colores principales seran verdes, marrones, grises, azul, negro en todas sus gamas, y jugar con degrades, 
+con transparencias. Que sea comodo de ver y que no sea tan brillantes los colores para que no canse a la vista a
+al tenerlo enfrente y estar mirandolo.
+Puedes jugar con texturas que den profesionalismo y agreguen personalidad al sitio.
+usa colores con degrade para los fondos, tonos mas pasteles. grises/blancos para los fondos que el contenido se pueda
+ver bien comodamente, para las diferentes tipos de visiones, esto solo acomodalo con los colores.
+tambien agrega un boton que pueda alteernar en modo claro y modo oscuro, la interfaz. 
+los usuarios podran crear reportes filtrando por diferentes criterios y los podra descargar como pdf para compartir informacion,
+de las emisiones cargadas, por periodo, por alcance, por tipo de usuario en el caso del administrador, del total de las emisiones
+generadas en todo el tiempo, etc. entonces un reporte se compondra de muchos registros, o no.
+El adminisrtrador podra crear reportes tambien para descargar de metricas de tipos de usuarios, o zonas geoograficas 
+o periodos especificos, y mezclando mas de un filtro al mismo tiempo.
+
+mas informacion informal:
+estilo:
++todos las barras de scroll de todas las ventanas deben tener un estilo pequeño, sutil, profesional.
++cuando hayan cambios en los datos y en la interfaz de usuario en algunos elementos, estos elementos tendran algun movimiento
+sutil, en alguna o algunas de sus propiedades de estilo, como un borde bottom que titila, o un movimiento que indique al usuario que esta mirando
+que hubo cambios en ese elemento, un efecto de gota de agua, etc.
++todas las listas de elementos que se muestren deberan ser mostradas con paginacion, que podra ser editable por el usuario la cantidad de registros por pagina, 10, 20, 50, 100, por pagina.
++las cards que se generen en los "dashboards" podran ser desplegables para el usuario, si tienen muchos datos, en el momento de desplegar se muestren todos, o la mayoria, y cuando estan desplegados
+se muestre la informacion minima, o nula, solo con titulos e indicando que puede ser desplegada.
++el estilo de los elementos select debera ser con una apariencia minimalista, y una apariencia de interfaz mas profesional, con colores claros y divisiones sutiles. Debera ser igual en los elementos
+donde el usuario pueda elegir fechas.
++agrega hovers sutiles a algunos elementos para dar la sensacion de que se esta interactuando cuando las vistas son grandes, reducelo al maximo cuando las vistas sean para mobile.
+los hover pueden incluir bordes que entran o salen, una sombra o haz de luz que recorre todo el boton, un pequeño agrandamiento o "achicamiento", la sensacion que el borde del boton es
+recorrida, y otras que se te ocurran.
++utiliza bootstrap para validar formularios, y asi darle estilos, con colores rojos cuando los datos no esten correctos,
+y validaciones en verde.
++cuando tengas que pedir una confirmacion de unaccion importante, o salga alguna advertencia al usuario esas ventanas las crearas con ventanas modales con una apariencia adecuada
+a la apariencia en general, y agregaras, en algunas, la obligacion de elegir alguna de las opciones disponibles para la accion.
++Siempre que se llene un formulario deberas mostrar un cartel que confirma lo que sucede con la accion, si fue todo bien o no.
++cuando la informacion se este cargando, vas a mostrar las ventanas pero con esos movimientos como que estuviera "recibiendo los datos".
+
+
+Estilos:
++en los formularios para agregar un nuevo registro de emision, debo poder filtrar por alcance o tipo  de emision, para que los select no sean tan largos.
++los graficos redondos podras subdividirlos para darle un efecto como si es una dona que se esta llenando, en el momento de cargar la info, o hacerle efecto
+de brillo, o sombra, cuando esta en la vista del usuario, para que de una impresion de estar activo.
++al grafico redondo del panel quitale el hover que tiene, que desplega mas detalles. dejale las leyendas y agregale el nombre de los parametrtos usados para hacer el grafico
+porque solo muestra el color, el porcentaje y el valor de kg CO2.
++el modo oscuro quedo demasiado oscuro, agregale detalles blancos o brillantes para que contraste un poco, tambien agrega un poco mas de color verdes, azules y grises.
++en elmodo claro agrega tambien un poco mas de color verde, azules, grises y marrones. pero no excesivamente. 
++vas a hacer que las letras sean un poco mas grandes, no mucho, porque queda prolijo, pero para que le de mas claridad
+de donde estan las diferentes secciones, y los detalles se puedan leer claramente.
++vas a agregar un menu con opciones de usabilidad, con una opcion para configurar el tamaño de las fuentes, de las diferentes pantallas.
+
+
+Vistas de resultados:
++el resultado de emisiones totales deberia verse en toneladas de CO2, 
+1ppm = 17.600millones de toneladas.
+
+1ppm es la unidad minima de cantidad en la que se miden las cantidades de CO2 en la atmosfera.
+
+
+los id de los resultados que se estan mostrando en pantalla, de listas, que tienen id, deberan ser incrementales, siempre empezando desde el numero 1, sin modificar nada en el backend
+solo controlandolo desde el frontend.
+
++en la vista dashboard voy a ver solo 3 cards iniciales con el total de emisiones, las del mes corriente, y el alcance principal.
+mantendra los graficos redondos, de los diferentes alcances y el grafico de evolucion en el tiempo. tabien mantendra las card
+por tipo de emision, fuentenes que mas emiten y lectura rapida. En todas estas vistas no detalles todos los resultados, con el nombre y el porcentaje
+como vista original esta bien, si se despliega la tarjeta de la seccion, obtiene mas detalles. aplica este comportamiento a todos los componentes 
+de dashboard.
+
++el administrador podra descargar sus reportes de estadisticas y metricas, antes filtrados por diferentes categorias y subcategorias. 
+
++los usuarios podran crear reportes filtrando por diferentes criterios y los podra descargar como pdf para compartir informacion,
+de las emisiones cargadas, por periodo, por alcance, por tipo de usuario en el caso del administrador, del total de las emisiones
+generadas en todo el tiempo, etc. entonces un reporte se compondra de muchos registros, o no.
+El adminisrtrador podra crear reportes tambien para descargar de metricas de tipos de usuarios, o zonas geoograficas 
+o periodos especificos, y mezclando mas de un filtro al mismo tiempo. esto podria ser una seccion nueva.
