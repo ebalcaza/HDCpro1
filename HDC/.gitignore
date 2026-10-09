@@ -1,0 +1,7 @@
+.env
+**/bin/
+**/obj/
+**/.vs/
+*.user
+node_modules/
+frontend/dist/

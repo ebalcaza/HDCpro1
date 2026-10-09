@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es" data-bs-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Calculá la huella de carbono de tus domicilios a partir de tus consumos mensuales." />
+    <link rel="icon" type="image/svg+xml" href="/hoja.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <title>Huella de Carbono</title>
+    <script>
+      // Aplica tema y tamaño de fuente antes de pintar para evitar parpadeos
+      try {
+        var p = JSON.parse(localStorage.getItem('hdc-preferencias') || '{}');
+        var tema = p.tema || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-bs-theme', tema);
+        if (p.escala) document.documentElement.style.setProperty('--escala-fuente', p.escala);
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

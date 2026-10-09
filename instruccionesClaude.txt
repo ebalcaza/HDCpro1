@@ -26,6 +26,7 @@ de argentina.gob.ar
 *los usuarios de tipo individuo u organizacion podran tener usuarios que colaboran con informacion de las emisiones. proponme como solucionar esto.
 La idea es que un usuario pueda agregar como colaboradores de informacion a las emisiones de un periodo, a otros usuarios. pudiendo ajustar la informacion 
 requerida. La idea es que una persona que trabaja o asiste a tu domicilio declarado utiliza transportes que tambien suman a la contaminacion y eso tambien se mide.
+todo lo vas a hacer con Docker y docker compose
 
 
 
