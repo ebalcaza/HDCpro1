@@ -5,6 +5,12 @@ import { fechaHora, numero, periodo, porcentaje, ppm } from './formato'
 // La fuente estándar de jsPDF no tiene el subíndice de CO₂: en el PDF se escribe CO2
 const toneladasTexto = (kg) => `${numero(kg / 1000, 3)} t CO2`
 
+// Formato con cantidad FIJA de decimales para que las columnas sean consistentes
+// (evita que "1.365" se lea como 1,365 al lado de "1.046,1")
+const fijo = (v, dec) => Number(v ?? 0).toLocaleString('es-AR', { minimumFractionDigits: dec, maximumFractionDigits: dec })
+const kg1 = (v) => fijo(v, 1)
+const t3 = (kg) => fijo(kg / 1000, 3)
+
 const VERDE = [46, 139, 87]
 const AZUL = [47, 109, 181]
 const TEXTO = [31, 42, 37]
@@ -30,19 +36,25 @@ function encabezado(doc, titulo, subtitulo) {
 
 function pie(doc) {
   const n = doc.getNumberOfPages()
-  const ancho = doc.internal.pageSize.getWidth()
-  const alto = doc.internal.pageSize.getHeight()
+  const generado = `Generado el ${fechaHora(new Date())}`
   for (let i = 1; i <= n; i++) {
     doc.setPage(i)
+    // FIX: el tamaño se lee DESPUÉS de setPage, porque hay páginas verticales y horizontales.
+    // Antes se tomaba el de la última página (horizontal) y el pie quedaba a mitad de hoja
+    // y el número de página fuera del borde en las verticales.
+    const ancho = doc.internal.pageSize.getWidth()
+    const alto = doc.internal.pageSize.getHeight()
+    doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(...GRIS)
-    doc.text(`Generado el ${fechaHora(new Date())}`, 14, alto - 8)
+    doc.text(generado, 14, alto - 8)
     doc.text(`Página ${i} de ${n}`, ancho - 14, alto - 8, { align: 'right' })
   }
 }
 
-function seccion(doc, y, texto) {
-  if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 20 }
+/** Escribe un título de sección. `espacio` = lo mínimo que tiene que entrar debajo (evita títulos huérfanos). */
+function seccion(doc, y, texto, espacio = 40) {
+  if (y + espacio > doc.internal.pageSize.getHeight() - 15) { doc.addPage(); y = 20 }
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(12)
   doc.setTextColor(...VERDE)
@@ -76,7 +88,7 @@ const estiloTabla = {
   styles: { fontSize: 8.5, cellPadding: 2.2, textColor: TEXTO, lineColor: [225, 231, 227], lineWidth: 0.1 },
   headStyles: { fillColor: [236, 242, 238], textColor: TEXTO, fontStyle: 'bold' },
   alternateRowStyles: { fillColor: [250, 252, 250] },
-  margin: { left: 14, right: 14 },
+  margin: { left: 14, right: 14, bottom: 18 }, // bottom: deja lugar para el pie
 }
 
 function tabla(doc, y, head, body, opciones = {}) {
@@ -84,14 +96,79 @@ function tabla(doc, y, head, body, opciones = {}) {
   return doc.lastAutoTable.finalY + 8
 }
 
-function imagenGrafico(doc, y, chart, alto = 70) {
+/** Convierte un color de Chart.js ('#rrggbb', 'rgb()', 'rgba()') a [r, g, b] para jsPDF */
+function aRgb(color) {
+  if (typeof color !== 'string') return [150, 150, 150]
+  if (color.startsWith('#')) {
+    let h = color.slice(1)
+    if (h.length === 3) h = h.split('').map((c) => c + c).join('')
+    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16))
+  }
+  const m = color.match(/\d+(\.\d+)?/g)
+  return m ? m.slice(0, 3).map(Number) : [150, 150, 150]
+}
+
+/** Captura el canvas con los textos de los ejes oscurecidos (en pantalla son grises claros y en papel se lavan) */
+function capturar(chart) {
+  const escalas = Object.values(chart.options?.scales || {})
+  const previos = escalas.map((s) => [s.ticks?.color, s.grid?.color])
+  try {
+    escalas.forEach((s) => {
+      if (s.ticks) s.ticks.color = '#3a4540'
+      if (s.grid) s.grid.color = '#e3e8e5'
+    })
+    chart.update('none')
+    return chart.toBase64Image('image/png', 1)
+  } finally {
+    escalas.forEach((s, i) => {
+      if (s.ticks) s.ticks.color = previos[i][0]
+      if (s.grid) s.grid.color = previos[i][1]
+    })
+    chart.update('none')
+  }
+}
+
+/** Leyenda dibujada a mano (la del canvas no se exporta) */
+function leyenda(doc, x, y, chart) {
+  const ds = chart.data?.datasets?.[0]
+  const etiquetas = chart.data?.labels || []
+  if (!ds) return
+  const valores = ds.data.map(Number)
+  const total = valores.reduce((a, b) => a + b, 0) || 1
+  const colores = Array.isArray(ds.backgroundColor) ? ds.backgroundColor : etiquetas.map(() => ds.backgroundColor)
+  doc.setFontSize(9)
+  etiquetas.forEach((et, i) => {
+    const yy = y + i * 8
+    doc.setFillColor(...aRgb(colores[i]))
+    doc.roundedRect(x, yy - 3.2, 4, 4, 0.8, 0.8, 'F')
+    doc.setTextColor(...TEXTO)
+    doc.setFont('helvetica', 'bold')
+    doc.text(String(et), x + 7, yy)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...GRIS)
+    doc.text(`${kg1(valores[i])} kg · ${porcentaje((valores[i] / total) * 100)}`, x + 7, yy + 4)
+  })
+  doc.setTextColor(...TEXTO)
+}
+
+function imagenGrafico(doc, y, chart, alto = 70, { conLeyenda = false } = {}) {
   if (!chart?.canvas) return y
   try {
-    const ancho = doc.internal.pageSize.getWidth() - 28
+    const anchoUtil = doc.internal.pageSize.getWidth() - 28
     const proporcion = chart.canvas.width / chart.canvas.height
-    const w = Math.min(ancho, alto * proporcion)
-    if (y + alto > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); y = 20 }
-    doc.addImage(chart.toBase64Image('image/png', 1), 'PNG', 14 + (ancho - w) / 2, y, w, alto)
+    if (y + alto > doc.internal.pageSize.getHeight() - 18) { doc.addPage(); y = 20 }
+    const img = capturar(chart)
+    if (conLeyenda) {
+      // gráfico a la izquierda, leyenda a la derecha
+      const w = Math.min(anchoUtil * 0.5, alto * proporcion)
+      const x = 14 + (anchoUtil * 0.5 - w) / 2
+      doc.addImage(img, 'PNG', x, y, w, alto)
+      const n = chart.data?.labels?.length || 0
+      leyenda(doc, 14 + anchoUtil * 0.55, y + alto / 2 - (n * 8) / 2 + 3, chart)
+    } else {
+      const w = Math.min(anchoUtil, alto * proporcion)
+      doc.addImage(img, 'PNG', 14 + (anchoUtil - w) / 2, y, w, alto)
+    }
     return y + alto + 6
   } catch {
     return y
@@ -104,7 +181,7 @@ export function pdfRegistro(r) {
   let y = encabezado(doc, 'Registro de emisiones', periodo(r.periodo, true))
   y = kpis(doc, y, [
     ['Total', toneladasTexto(r.totalKgCo2)],
-    ['kg CO2', numero(r.totalKgCo2)],
+    ['kg CO2', kg1(r.totalKgCo2)],
     ['Consumos', r.detalles.length],
   ])
   doc.setFontSize(10)
@@ -119,7 +196,7 @@ export function pdfRegistro(r) {
   y = seccion(doc, y, 'Detalle de consumos')
   tabla(doc, y,
     ['#', 'Fuente', 'Tipo / Alcance', 'Consumo', 'Factor', 'kg CO2'],
-    r.detalles.map((d, i) => [i + 1, d.fuente, `${d.tipoEmision} · ${d.alcance}`, `${numero(d.consumo, 4)} ${d.unidadMedida}`, numero(d.valorFactorEmision, 6), numero(d.kgCo2)]),
+    r.detalles.map((d, i) => [i + 1, d.fuente, `${d.tipoEmision} · ${d.alcance}`, `${numero(d.consumo, 4)} ${d.unidadMedida}`, numero(d.valorFactorEmision, 6), kg1(d.kgCo2)]),
     { columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } } })
   pie(doc)
   doc.save(`registro-${r.periodo.slice(0, 7)}-${r.idRegistro}.pdf`)
@@ -139,7 +216,7 @@ export function pdfReporte(rep, { nombre, graficos = {} } = {}) {
   const r = rep.resumen
   y = kpis(doc, y, [
     ['Total', toneladasTexto(r.totalKgCo2)],
-    ['Promedio mensual', `${numero(r.promedioMensualKgCo2)} kg`],
+    ['Promedio mensual', `${kg1(r.promedioMensualKgCo2)} kg`],
     ['Registros', r.cantidadRegistros],
     [rep.esGlobal ? 'Usuarios' : 'Domicilios', rep.esGlobal ? r.cantidadUsuarios : r.cantidadDomicilios],
   ])
@@ -149,22 +226,28 @@ export function pdfReporte(rep, { nombre, graficos = {} } = {}) {
   doc.setTextColor(...TEXTO)
   y += 4
 
-  if (graficos.evolucion) { y = seccion(doc, y, 'Evolución mensual'); y = imagenGrafico(doc, y + 2, graficos.evolucion, 65) }
-  if (graficos.alcances) { y = seccion(doc, y, 'Distribución por alcance'); y = imagenGrafico(doc, y + 2, graficos.alcances, 55) }
+  if (graficos.evolucion) {
+    y = seccion(doc, y, 'Evolución mensual', 65 + 10)
+    y = imagenGrafico(doc, y + 2, graficos.evolucion, 65)
+  }
+  if (graficos.alcances) {
+    y = seccion(doc, y, 'Distribución por alcance', 55 + 10)
+    y = imagenGrafico(doc, y + 2, graficos.alcances, 55, { conLeyenda: true })
+  }
 
   const serie = (titulo, items, conGrupo) => {
     if (!items?.length) return
     y = seccion(doc, y, titulo)
     y = tabla(doc, y, conGrupo ? ['#', 'Nombre', conGrupo, 'kg CO2', '%'] : ['#', 'Nombre', 'kg CO2', '%'],
       items.map((s, i) => conGrupo
-        ? [i + 1, s.nombre, s.grupo || '', numero(s.kgCo2), porcentaje(s.porcentaje)]
-        : [i + 1, s.nombre, numero(s.kgCo2), porcentaje(s.porcentaje)]),
+        ? [i + 1, s.nombre, s.grupo || '', kg1(s.kgCo2), porcentaje(s.porcentaje)]
+        : [i + 1, s.nombre, kg1(s.kgCo2), porcentaje(s.porcentaje)]),
       { columnStyles: { [conGrupo ? 3 : 2]: { halign: 'right' }, [conGrupo ? 4 : 3]: { halign: 'right' } } })
   }
 
   if (rep.porPeriodo.length) {
     y = seccion(doc, y, 'Emisiones por período')
-    y = tabla(doc, y, ['Período', 'kg CO2', 't CO2'], rep.porPeriodo.map((p) => [periodo(p.periodo, true), numero(p.kgCo2), numero(p.kgCo2 / 1000, 3)]),
+    y = tabla(doc, y, ['Período', 'kg CO2', 't CO2'], rep.porPeriodo.map((p) => [periodo(p.periodo, true), kg1(p.kgCo2), t3(p.kgCo2)]),
       { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } } })
   }
   serie('Por alcance', rep.porAlcance)
@@ -178,11 +261,12 @@ export function pdfReporte(rep, { nombre, graficos = {} } = {}) {
 
   if (rep.filas.length) {
     doc.addPage('a4', 'landscape')
-    y = seccion(doc, 18, `Detalle de registros (${rep.filas.length})`)
+    // Cada fila es un consumo (no un registro): el KPI "Registros" cuenta otra cosa
+    y = seccion(doc, 18, `Detalle de consumos (${rep.filas.length})`)
     tabla(doc, y,
       ['#', 'Período', 'Titular', 'Domicilio', 'Zona', 'Alcance', 'Fuente', 'Consumo', 'kg CO2'],
       rep.filas.map((f, i) => [i + 1, periodo(f.periodo), f.titular, f.domicilio, `${f.ciudad}, ${f.provincia}`, f.alcance, f.fuente,
-        `${numero(f.consumo, 4)} ${f.unidadMedida}`, numero(f.kgCo2)]),
+        `${numero(f.consumo, 4)} ${f.unidadMedida}`, kg1(f.kgCo2)]),
       { styles: { ...estiloTabla.styles, fontSize: 7.5 }, columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' } } })
   }
 
