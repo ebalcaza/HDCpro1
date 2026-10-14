@@ -1,0 +1,8 @@
+
+dashboard de los usuarios individuos y organizacion.
++de las card que muestran "fuentes que mas emiten", "por tipo de emision", y "lectura rapida", quita la informacion que agregas cuando 
+clickeas en la opcion "ver mas". Cuando el elemento esta plegado solo mostrara el titulo de las card, y cuando lo dsplegas con "ver mas"
+mostraras exactamente lo que esta, las listas con los nombres y porcentajes de las fuentes de emision.
+
++los iconos de los formularios se estan montando, cuando la contraseña es valida y pone el tilde verde se monta con el icono de
+"mostrar contraseña".

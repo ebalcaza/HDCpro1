@@ -481,6 +481,13 @@ input[type='month']::-webkit-calendar-picker-indicator:hover { opacity: 1; backg
 .form-control.is-valid:focus, .form-select.is-valid:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--bs-form-valid-border-color) 20%, transparent); }
 .form-control.is-invalid:focus, .form-select.is-invalid:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--bs-form-invalid-border-color) 20%, transparent); }
 .invalid-feedback, .valid-feedback { font-weight: 600; font-size: 0.8rem; }
+/* Input con un botón adentro a la derecha (ej: mostrar contraseña): el tilde/cruz va a la izquierda del botón */
+.input-con-boton .form-control { padding-right: 44px; }
+.input-con-boton .form-control.is-valid,
+.input-con-boton .form-control.is-invalid {
+  padding-right: calc(44px + 1.5em);
+  background-position: right calc(42px + 0.375em) center;
+}
 @keyframes sacudir { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
 
 .form-check-input:checked { background-color: var(--verde); border-color: var(--verde); }

@@ -55,7 +55,7 @@ public record PerfilDto(
 
 public class ActualizarPerfilRequest
 {
-    [MaxLength(30), TelefonoArgentino]
+    [MaxLength(16), TelefonoInternacional]
     public string? Telefono { get; set; }
 
     public IndividuoDto? Individuo { get; set; }

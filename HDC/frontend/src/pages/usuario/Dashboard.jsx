@@ -7,7 +7,7 @@ import { EsqueletoDona, EsqueletoTarjeta } from '../../components/comunes/Esquel
 import Destello, { ValorAnimado } from '../../components/comunes/Destello.jsx'
 import TarjetaDesplegable from '../../components/comunes/TarjetaDesplegable.jsx'
 import { SelectorMes } from '../../components/comunes/Selectores.jsx'
-import { GraficoBarras, GraficoDona, GraficoEvolucion, ListaProgreso } from '../../components/graficos/Graficos.jsx'
+import { GraficoDona, GraficoEvolucion, ListaProgreso } from '../../components/graficos/Graficos.jsx'
 import { desdeMes, mesActual, numero, periodo, porcentaje, ppm, toneladas } from '../../utils/formato'
 
 function Kpi({ etiqueta, valor, unidad, color, icono, children, cambio }) {
@@ -159,17 +159,7 @@ export default function Dashboard() {
               titulo="Por tipo de emisión"
               icono="bi-diagram-3"
               valorCambio={d.porTipoEmision}
-              resumen={<ListaProgreso items={d.porTipoEmision} max={4} />}
-              detalle={d.porTipoEmision.length > 0 && (
-                <ul className="list-unstyled mb-0 d-flex flex-column gap-2 small">
-                  {d.porTipoEmision.map((t) => (
-                    <li key={t.id} className="d-flex justify-content-between gap-2 border-bottom pb-2" style={{ borderColor: 'var(--borde)' }}>
-                      <span><span className="fw-semibold">{t.nombre}</span><span className="d-block text-muted">{t.grupo}</span></span>
-                      <span className="text-end text-nowrap"><b>{numero(t.kgCo2)} kg</b><span className="d-block text-muted">{porcentaje(t.porcentaje)}</span></span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              detalle={<ListaProgreso items={d.porTipoEmision} max={4} />}
             />
           </div>
 
@@ -179,20 +169,7 @@ export default function Dashboard() {
               titulo="Fuentes que más emiten"
               icono="bi-fire"
               valorCambio={d.topFuentes}
-              resumen={<ListaProgreso items={d.topFuentes} max={5} colorFijo="var(--marron)" />}
-              detalle={
-                <>
-                  <GraficoBarras items={d.topFuentes.slice(0, 10)} color="var(--serie-3)" />
-                  <table className="table tabla-hdc table-sm mt-3 mb-0">
-                    <thead><tr><th>Fuente</th><th className="text-end">Consumo</th><th className="text-end">kg CO₂</th></tr></thead>
-                    <tbody>
-                      {d.topFuentes.map((f) => (
-                        <tr key={f.id}><td>{f.nombre}</td><td className="num">{numero(f.consumo)} {f.unidad}</td><td className="num">{numero(f.kgCo2)}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </>
-              }
+              detalle={<ListaProgreso items={d.topFuentes} max={5} colorFijo="var(--marron)" />}
             />
           </div>
 
@@ -202,30 +179,11 @@ export default function Dashboard() {
               titulo="Lectura rápida"
               icono="bi-lightning-charge"
               valorCambio={d.lecturaRapida}
-              resumen={
+              detalle={
                 <div className="d-flex flex-column gap-2">
                   <div className="d-flex justify-content-between"><span className="texto-2">Promedio mensual</span><b>{numero(d.lecturaRapida.promedioMensualKgCo2)} kg</b></div>
                   <div className="d-flex justify-content-between"><span className="texto-2">Mes con más emisiones</span>
                     <b>{d.lecturaRapida.mesMaximo ? periodo(d.lecturaRapida.mesMaximo.periodo) : '—'}</b></div>
-                </div>
-              }
-              detalle={
-                <div className="d-flex flex-column gap-2 small">
-                  {d.lecturaRapida.mesMaximo && <div className="d-flex justify-content-between"><span className="texto-2">Máximo</span><span>{periodo(d.lecturaRapida.mesMaximo.periodo, true)} · <b>{numero(d.lecturaRapida.mesMaximo.kgCo2)} kg</b></span></div>}
-                  {d.lecturaRapida.mesMinimo && <div className="d-flex justify-content-between"><span className="texto-2">Mínimo</span><span>{periodo(d.lecturaRapida.mesMinimo.periodo, true)} · <b>{numero(d.lecturaRapida.mesMinimo.kgCo2)} kg</b></span></div>}
-                  <div className="d-flex justify-content-between"><span className="texto-2">Meses con datos</span><b>{d.lecturaRapida.cantidadPeriodos}</b></div>
-                  <div className="d-flex justify-content-between"><span className="texto-2">Registros cargados</span><b>{d.lecturaRapida.cantidadRegistros}</b></div>
-                  <div className="d-flex justify-content-between"><span className="texto-2">Domicilios con emisiones</span><b>{d.lecturaRapida.cantidadDomicilios}</b></div>
-                  <div className="d-flex justify-content-between"><span className="texto-2">Colaboradores que aportaron</span><b>{d.lecturaRapida.cantidadColaboradores}</b></div>
-                  {d.porDomicilio.length > 1 && (
-                    <>
-                      <div className="separador my-2" />
-                      <div className="dato-etiqueta">Por domicilio</div>
-                      {d.porDomicilio.map((x) => (
-                        <div key={x.id} className="d-flex justify-content-between gap-2"><span className="text-truncate">{x.nombre}</span><b className="text-nowrap">{porcentaje(x.porcentaje)}</b></div>
-                      ))}
-                    </>
-                  )}
                 </div>
               }
             />

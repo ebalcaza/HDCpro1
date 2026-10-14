@@ -44,7 +44,7 @@ export default function Login() {
               <input type="email" autoComplete="email" placeholder="nombre@correo.com" autoFocus {...f.campo('email')} />
             </Campo>
             <Campo etiqueta="Contraseña" requerido error={f.errores.contrasena} tocado={f.tocados.contrasena} exito={null}>
-              <div className="position-relative">
+              <div className="position-relative input-con-boton">
                 <input type={verClave ? 'text' : 'password'} autoComplete="current-password" {...f.campo('contrasena')} />
                 <button type="button" className="btn btn-icono position-absolute" style={{ right: 4, top: 3 }}
                   onClick={() => setVerClave((v) => !v)} aria-label={verClave ? 'Ocultar contraseña' : 'Mostrar contraseña'}>

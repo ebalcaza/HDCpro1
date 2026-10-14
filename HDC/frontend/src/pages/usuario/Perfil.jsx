@@ -9,7 +9,6 @@ import {
 } from '../../components/comunes/Formulario.jsx'
 import Modal from '../../components/comunes/Modal.jsx'
 import Destello from '../../components/comunes/Destello.jsx'
-import CampoTelefono, { telefonoARequest } from '../../components/formularios/CampoTelefono.jsx'
 import { fecha, toneladas } from '../../utils/formato'
 
 function FormPerfil({ perfil, onGuardado, onCancelar }) {
@@ -17,11 +16,12 @@ function FormPerfil({ perfil, onGuardado, onCancelar }) {
   const esInd = perfil.tipoPerfil === 'INDIVIDUO'
   const esOrg = perfil.tipoPerfil === 'ORGANIZACION'
   const f = useFormulario({
-    telefono: perfil.telefono || '',
+    // Los teléfonos viejos ("+54 11 45678901") se cargan sin espacios para cumplir la regla nueva
+    telefono: (perfil.telefono || '').replace(/\s/g, ''),
     ...(esInd ? { ...perfil.individuo, fechaNacimiento: perfil.individuo.fechaNacimiento || '', genero: perfil.individuo.genero || '' } : {}),
     ...(esOrg ? { ...perfil.organizacion, descripcion: perfil.organizacion.descripcion || '', cantidadMiembros: perfil.organizacion.cantidadMiembros ?? '' } : {}),
   }, (v) => errores({
-    telefono: reglas.telefono(v.telefono),
+    telefono: reglas.telefonoInternacional(v.telefono),
     ...(esInd ? {
       // Nombres/apellidos: letras, espacios y apóstrofe; largo según la columna de la BD
       nombres: validarNombre(v.nombres, LARGOS.nombres),
@@ -44,7 +44,7 @@ function FormPerfil({ perfil, onGuardado, onCancelar }) {
     f.setEnviando(true)
     try {
       const r = await perfilApi.actualizar({
-        telefono: telefonoARequest(v.telefono),
+        telefono: v.telefono.trim() || null,
         individuo: esInd ? { nombres: normalizarNombre(v.nombres), apellidos: normalizarNombre(v.apellidos), dni: v.dni, fechaNacimiento: v.fechaNacimiento || null, genero: v.genero || null } : null,
         organizacion: esOrg ? { razonSocial: v.razonSocial, cuit: v.cuit, area: v.area, descripcion: v.descripcion || null, cantidadMiembros: v.cantidadMiembros === '' ? null : Number(v.cantidadMiembros) } : null,
       })
@@ -77,7 +77,12 @@ function FormPerfil({ perfil, onGuardado, onCancelar }) {
         <Campo className="col-md-4" etiqueta="Cantidad de miembros" exito={null}><input type="number" min="0" {...f.campo('cantidadMiembros')} /></Campo>
         <Campo className="col-12" etiqueta="Descripción" exito={null}><textarea rows={3} maxLength={1000} {...f.campo('descripcion')} /></Campo>
       </>}
-      <CampoTelefono f={f} />
+      <Campo className="col-md-6" etiqueta="Teléfono" error={f.errores.telefono} tocado={t.telefono} exito={null}
+        ayuda="Con código de país, solo números y + (ej: +5491145678901)">
+        {/* Solo deja escribir números y un + al inicio */}
+        <input type="tel" inputMode="tel" autoComplete="tel" maxLength={16} placeholder="+5491145678901" {...f.campo('telefono')}
+          onChange={(e) => f.cambiar('telefono', e.target.value.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, ''))} />
+      </Campo>
       <div className="col-12 d-flex justify-content-end gap-2">
         <button type="button" className="btn btn-outline-secondary" onClick={onCancelar}>Cancelar</button>
         <BotonCarga cargando={f.enviando}>Guardar cambios</BotonCarga>

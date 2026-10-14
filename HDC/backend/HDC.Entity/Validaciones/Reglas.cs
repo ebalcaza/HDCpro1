@@ -55,6 +55,12 @@ public static class Reglas
     /// </summary>
     public static readonly Regex Telefono = new(@"^\+54 (\d{2,4}) (\d{6,8})$");
 
+    /// <summary>
+    /// Teléfono del perfil (cualquier país): un "+" opcional al inicio y solo números.
+    /// Máximo 15 dígitos (estándar internacional E.164), o sea 16 caracteres con el "+".
+    /// </summary>
+    public static readonly Regex TelefonoInternacional = new(@"^\+?\d{1,15}$");
+
     /// <summary>Opciones del select "Área" de las organizaciones (mismo listado que el frontend).</summary>
     public static readonly string[] AreasOrganizacion =
     [
@@ -133,6 +139,18 @@ public class TelefonoArgentinoAttribute : ValidationAttribute
         var m = Reglas.Telefono.Match(s.Trim());
         if (m.Success && m.Groups[1].Length + m.Groups[2].Length == 10) return ValidationResult.Success;
         return new ValidationResult("Teléfono inválido: característica sin 0 + número sin 15 (10 dígitos en total)", [ctx.MemberName!]);
+    }
+}
+
+/// <summary>Valida el teléfono del perfil (ver <see cref="Reglas.TelefonoInternacional"/>). Vacío = sin teléfono.</summary>
+public class TelefonoInternacionalAttribute : ValidationAttribute
+{
+    protected override ValidationResult? IsValid(object? value, ValidationContext ctx)
+    {
+        if (value is not string s || string.IsNullOrWhiteSpace(s)) return ValidationResult.Success;
+        return Reglas.TelefonoInternacional.IsMatch(s.Trim())
+            ? ValidationResult.Success
+            : new ValidationResult("Teléfono inválido: solo números y un + opcional al inicio (máximo 15 dígitos)", [ctx.MemberName!]);
     }
 }
 

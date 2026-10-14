@@ -161,6 +161,16 @@ export const reglas = {
     return m && m[1].length + m[2].length === 10 ? null : 'Característica + número deben sumar 10 dígitos'
   },
 
+  /**
+   * Teléfono del perfil (cualquier país): un "+" opcional al inicio y solo números.
+   * Máximo 15 dígitos (estándar internacional E.164). Vacío = sin teléfono.
+   */
+  telefonoInternacional: (v) => {
+    const s = String(v || '').trim()
+    if (!s) return null
+    return /^\+?\d{1,15}$/.test(s) ? null : 'Solo números y un + opcional al inicio (máximo 15 dígitos)'
+  },
+
   // ---------------------------------------------------------------------------------
   //  ESPACIO PARA TUS PROPIAS REGLAS
   //  Copiá este molde, cambiale el nombre y la condición:
