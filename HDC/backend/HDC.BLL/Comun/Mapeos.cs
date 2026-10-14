@@ -55,9 +55,6 @@ public static class Mapeos
         d.Fuentes.Select(f => ToResumen(f.FuenteEmision)).OrderBy(f => f.Nombre).ToList(),
         registros, colaboradores);
 
-    public static VehiculoDto ToDto(Vehiculo v) =>
-        new(v.IdVehiculo, v.TipoVehiculo, v.Marca, v.Modelo, v.Patente, v.TipoCombustible, v.TipoUso);
-
     public static string? Limpiar(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
     public static string NormalizarCuit(string cuit)
@@ -65,7 +62,4 @@ public static class Mapeos
         var digitos = new string(cuit.Where(char.IsDigit).ToArray());
         return digitos.Length == 11 ? $"{digitos[..2]}-{digitos[2..10]}-{digitos[10]}" : cuit.Trim();
     }
-
-    public static string NormalizarPatente(string patente) =>
-        new string(patente.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
 }

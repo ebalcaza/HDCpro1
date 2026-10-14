@@ -15,7 +15,6 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Individuo> Individuos => Set<Individuo>();
     public DbSet<Organizacion> Organizaciones => Set<Organizacion>();
-    public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
     public DbSet<Provincia> Provincias => Set<Provincia>();
     public DbSet<Distrito> Distritos => Set<Distrito>();
     public DbSet<Ciudad> Ciudades => Set<Ciudad>();
@@ -100,21 +99,6 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.Area).HasColumnName("AREA").HasMaxLength(100);
             e.Property(x => x.Descripcion).HasColumnName("DESCRIPCION").HasMaxLength(1000);
             e.Property(x => x.CantidadMiembros).HasColumnName("CANTIDAD_MIEMBROS");
-        });
-
-        mb.Entity<Vehiculo>(e =>
-        {
-            e.ToTable("VEHICULO");
-            e.HasKey(x => x.IdVehiculo);
-            e.Property(x => x.IdVehiculo).HasColumnName("ID_VEHICULO");
-            e.Property(x => x.IdUsuario).HasColumnName("ID_USUARIO");
-            e.Property(x => x.TipoVehiculo).HasColumnName("TIPO_VEHICULO").HasMaxLength(20);
-            e.Property(x => x.Marca).HasColumnName("MARCA").HasMaxLength(100);
-            e.Property(x => x.Modelo).HasColumnName("MODELO").HasMaxLength(100);
-            e.Property(x => x.Patente).HasColumnName("PATENTE").HasMaxLength(10).IsUnicode(false);
-            e.Property(x => x.TipoCombustible).HasColumnName("TIPO_COMBUSTIBLE").HasMaxLength(20);
-            e.Property(x => x.TipoUso).HasColumnName("TIPO_USO").HasMaxLength(20);
-            e.HasOne(x => x.Usuario).WithMany(u => u.Vehiculos).HasForeignKey(x => x.IdUsuario);
         });
 
         mb.Entity<Provincia>(e =>

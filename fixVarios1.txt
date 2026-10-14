@@ -1,0 +1,32 @@
+formularios:
+
+*registro de emisiones: 
+el consumo ingresado por el usuario, debe agregar los puntos para no haber confusion en si tengo que
+ingresarlo con punto o sin punto. ejemplo: ingreso una cifra de diferentes formas:
+20mil, 20.000, 20000, 20k, 20000,00, 20000.00, etc. 
+
+*perfiles:
++los nombres y apellidos solo deberan aceptar letras, espacios y solo un simbolo "'", el apostrofe. Deberan tener un largo coherente con la base de datos.
+cada nombre debera ser guardado con mayuscula, igual que los apellidos, sin espacios contiguos, ni espacios al final o delante,.
++la contraseña debe ser una combinacion de letras y numeros, y no debe contener espacios vacios.
++el area de las organizcioines debe ser un select. con opciones, educacion, industria, energia, agro, etc.
++el telefono de los perfiles debe obtener el codigo +54 011 para argentina buenos aires, dependiendo la zona geografica donde se enbcuentre.
+
+domicilios:
++las calles deberan aceptar letras y espacios, y tambien podran tener numeros, y un largo coherente con la bd.
+no podran tener espacios consecutivos.
+
+
+componentes:
++en la barra de filtrado de mis emisiones quitar "Origen"
+
+
++agregaras validaciones tambien en el frontend
+y comentaras el codigo, dejando informacion relevante sobre lo que hacen las validaciones,
+dejandome espacio para crear mis propias validaciones.
+
+en general:
++quita la seccion vehiculos.
+
+
+---------------------------------------------------------------------------------------------------------------------------------

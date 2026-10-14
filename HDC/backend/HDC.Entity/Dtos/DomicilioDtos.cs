@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using HDC.Entity.Validaciones;
 
 namespace HDC.Entity.Dtos;
 
 public class DomicilioRequest
 {
-    [Required(ErrorMessage = "La calle es obligatoria"), MaxLength(200)]
+    [Required(ErrorMessage = "La calle es obligatoria"), MaxLength(200), Calle]
     public string Calle { get; set; } = string.Empty;
 
     [Range(0, 999_999, ErrorMessage = "La altura debe ser un número válido")]
@@ -21,7 +22,7 @@ public class DomicilioRequest
     [Required(ErrorMessage = "El código postal es obligatorio"), MaxLength(15)]
     public string CodigoPostal { get; set; } = string.Empty;
 
-    [MaxLength(30)]
+    [MaxLength(30), TelefonoArgentino]
     public string? Telefono { get; set; }
 
     public List<long> IdsFuentes { get; set; } = new();

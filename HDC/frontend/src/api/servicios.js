@@ -11,9 +11,6 @@ export const perfilApi = {
   obtener: () => api.get('/perfil'),
   actualizar: (datos) => api.put('/perfil', datos),
   cambiarContrasena: (datos) => api.put('/perfil/contrasena', datos),
-  agregarVehiculo: (datos) => api.post('/perfil/vehiculos', datos),
-  actualizarVehiculo: (id, datos) => api.put(`/perfil/vehiculos/${id}`, datos),
-  eliminarVehiculo: (id) => api.delete(`/perfil/vehiculos/${id}`),
 }
 
 export const geoApi = {

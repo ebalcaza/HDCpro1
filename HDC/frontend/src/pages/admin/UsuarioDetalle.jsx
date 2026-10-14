@@ -86,15 +86,6 @@ export default function UsuarioDetalle() {
               </div>
             )}
             {!p.tipoPerfil && <p className="text-muted mb-0">Cuenta sin perfil de individuo u organización.</p>}
-            {p.vehiculos.length > 0 && (
-              <>
-                <div className="separador" />
-                <div className="dato-etiqueta mb-2">Vehículos</div>
-                <div className="d-flex flex-wrap gap-2">
-                  {p.vehiculos.map((v) => <span key={v.idVehiculo} className="badge-suave badge-azul">{v.tipoVehiculo} {v.marca} {v.modelo} · {v.patente} · {v.tipoCombustible}</span>)}
-                </div>
-              </>
-            )}
           </div>
           <div>
             <h2 className="tarjeta-titulo mb-2">Domicilios</h2>

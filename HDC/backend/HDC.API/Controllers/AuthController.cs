@@ -43,19 +43,6 @@ public class PerfilController(PerfilServicio perfil) : ControladorBase
         await perfil.CambiarContrasenaAsync(IdUsuario, req);
         return new MensajeDto("Contraseña actualizada");
     }
-
-    [HttpPost("vehiculos")]
-    public async Task<VehiculoDto> AgregarVehiculo(VehiculoRequest req) => await perfil.AgregarVehiculoAsync(IdUsuario, req);
-
-    [HttpPut("vehiculos/{id:long}")]
-    public async Task<VehiculoDto> ActualizarVehiculo(long id, VehiculoRequest req) => await perfil.ActualizarVehiculoAsync(IdUsuario, id, req);
-
-    [HttpDelete("vehiculos/{id:long}")]
-    public async Task<MensajeDto> EliminarVehiculo(long id)
-    {
-        await perfil.EliminarVehiculoAsync(IdUsuario, id);
-        return new MensajeDto("Vehículo eliminado");
-    }
 }
 
 /// <summary>Geografía (pública: se usa en el formulario de registro).</summary>

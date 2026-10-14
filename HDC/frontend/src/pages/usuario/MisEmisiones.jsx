@@ -15,7 +15,6 @@ export default function MisEmisiones() {
   const idDomicilio = params.get('domicilio') || ''
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
-  const [origen, setOrigen] = useState('')
   const { datos, cargando, error, recargar } = useCarga(() => registrosApi.listar(), [])
 
   const domicilios = useMemo(() => [...new Map((datos || []).map((r) => [r.idDomicilio, r.domicilio])).entries()], [datos])
@@ -24,8 +23,7 @@ export default function MisEmisiones() {
     const m = aMes(r.periodo)
     return (!idDomicilio || r.idDomicilio === Number(idDomicilio))
       && (!desde || m >= desde) && (!hasta || m <= hasta)
-      && (!origen || (origen === 'propios' ? !r.esColaboracion : r.esColaboracion))
-  }), [datos, idDomicilio, desde, hasta, origen])
+  }), [datos, idDomicilio, desde, hasta])
 
   const totalFiltrado = filtrados.reduce((a, r) => a + r.totalKgCo2, 0)
 
@@ -80,14 +78,6 @@ export default function MisEmisiones() {
         </div>
         <div><label className="form-label">Desde</label><SelectorMes valor={desde} permitirVacio max={hasta || mesActual()} onChange={setDesde} /></div>
         <div><label className="form-label">Hasta</label><SelectorMes valor={hasta} permitirVacio max={mesActual()} onChange={setHasta} /></div>
-        <div>
-          <label className="form-label">Origen</label>
-          <select className="form-select" value={origen} onChange={(e) => setOrigen(e.target.value)}>
-            <option value="">Todos</option>
-            <option value="propios">Mis domicilios</option>
-            <option value="colaboracion">Colaboraciones</option>
-          </select>
-        </div>
         <div className="ms-auto text-end">
           <div className="dato-etiqueta">Total filtrado</div>
           <div className="fs-5 fw-bold">{toneladas(totalFiltrado)} <small className="text-muted">t CO₂</small></div>

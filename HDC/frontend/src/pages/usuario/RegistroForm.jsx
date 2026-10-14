@@ -7,6 +7,7 @@ import { BotonCarga, EncabezadoPagina, ErrorCarga } from '../../components/comun
 import { EsqueletoTarjeta } from '../../components/comunes/Esqueleto.jsx'
 import { SelectorMes } from '../../components/comunes/Selectores.jsx'
 import { ValorAnimado } from '../../components/comunes/Destello.jsx'
+import InputMiles from '../../components/comunes/InputMiles.jsx'
 import { aMes, desdeMes, mesActual, numero, periodo, toneladas } from '../../utils/formato'
 
 let siguienteClave = 1
@@ -48,7 +49,7 @@ export default function RegistroForm() {
         setIdDomicilio(String(registro.idDomicilio))
         setMes(aMes(registro.periodo))
         setObservaciones(registro.observaciones || '')
-        setFilas(registro.detalles.map((d) => ({ ...filaVacia(d.idFuenteEmision), consumo: String(d.consumo), factorGuardado: d.valorFactorEmision, nombreFuente: d.fuente })))
+        setFilas(registro.detalles.map((d) => ({ ...filaVacia(d.idFuenteEmision), consumo: String(Number(d.consumo)), factorGuardado: d.valorFactorEmision, nombreFuente: d.fuente })))
       }
     }).catch(setError)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,9 +100,14 @@ export default function RegistroForm() {
     return rep
   }, [filas])
 
+  /*
+   * Validaciones de cada consumo. `f.consumo` llega ya "limpio" desde InputMiles
+   * (ej: "20000.5"), así que se puede convertir directo con Number().
+   * Agregá acá tus propias reglas por fila, ej: consumo: ... || (Number(f.consumo) > TOPE ? 'Revisá el valor' : null)
+   */
   const errorFila = (f) => ({
     fuente: !f.idFuenteEmision ? 'Elegí una fuente' : repetidas.has(f.idFuenteEmision) ? 'Fuente repetida' : null,
-    consumo: !f.consumo || Number(f.consumo) <= 0 ? 'Mayor a 0' : null,
+    consumo: !f.consumo || Number(f.consumo) <= 0 ? 'Debe ser mayor a 0' : null,
   })
   const erroresGenerales = {
     domicilio: !idDomicilio ? 'Elegí el domicilio' : null,
@@ -245,11 +251,14 @@ export default function RegistroForm() {
                         <div className="col-md-6">
                           <label className="form-label small">Consumo<span className="req">*</span></label>
                           <div className="input-group input-group-sm">
-                            <input type="number" min="0" step="any" inputMode="decimal" className={clase('form-control', err.consumo)}
-                              value={f.consumo} onChange={(e) => actualizarFila(f.clave, { consumo: e.target.value })} placeholder="0" />
+                            {/* Los puntos de miles se agregan solos (ver InputMiles.jsx); los decimales van con coma */}
+                            <InputMiles className={clase('form-control', err.consumo)} placeholder="Ej: 20.000"
+                              valor={f.consumo} onChange={(consumo) => actualizarFila(f.clave, { consumo })} aria-label="Consumo" />
                             <span className="input-group-text">{fuente?.unidadMedida || 'unidad'}</span>
                           </div>
-                          {intentoEnvio && err.consumo && <div className="invalid-feedback d-block">{err.consumo}</div>}
+                          {intentoEnvio && err.consumo
+                            ? <div className="invalid-feedback d-block">{err.consumo}</div>
+                            : <div className="form-text">Los puntos de miles se agregan solos. Decimales con coma (,).</div>}
                         </div>
                         <div className="col-md-6 d-flex align-items-end justify-content-md-end">
                           <div className="text-md-end small">

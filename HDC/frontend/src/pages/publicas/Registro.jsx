@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { rutaInicio, useAuth } from '../../context/AuthContext.jsx'
 import { useUI } from '../../context/UIContext.jsx'
-import { Campo, errores, reglas, useFormulario } from '../../components/comunes/Formulario.jsx'
+import {
+  AREAS_ORGANIZACION, Campo, campoNombre, errores, LARGOS, normalizarNombre, reglas, useFormulario, validarNombre,
+} from '../../components/comunes/Formulario.jsx'
 import { BotonCarga } from '../../components/comunes/Basicos.jsx'
 import CamposDomicilio, { domicilioARequest, domicilioVacio, validarDomicilio } from '../../components/formularios/CamposDomicilio.jsx'
-import CamposVehiculo, { validarVehiculo, vehiculoVacio } from '../../components/formularios/CamposVehiculo.jsx'
+import CampoTelefono, { telefonoARequest } from '../../components/formularios/CampoTelefono.jsx'
 import PanelLateral from './PanelLateral.jsx'
 
 const PASOS = ['Cuenta', 'Perfil', 'Domicilio']
@@ -23,7 +25,6 @@ export default function Registro() {
   const navigate = useNavigate()
   const [tipo, setTipo] = useState('INDIVIDUO')
   const [paso, setPaso] = useState(0)
-  const [conVehiculo, setConVehiculo] = useState(false)
 
   const f = useFormulario({
     email: '', contrasena: '', confirmacion: '', telefono: '',
@@ -31,25 +32,30 @@ export default function Registro() {
     razonSocial: '', cuit: '', area: '', descripcion: '', cantidadMiembros: '',
     ...domicilioVacio,
   }, (v) => errores({
+    // --- Paso 1: cuenta ---
     email: reglas.requerido(v.email) || reglas.email(v.email),
-    contrasena: reglas.requerido(v.contrasena) || reglas.minimo(v.contrasena, 8),
+    // Contraseña: mínimo 8, letras + números, sin espacios
+    contrasena: reglas.requerido(v.contrasena) || reglas.minimo(v.contrasena, 8) || reglas.contrasena(v.contrasena),
     confirmacion: v.confirmacion !== v.contrasena ? 'Las contraseñas no coinciden' : null,
     telefono: reglas.telefono(v.telefono),
+    // --- Paso 2: perfil ---
     ...(tipo === 'INDIVIDUO' ? {
-      nombres: reglas.requerido(v.nombres),
-      apellidos: reglas.requerido(v.apellidos),
+      // Nombres/apellidos: letras, espacios y apóstrofe; largo según la columna de la BD
+      nombres: validarNombre(v.nombres, LARGOS.nombres),
+      apellidos: validarNombre(v.apellidos, LARGOS.apellidos),
       dni: reglas.requerido(v.dni) || reglas.dni(v.dni),
       fechaNacimiento: v.fechaNacimiento && new Date(v.fechaNacimiento) > new Date() ? 'La fecha no puede ser futura' : null,
     } : {
       razonSocial: reglas.requerido(v.razonSocial),
       cuit: reglas.requerido(v.cuit) || reglas.cuit(v.cuit),
-      area: reglas.requerido(v.area),
+      // Área: debe ser una opción del select
+      area: reglas.requerido(v.area, 'Elegí un área') || (!AREAS_ORGANIZACION.includes(v.area) ? 'Elegí un área de la lista' : null),
       cantidadMiembros: v.cantidadMiembros !== '' && (Number(v.cantidadMiembros) < 0 || !Number.isInteger(Number(v.cantidadMiembros))) ? 'Cantidad inválida' : null,
     }),
+    // --- Paso 3: domicilio (reglas en CamposDomicilio.jsx) ---
     ...validarDomicilio(v),
+    // Agregá acá tus propias validaciones del registro, ej: email: reglas.miRegla(v.email),
   }))
-
-  const fv = useFormulario(vehiculoVacio, validarVehiculo)
 
   const pasoValido = (p) => {
     const campos = CAMPOS_PASO[p]
@@ -64,21 +70,19 @@ export default function Registro() {
   const enviar = async (e) => {
     e.preventDefault()
     if (paso < PASOS.length - 1) return siguiente()
-    const okVehiculo = !conVehiculo || fv.validarTodo()
-    if (!f.validarTodo() || !okVehiculo) {
+    if (!f.validarTodo()) {
       ui.error('Revisá los campos marcados en rojo', 'Datos incompletos')
       return
     }
     const v = f.valores
-    const base = { email: v.email.trim(), contrasena: v.contrasena, telefono: v.telefono || null, domicilio: domicilioARequest(v) }
+    const base = { email: v.email.trim(), contrasena: v.contrasena, telefono: telefonoARequest(v.telefono), domicilio: domicilioARequest(v) }
     const datos = tipo === 'INDIVIDUO'
       ? {
-        ...base, nombres: v.nombres.trim(), apellidos: v.apellidos.trim(), dni: v.dni.trim(),
+        ...base, nombres: normalizarNombre(v.nombres), apellidos: normalizarNombre(v.apellidos), dni: v.dni.trim(),
         fechaNacimiento: v.fechaNacimiento || null, genero: v.genero || null,
-        vehiculo: conVehiculo ? fv.valores : null,
       }
       : {
-        ...base, razonSocial: v.razonSocial.trim(), cuit: v.cuit.trim(), area: v.area.trim(),
+        ...base, razonSocial: v.razonSocial.trim(), cuit: v.cuit.trim(), area: v.area,
         descripcion: v.descripcion || null, cantidadMiembros: v.cantidadMiembros === '' ? null : Number(v.cantidadMiembros),
       }
 
@@ -128,10 +132,8 @@ export default function Registro() {
                 <Campo className="col-md-6" etiqueta="Email" requerido error={f.errores.email} tocado={t.email}>
                   <input type="email" autoComplete="email" {...f.campo('email')} />
                 </Campo>
-                <Campo className="col-md-6" etiqueta="Teléfono" error={f.errores.telefono} tocado={t.telefono} exito={null}>
-                  <input type="tel" autoComplete="tel" {...f.campo('telefono')} />
-                </Campo>
-                <Campo className="col-md-6" etiqueta="Contraseña" requerido error={f.errores.contrasena} tocado={t.contrasena} ayuda="Mínimo 8 caracteres">
+                <CampoTelefono f={f} />
+                <Campo className="col-md-6" etiqueta="Contraseña" requerido error={f.errores.contrasena} tocado={t.contrasena} ayuda="Mínimo 8 caracteres, con letras y números, sin espacios">
                   <input type="password" autoComplete="new-password" {...f.campo('contrasena')} />
                 </Campo>
                 <Campo className="col-md-6" etiqueta="Repetir contraseña" requerido error={f.errores.confirmacion} tocado={t.confirmacion}>
@@ -142,8 +144,8 @@ export default function Registro() {
 
             {paso === 1 && tipo === 'INDIVIDUO' && (
               <div className="row g-3 aparecer">
-                <Campo className="col-md-6" etiqueta="Nombres" requerido error={f.errores.nombres} tocado={t.nombres}><input {...f.campo('nombres')} /></Campo>
-                <Campo className="col-md-6" etiqueta="Apellidos" requerido error={f.errores.apellidos} tocado={t.apellidos}><input {...f.campo('apellidos')} /></Campo>
+                <Campo className="col-md-6" etiqueta="Nombres" requerido error={f.errores.nombres} tocado={t.nombres}><input {...campoNombre(f, 'nombres', LARGOS.nombres)} /></Campo>
+                <Campo className="col-md-6" etiqueta="Apellidos" requerido error={f.errores.apellidos} tocado={t.apellidos}><input {...campoNombre(f, 'apellidos', LARGOS.apellidos)} /></Campo>
                 <Campo className="col-md-4" etiqueta="DNI" requerido error={f.errores.dni} tocado={t.dni}><input inputMode="numeric" maxLength={8} {...f.campo('dni')} /></Campo>
                 <Campo className="col-md-4" etiqueta="Fecha de nacimiento" error={f.errores.fechaNacimiento} tocado={t.fechaNacimiento} exito={null}>
                   <input type="date" max={new Date().toISOString().slice(0, 10)} {...f.campo('fechaNacimiento')} />
@@ -154,13 +156,6 @@ export default function Registro() {
                     <option>Femenino</option><option>Masculino</option><option>No binario</option><option>Otro</option>
                   </select>
                 </Campo>
-                <div className="col-12">
-                  <div className="form-check form-switch">
-                    <input className="form-check-input" type="checkbox" id="con-vehiculo" checked={conVehiculo} onChange={(e) => setConVehiculo(e.target.checked)} />
-                    <label className="form-check-label" htmlFor="con-vehiculo">Quiero registrar un vehículo (opcional)</label>
-                  </div>
-                </div>
-                {conVehiculo && <div className="col-12 aparecer"><CamposVehiculo f={fv} /></div>}
               </div>
             )}
 
@@ -168,7 +163,12 @@ export default function Registro() {
               <div className="row g-3 aparecer">
                 <Campo className="col-md-8" etiqueta="Razón social o nombre" requerido error={f.errores.razonSocial} tocado={t.razonSocial}><input {...f.campo('razonSocial')} /></Campo>
                 <Campo className="col-md-4" etiqueta="CUIT" requerido error={f.errores.cuit} tocado={t.cuit}><input placeholder="30-12345678-9" {...f.campo('cuit')} /></Campo>
-                <Campo className="col-md-8" etiqueta="Área" requerido error={f.errores.area} tocado={t.area}><input placeholder="Ej: Educación, Industria, Servicios" {...f.campo('area')} /></Campo>
+                <Campo className="col-md-8" etiqueta="Área" requerido error={f.errores.area} tocado={t.area}>
+                  <select {...f.campo('area')} className={f.claseValidacion('area', 'form-select')}>
+                    <option value="">Seleccioná</option>
+                    {AREAS_ORGANIZACION.map((a) => <option key={a}>{a}</option>)}
+                  </select>
+                </Campo>
                 <Campo className="col-md-4" etiqueta="Cantidad de miembros" error={f.errores.cantidadMiembros} tocado={t.cantidadMiembros} exito={null}>
                   <input type="number" min="0" {...f.campo('cantidadMiembros')} />
                 </Campo>

@@ -2,6 +2,7 @@ using HDC.BLL.Comun;
 using HDC.DAL.Repositorios;
 using HDC.Entity.Dtos;
 using HDC.Entity.Entities;
+using HDC.Entity.Validaciones;
 
 namespace HDC.BLL.Servicios;
 
@@ -25,20 +26,13 @@ public class AuthServicio(UsuarioRepositorio usuarios, DomicilioServicio domicil
         var u = await CrearUsuarioBaseAsync(req, RolesSistema.Individuo);
         u.Individuo = new Individuo
         {
-            Nombres = req.Nombres.Trim(),
-            Apellidos = req.Apellidos.Trim(),
+            // Se guardan con mayúscula inicial y sin espacios sobrantes (ver Reglas.NormalizarNombre)
+            Nombres = Reglas.NormalizarNombre(req.Nombres),
+            Apellidos = Reglas.NormalizarNombre(req.Apellidos),
             Dni = dni,
             FechaNacimiento = req.FechaNacimiento,
             Genero = Mapeos.Limpiar(req.Genero)
         };
-        if (req.Vehiculo is { } v)
-        {
-            u.Vehiculos.Add(new Vehiculo
-            {
-                TipoVehiculo = v.TipoVehiculo, Marca = v.Marca.Trim(), Modelo = v.Modelo.Trim(),
-                Patente = Mapeos.NormalizarPatente(v.Patente), TipoCombustible = v.TipoCombustible, TipoUso = v.TipoUso
-            });
-        }
         return await GuardarYResponderAsync(u, req.Domicilio);
     }
 

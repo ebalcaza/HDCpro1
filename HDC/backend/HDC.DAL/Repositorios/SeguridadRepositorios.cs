@@ -14,7 +14,7 @@ public class UsuarioRepositorio(HdcDbContext ctx) : Repositorio<Usuario>(ctx)
         ConPerfil().FirstOrDefaultAsync(u => u.Email == email);
 
     public Task<Usuario?> ObtenerCompletoAsync(long idUsuario) =>
-        ConPerfil().Include(u => u.Vehiculos).FirstOrDefaultAsync(u => u.IdUsuario == idUsuario);
+        ConPerfil().FirstOrDefaultAsync(u => u.IdUsuario == idUsuario);
 
     public Task<List<Usuario>> ListarAsync() => Ctx.Usuarios.AsNoTracking()
         .Include(u => u.Rol)
@@ -38,12 +38,6 @@ public class UsuarioRepositorio(HdcDbContext ctx) : Repositorio<Usuario>(ctx)
 
     public Task<int> ContarRegistrosAsync(long idUsuario) =>
         Ctx.Registros.CountAsync(r => r.Domicilio.IdUsuario == idUsuario || r.IdUsuarioCarga == idUsuario);
-
-    public Task<Vehiculo?> ObtenerVehiculoAsync(long idVehiculo) => Ctx.Vehiculos.FindAsync(idVehiculo).AsTask();
-
-    public void AgregarVehiculo(Vehiculo v) => Ctx.Vehiculos.Add(v);
-
-    public void EliminarVehiculo(Vehiculo v) => Ctx.Vehiculos.Remove(v);
 }
 
 public class RolRepositorio(HdcDbContext ctx) : Repositorio<Rol>(ctx)
