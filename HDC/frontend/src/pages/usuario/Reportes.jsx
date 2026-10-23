@@ -10,7 +10,7 @@ import TablaPaginada from '../../components/comunes/TablaPaginada.jsx'
 import TarjetaDesplegable from '../../components/comunes/TarjetaDesplegable.jsx'
 import { GraficoBarras, GraficoDona, GraficoEvolucion, ListaProgreso } from '../../components/graficos/Graficos.jsx'
 import { aMes, desdeMes, fecha, mesActual, numero, periodo, porcentaje, ppm, toneladas } from '../../utils/formato'
-import { pdfReporte } from '../../utils/pdf'
+import { descargarPdfReporte } from '../../utils/pdfDiferido'
 
 const filtrosVacios = { desde: '', hasta: '', idsAlcances: [], idsTiposEmision: [], idsFuentes: [], idsDomicilios: [], idsRoles: [], idProvincia: '', idDistrito: '', idCiudad: '' }
 
@@ -28,15 +28,19 @@ const desdeApi = (f) => ({
 })
 
 function TablaSerie({ items, grupo }) {
-  return (
-    <table className="table tabla-hdc table-sm mb-0">
-      <thead><tr><th className="col-num">#</th><th>Nombre</th>{grupo && <th>{grupo}</th>}<th className="text-end">kg CO₂</th><th className="text-end">%</th></tr></thead>
-      <tbody>{items.map((s, i) => (
-        <tr key={s.id}><td className="col-num">{i + 1}</td><td>{s.nombre}</td>{grupo && <td className="text-muted">{s.grupo}</td>}<td className="num">{numero(s.kgCo2)}</td><td className="num">{porcentaje(s.porcentaje)}</td></tr>
-      ))}</tbody>
-    </table>
-  )
+  const columnas = [
+    { clave: 'nombre', titulo: 'Nombre', ordenable: true },
+    ...(grupo ? [{ clave: 'grupo', titulo: grupo, ordenable: true, clase: 'text-muted' }] : []),
+    { clave: 'kgCo2', titulo: 'kg CO₂', ordenable: true, numerico: true, render: (s) => numero(s.kgCo2) },
+    { clave: 'porcentaje', titulo: '%', ordenable: true, numerico: true, render: (s) => porcentaje(s.porcentaje) },
+  ]
+  return <TablaPaginada plana compacta busqueda={false} columnas={columnas} datos={items} idFila={(s) => s.id} />
 }
+
+const columnasPeriodo = [
+  { clave: 'periodo', titulo: 'Período', ordenable: true, render: (p) => periodo(p.periodo, true) },
+  { clave: 'kgCo2', titulo: 'kg CO₂', ordenable: true, numerico: true, render: (p) => numero(p.kgCo2) },
+]
 
 export default function Reportes({ global = false }) {
   const ui = useUI()
@@ -97,12 +101,15 @@ export default function Reportes({ global = false }) {
     generar(nuevos)
   }
 
-  const descargar = () => {
-    pdfReporte(resultado, {
-      nombre: global ? 'Reporte global de emisiones' : 'Reporte de emisiones',
-      graficos: { evolucion: refEvolucion.current, alcances: refAlcances.current },
-    })
-    ui.exito('El PDF del reporte se descargó', 'Descarga lista')
+  // El módulo de PDF se descarga recién acá, la primera vez que se exporta (ver utils/pdfDiferido.js)
+  const descargar = async () => {
+    try {
+      await descargarPdfReporte(resultado, {
+        nombre: global ? 'Reporte global de emisiones' : 'Reporte de emisiones',
+        graficos: { evolucion: refEvolucion.current, alcances: refAlcances.current },
+      })
+      ui.exito('El PDF del reporte se descargó', 'Descarga lista')
+    } catch (err) { ui.error(err) }
   }
 
   const r = resultado
@@ -237,8 +244,7 @@ export default function Reportes({ global = false }) {
                 <TarjetaDesplegable titulo="Evolución por período" icono="bi-graph-up" valorCambio={r.porPeriodo}
                   resumen={<GraficoEvolucion refGrafico={refEvolucion} alto={280} mostrarAlcances={false}
                     puntos={r.porPeriodo.map((p) => ({ periodo: p.periodo, kgCo2: p.kgCo2, porAlcance: {} }))} />}
-                  detalle={<table className="table tabla-hdc table-sm mb-0"><thead><tr><th>Período</th><th className="text-end">kg CO₂</th></tr></thead>
-                    <tbody>{r.porPeriodo.map((p) => <tr key={p.periodo}><td>{periodo(p.periodo, true)}</td><td className="num">{numero(p.kgCo2)}</td></tr>)}</tbody></table>} />
+                  detalle={<TablaPaginada plana compacta busqueda={false} columnas={columnasPeriodo} datos={r.porPeriodo} idFila={(p) => p.periodo} />} />
               </div>
               <div className="col-lg-6">
                 <TarjetaDesplegable titulo="Por fuente de emisión" icono="bi-fire" valorCambio={r.porFuente}

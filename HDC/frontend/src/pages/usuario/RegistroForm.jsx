@@ -8,6 +8,7 @@ import { EsqueletoTarjeta } from '../../components/comunes/Esqueleto.jsx'
 import { SelectorMes } from '../../components/comunes/Selectores.jsx'
 import { ValorAnimado } from '../../components/comunes/Destello.jsx'
 import InputMiles from '../../components/comunes/InputMiles.jsx'
+import BuscadorFuente from '../../components/formularios/BuscadorFuente.jsx'
 import { aMes, desdeMes, mesActual, numero, periodo, toneladas } from '../../utils/formato'
 
 let siguienteClave = 1
@@ -64,18 +65,6 @@ export default function RegistroForm() {
     return colabs.length ? { tipos: new Set(colabs.flatMap((c) => c.tiposEmision.map((t) => t.idTipoEmision))), colabs } : null
   }, [cat, idDomicilio])
 
-  // Al elegir un domicilio propio (alta), se precargan sus fuentes habituales
-  const elegirDomicilio = (valor) => {
-    setIdDomicilio(valor)
-    if (editando || !cat) return
-    const d = cat.domicilios.find((x) => x.idDomicilio === Number(valor))
-    const vacias = filas.every((f) => !f.idFuenteEmision && !f.consumo)
-    if (d?.fuentes.length && vacias) {
-      setFilas(d.fuentes.map((f) => filaVacia(f.idFuenteEmision)))
-      ui.aviso(`Se precargaron ${d.fuentes.length} fuentes habituales del domicilio. Completá los consumos.`, 'Fuentes precargadas')
-    }
-  }
-
   const fuentesPermitidas = useMemo(() => {
     if (!cat) return []
     return cat.fuentes.filter((f) => !colaboracion || colaboracion.tipos.has(f.idTipoEmision))
@@ -106,7 +95,7 @@ export default function RegistroForm() {
    * Agregá acá tus propias reglas por fila, ej: consumo: ... || (Number(f.consumo) > TOPE ? 'Revisá el valor' : null)
    */
   const errorFila = (f) => ({
-    fuente: !f.idFuenteEmision ? 'Elegí una fuente' : repetidas.has(f.idFuenteEmision) ? 'Fuente repetida' : null,
+    fuente: !f.idFuenteEmision ? 'Elegí una fuente de la lista de sugerencias' : repetidas.has(f.idFuenteEmision) ? 'Fuente repetida' : null,
     consumo: !f.consumo || Number(f.consumo) <= 0 ? 'Debe ser mayor a 0' : null,
   })
   const erroresGenerales = {
@@ -166,7 +155,7 @@ export default function RegistroForm() {
               <div className="row g-3">
                 <div className="col-md-7">
                   <label className="form-label">Domicilio<span className="req">*</span></label>
-                  <select className={clase('form-select', erroresGenerales.domicilio)} value={idDomicilio} disabled={editando} onChange={(e) => elegirDomicilio(e.target.value)}>
+                  <select className={clase('form-select', erroresGenerales.domicilio)} value={idDomicilio} disabled={editando} onChange={(e) => setIdDomicilio(e.target.value)}>
                     <option value="">Seleccioná</option>
                     {cat.domicilios.length > 0 && (
                       <optgroup label="Mis domicilios">
@@ -209,8 +198,6 @@ export default function RegistroForm() {
                   const opciones = fuentesPermitidas.filter((x) =>
                     (!f.idAlcance || x.idAlcance === Number(f.idAlcance)) && (!f.idTipoEmision || x.idTipoEmision === Number(f.idTipoEmision)))
                   const fuente = mapaFuentes.get(Number(f.idFuenteEmision))
-                  // Si la fuente guardada fue dada de baja, se sigue mostrando para no perderla al editar
-                  const incluyeActual = !f.idFuenteEmision || opciones.some((o) => o.idFuenteEmision === Number(f.idFuenteEmision))
                   return (
                     <div key={f.clave} className="p-3 rounded-3 aparecer" style={{ border: '1px solid var(--borde)', background: 'var(--superficie-2)' }}>
                       <div className="d-flex align-items-center mb-2">
@@ -239,14 +226,15 @@ export default function RegistroForm() {
                           </select>
                         </div>
                         <div className="col-md-6">
-                          <label className="form-label small">Fuente de emisión<span className="req">*</span></label>
-                          <select className={clase('form-select form-select-sm', err.fuente)} value={f.idFuenteEmision}
-                            onChange={(e) => actualizarFila(f.clave, { idFuenteEmision: e.target.value ? Number(e.target.value) : '', factorGuardado: undefined })}>
-                            <option value="">Seleccioná ({opciones.length})</option>
-                            {!incluyeActual && <option value={f.idFuenteEmision}>{f.nombreFuente || 'Fuente actual'}</option>}
-                            {opciones.map((o) => <option key={o.idFuenteEmision} value={o.idFuenteEmision}>{o.nombre}</option>)}
-                          </select>
-                          {intentoEnvio && err.fuente && <div className="invalid-feedback d-block">{err.fuente}</div>}
+                          {/* Si la fuente guardada fue dada de baja, se sigue mostrando su nombre para no perderla al editar */}
+                          <BuscadorFuente id={`fuente-${f.clave}`} etiqueta="Fuente de emisión" requerido
+                            className={clase('', err.fuente)} opciones={opciones} valor={f.idFuenteEmision} nombreActual={f.nombreFuente}
+                            onChange={(idFuenteEmision) => {
+                              if (idFuenteEmision !== f.idFuenteEmision) actualizarFila(f.clave, { idFuenteEmision, factorGuardado: undefined })
+                            }} />
+                          {intentoEnvio && err.fuente
+                            ? <div className="invalid-feedback d-block">{err.fuente}</div>
+                            : <div className="form-text">Escribí parte del nombre y elegí una de las {opciones.length} fuentes sugeridas.</div>}
                         </div>
                         <div className="col-md-6">
                           <label className="form-label small">Consumo<span className="req">*</span></label>

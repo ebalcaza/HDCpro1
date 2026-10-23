@@ -17,7 +17,7 @@ namespace HDC.Entity.Validaciones;
  *  frontend/src/components/comunes/Formulario.jsx (objeto `reglas`). Si cambiás una
  *  regla acá, cambiala también allá para que los mensajes coincidan.
  *
- *  Los largos máximos salen de la base de datos (01_esquema.sql):
+ *  Los largos máximos salen de la base de datos (Scripts/HDC_base_datos.sql):
  *    INDIVIDUO.NOMBRES   NVARCHAR(200)     INDIVIDUO.APELLIDOS NVARCHAR(250)
  *    ORGANIZACION.AREA   NVARCHAR(100)     DOMICILIO.CALLE     NVARCHAR(200)
  *    USUARIO.TELEFONO    VARCHAR(30)       DOMICILIO.TELEFONO  VARCHAR(30)

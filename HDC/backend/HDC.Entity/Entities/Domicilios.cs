@@ -19,14 +19,4 @@ public class Domicilio
 
     public Ciudad Ciudad { get; set; } = null!;
     public Usuario Usuario { get; set; } = null!;
-    public ICollection<DomicilioFuente> Fuentes { get; set; } = new List<DomicilioFuente>();
-}
-
-public class DomicilioFuente
-{
-    public long IdDomicilio { get; set; }
-    public long IdFuenteEmision { get; set; }
-
-    public Domicilio Domicilio { get; set; } = null!;
-    public FuenteEmision FuenteEmision { get; set; } = null!;
 }

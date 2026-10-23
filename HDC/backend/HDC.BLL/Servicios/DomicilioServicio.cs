@@ -8,7 +8,6 @@ namespace HDC.BLL.Servicios;
 public class DomicilioServicio(
     DomicilioRepositorio domicilios,
     GeoRepositorio geo,
-    FuenteEmisionRepositorio fuentes,
     RegistroRepositorio registros,
     ColaboracionRepositorio colaboraciones)
 {
@@ -89,17 +88,6 @@ public class DomicilioServicio(
         d.IdCiudad = req.IdCiudad;
         d.CodigoPostal = req.CodigoPostal.Trim().ToUpperInvariant();
         d.Telefono = Mapeos.Limpiar(req.Telefono);
-
-        var ids = req.IdsFuentes.Distinct().ToList();
-        var encontradas = await fuentes.ObtenerPorIdsAsync(ids);
-        if (encontradas.Count != ids.Count || encontradas.Any(f => f.FechaBaja != null))
-            throw new NegocioException("Alguna de las fuentes de emisión seleccionadas no existe o fue dada de baja");
-
-        var quitar = d.Fuentes.Where(f => !ids.Contains(f.IdFuenteEmision)).ToList();
-        domicilios.QuitarFuentes(quitar);
-        foreach (var q in quitar) d.Fuentes.Remove(q);
-        foreach (var id in ids.Where(id => d.Fuentes.All(f => f.IdFuenteEmision != id)))
-            d.Fuentes.Add(new DomicilioFuente { IdFuenteEmision = id });
     }
 
     private async Task<Domicilio> ObtenerPropioAsync(long idUsuario, long idDomicilio)

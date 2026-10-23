@@ -24,11 +24,7 @@ public class DomicilioRequest
 
     [MaxLength(30), TelefonoArgentino]
     public string? Telefono { get; set; }
-
-    public List<long> IdsFuentes { get; set; } = new();
 }
-
-public record FuenteResumenDto(long IdFuenteEmision, string Nombre, string UnidadMedida, long IdTipoEmision, string TipoEmision, long IdAlcance, string Alcance);
 
 public record DomicilioDto(
     long IdDomicilio,
@@ -50,6 +46,5 @@ public record DomicilioDto(
     DateTime? FechaBaja,
     decimal TotalKgCo2,
     string Descripcion,
-    IReadOnlyList<FuenteResumenDto> Fuentes,
     int CantidadRegistros,
     int CantidadColaboradores);

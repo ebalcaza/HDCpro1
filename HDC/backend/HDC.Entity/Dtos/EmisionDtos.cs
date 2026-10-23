@@ -109,6 +109,22 @@ public class EmisionPlana
 }
 
 /// <summary>Criterios de filtrado sobre las emisiones. Las listas vacías no filtran.</summary>
+/// <summary>kg CO₂ sumados por la base para un mes y un alcance.</summary>
+public record SumaPeriodoAlcance(DateOnly Periodo, long IdAlcance, string Alcance, decimal KgCo2);
+
+/// <summary>kg CO₂ (y consumo, si aplica) sumados por la base para un grupo: tipo, fuente, domicilio o colaborador.</summary>
+public record SumaGrupo(long Id, string Nombre, string? Grupo, decimal KgCo2, decimal Consumo, string? Unidad);
+
+/// <summary>Resultado de las consultas agrupadas del Dashboard (todo viene ya sumado desde SQL).</summary>
+public record AgregadosEmisiones(
+    IReadOnlyList<SumaPeriodoAlcance> PorPeriodoAlcance,
+    IReadOnlyList<SumaGrupo> PorTipo,
+    IReadOnlyList<SumaGrupo> PorFuente,
+    IReadOnlyList<SumaGrupo> PorDomicilio,
+    IReadOnlyList<SumaGrupo> PorColaborador,
+    int CantidadRegistros,
+    int CantidadDomicilios);
+
 public class FiltroEmisiones
 {
     public DateOnly? Desde { get; set; }

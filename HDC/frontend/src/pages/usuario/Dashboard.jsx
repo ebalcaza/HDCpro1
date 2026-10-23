@@ -6,6 +6,7 @@ import { EncabezadoPagina, ErrorCarga, useCarga, Vacio } from '../../components/
 import { EsqueletoDona, EsqueletoTarjeta } from '../../components/comunes/Esqueleto.jsx'
 import Destello, { ValorAnimado } from '../../components/comunes/Destello.jsx'
 import TarjetaDesplegable from '../../components/comunes/TarjetaDesplegable.jsx'
+import TablaPaginada from '../../components/comunes/TablaPaginada.jsx'
 import { SelectorMes } from '../../components/comunes/Selectores.jsx'
 import { GraficoDona, GraficoEvolucion, ListaProgreso } from '../../components/graficos/Graficos.jsx'
 import { desdeMes, mesActual, numero, periodo, porcentaje, ppm, toneladas } from '../../utils/formato'
@@ -32,6 +33,25 @@ function Variacion({ pct }) {
   )
 }
 
+const columnasTipo = [
+  { clave: 'nombre', titulo: 'Tipo de emisión', ordenable: true },
+  { clave: 'grupo', titulo: 'Alcance', ordenable: true, clase: 'text-muted' },
+  { clave: 'kgCo2', titulo: 'kg CO₂', ordenable: true, numerico: true, render: (t) => numero(t.kgCo2) },
+  { clave: 'porcentaje', titulo: '%', ordenable: true, numerico: true, render: (t) => porcentaje(t.porcentaje) },
+]
+
+const columnasPeriodo = [
+  { clave: 'periodo', titulo: 'Período', ordenable: true, render: (p) => periodo(p.periodo, true) },
+  { clave: 'kgCo2', titulo: 'kg CO₂', ordenable: true, numerico: true, render: (p) => numero(p.kgCo2) },
+  { clave: 'tCo2', titulo: 't CO₂', numerico: true, render: (p) => toneladas(p.kgCo2) },
+]
+
+const columnasColaborador = [
+  { clave: 'nombre', titulo: 'Colaborador', ordenable: true },
+  { clave: 'kgCo2', titulo: 'kg CO₂', ordenable: true, numerico: true, render: (c) => numero(c.kgCo2) },
+  { clave: 'porcentaje', titulo: '% del total', ordenable: true, numerico: true, render: (c) => porcentaje(c.porcentaje) },
+]
+
 export default function Dashboard() {
   const { usuario, tienePermiso } = useAuth()
   const [filtros, setFiltros] = useState({ idDomicilio: '', desde: '', hasta: '' })
@@ -40,6 +60,8 @@ export default function Dashboard() {
   const { datos: d, cargando, error, recargar } = useCarga(() => dashboardApi.obtener(params), [filtros.idDomicilio, filtros.desde, filtros.hasta])
 
   const ordenAlcances = useMemo(() => (d?.porAlcance || []).map((a) => a.id).sort((a, b) => a - b), [d])
+  // La tabla de evolución muestra primero los meses más recientes
+  const evolucionReciente = useMemo(() => [...(d?.evolucion || [])].reverse(), [d])
   const sinDatos = d && d.totalKgCo2 === 0
   const hayFiltros = filtros.idDomicilio || filtros.desde || filtros.hasta
 
@@ -117,16 +139,7 @@ export default function Dashboard() {
               icono="bi-pie-chart"
               valorCambio={d.porAlcance}
               resumen={<GraficoDona items={d.porAlcance} ordenIds={ordenAlcances} tituloCentro="Total" />}
-              detalle={
-                <table className="table tabla-hdc table-sm mb-0">
-                  <thead><tr><th>Tipo de emisión</th><th>Alcance</th><th className="text-end">kg CO₂</th><th className="text-end">%</th></tr></thead>
-                  <tbody>
-                    {d.porTipoEmision.map((t) => (
-                      <tr key={t.id}><td>{t.nombre}</td><td className="text-muted">{t.grupo}</td><td className="num">{numero(t.kgCo2)}</td><td className="num">{porcentaje(t.porcentaje)}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              }
+              detalle={<TablaPaginada plana compacta busqueda={false} altoMaximo={260} columnas={columnasTipo} datos={d.porTipoEmision} idFila={(t) => t.id} />}
             />
           </div>
 
@@ -138,18 +151,7 @@ export default function Dashboard() {
               icono="bi-graph-up"
               valorCambio={d.evolucion.length}
               resumen={<GraficoEvolucion puntos={d.evolucion} alto={290} />}
-              detalle={
-                <div className="tabla-contenedor" style={{ maxHeight: 280 }}>
-                  <table className="table tabla-hdc table-sm mb-0">
-                    <thead><tr><th>Período</th><th className="text-end">kg CO₂</th><th className="text-end">t CO₂</th></tr></thead>
-                    <tbody>
-                      {[...d.evolucion].reverse().map((p) => (
-                        <tr key={p.periodo}><td>{periodo(p.periodo, true)}</td><td className="num">{numero(p.kgCo2)}</td><td className="num">{toneladas(p.kgCo2)}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              }
+              detalle={<TablaPaginada plana compacta busqueda={false} columnas={columnasPeriodo} datos={evolucionReciente} idFila={(p) => p.periodo} />}
             />
           </div>
 
@@ -197,12 +199,7 @@ export default function Dashboard() {
                 icono="bi-people"
                 valorCambio={d.porColaborador}
                 resumen={<ListaProgreso items={d.porColaborador} max={3} colorFijo="var(--azul)" />}
-                detalle={
-                  <table className="table tabla-hdc table-sm mb-0">
-                    <thead><tr><th>Colaborador</th><th className="text-end">kg CO₂</th><th className="text-end">% del total</th></tr></thead>
-                    <tbody>{d.porColaborador.map((c) => <tr key={c.id}><td>{c.nombre}</td><td className="num">{numero(c.kgCo2)}</td><td className="num">{porcentaje(c.porcentaje)}</td></tr>)}</tbody>
-                  </table>
-                }
+                detalle={<TablaPaginada plana compacta busqueda={false} columnas={columnasColaborador} datos={d.porColaborador} idFila={(c) => c.id} />}
               />
             </div>
           )}

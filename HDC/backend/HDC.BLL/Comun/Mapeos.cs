@@ -33,10 +33,6 @@ public static class Mapeos
     public static string DescripcionCompleta(Domicilio d) =>
         d.Ciudad is null ? DescripcionCorta(d) : $"{DescripcionCorta(d)} - {d.Ciudad.Nombre}";
 
-    public static FuenteResumenDto ToResumen(FuenteEmision f) => new(
-        f.IdFuenteEmision, f.Nombre, f.UnidadMedida.Nombre,
-        f.IdTipoEmision, f.TipoEmision.Nombre, f.TipoEmision.IdAlcance, f.TipoEmision.Alcance.Nombre);
-
     public static FuenteEmisionDto ToDto(FuenteEmision f) => new(
         f.IdFuenteEmision, f.Nombre, f.ValorFactorEmision,
         f.IdUnidadMedida, f.UnidadMedida.Nombre,
@@ -52,7 +48,6 @@ public static class Mapeos
         d.Ciudad.Distrito.IdProvincia, d.Ciudad.Distrito.Provincia.Nombre,
         d.FechaAlta, d.FechaBaja, d.TotalKgCo2,
         DescripcionCompleta(d),
-        d.Fuentes.Select(f => ToResumen(f.FuenteEmision)).OrderBy(f => f.Nombre).ToList(),
         registros, colaboradores);
 
     public static string? Limpiar(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();

@@ -403,16 +403,6 @@ h1, h2, h3, h4, h5, h6 { color: var(--texto); font-weight: 800; letter-spacing: 
   }
   .btn-primary:hover::before, .btn-secondary:hover::before { left: 130%; }
 
-  /* Borde que se recorre */
-  .btn-outline-primary, .btn-outline-secondary {
-    background-image: linear-gradient(var(--verde), var(--verde)), linear-gradient(var(--verde), var(--verde));
-    background-size: 0 2px, 0 2px;
-    background-position: 0 100%, 100% 0;
-    background-repeat: no-repeat;
-    transition: background-size 0.35s ease, background-color 0.2s, color 0.2s;
-  }
-  .btn-outline-secondary:hover { background-size: 100% 2px, 100% 2px; }
-
   .btn:not(:disabled):active { transform: scale(0.97); }
 
   .tarjeta-hover:hover { box-shadow: var(--sombra-hover); transform: translateY(-2px); border-color: var(--borde-fuerte); }
@@ -442,6 +432,24 @@ h1, h2, h3, h4, h5, h6 { color: var(--texto); font-weight: 800; letter-spacing: 
 }
 .form-control::placeholder { color: color-mix(in srgb, var(--texto-3) 75%, transparent); }
 .form-control:hover, .form-select:hover { border-color: var(--borde-fuerte); }
+/* Edge agrega su propio botón para ver la clave: se oculta porque ya usamos el nuestro */
+input[type='password']::-ms-reveal, input[type='password']::-ms-clear { display: none; }
+
+/* Sugerencias del buscador de fuentes de emisión */
+.sugerencias {
+  position: absolute; z-index: 20; top: 100%; left: 0; right: 0;
+  margin: 4px 0 0; padding: 0.3rem; list-style: none;
+  max-height: 260px; overflow-y: auto;
+  background: var(--superficie-solida);
+  border: 1px solid var(--borde); border-radius: 10px;
+  box-shadow: var(--sombra-hover);
+}
+.sugerencia {
+  display: flex; flex-direction: column;
+  padding: 0.4rem 0.6rem; border-radius: 7px; cursor: pointer;
+}
+.sugerencia.activa { background: color-mix(in srgb, var(--verde) 12%, transparent); }
+.sugerencia-vacia { padding: 0.4rem 0.6rem; color: var(--texto-3); font-size: 0.875rem; }
 .form-control:focus, .form-select:focus {
   background-color: var(--superficie-solida);
   color: var(--texto);
@@ -528,6 +536,11 @@ input[type='month']::-webkit-calendar-picker-indicator:hover { opacity: 1; backg
 .tabla-hdc th.ordenable { cursor: pointer; user-select: none; }
 .tabla-hdc th.ordenable:hover { color: var(--texto); }
 .tabla-contenedor { overflow-x: auto; border-radius: var(--radio); }
+/* Tabla con alto limitado: scroll vertical y cabecera fija */
+.tabla-scroll { overflow-y: auto; }
+/* Página anterior atenuada mientras se pide la siguiente al servidor */
+.tabla-contenedor.actualizando { opacity: 0.55; pointer-events: none; transition: opacity 0.15s; }
+.tabla-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--superficie-solida); }
 
 .paginacion { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; padding: 0.85rem 1.1rem; border-top: 1px solid var(--borde); }
 .paginacion .form-select { width: auto; padding-top: 0.3rem; padding-bottom: 0.3rem; }

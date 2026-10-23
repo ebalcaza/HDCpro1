@@ -1,0 +1,315 @@
+# Especificaciones funcionales y de diseño de la plataforma de gestión y análisis de emisiones de CO₂
+
+## 1. Objetivo general
+
+Desarrollar una interfaz intuitiva, moderna y profesional para la gestión, visualización y análisis de emisiones de dióxido de carbono (CO₂). La plataforma deberá permitir que los usuarios consulten sus registros de consumo, comprendan el impacto ambiental asociado a sus actividades y analicen la evolución de sus emisiones a lo largo del tiempo.
+
+El sistema contará con un panel principal o *dashboard* que concentrará las métricas más relevantes, gráficos estadísticos y resúmenes visuales. Asimismo, ofrecerá herramientas para generar reportes personalizados y descargarlos en formato PDF, de acuerdo con los permisos y el rol de cada usuario.
+
+La interfaz deberá priorizar la claridad de la información, la accesibilidad, la comodidad visual y la facilidad de navegación, manteniendo una identidad gráfica coherente en todas las secciones de la aplicación.
+
+# 2. Panel principal del usuario (Dashboard)
+
+## 2.1. Resumen de indicadores principales
+
+Al iniciar sesión, el usuario accederá directamente a su panel principal, donde encontrará una vista resumida de sus emisiones y los indicadores más importantes para su análisis.
+
+En la parte superior del dashboard se mostrarán únicamente tres tarjetas de indicadores principales:
+
+- **Emisiones totales:** cantidad acumulada de CO₂ correspondiente al conjunto de registros del usuario.
+- **Emisiones del período actual:** cantidad de CO₂ registrada durante el mes calendario en curso.
+- **Alcance predominante:** alcance que representa la mayor proporción de las emisiones registradas por el usuario.
+
+Las cantidades de emisiones totales deberán expresarse en toneladas de CO₂ cuando corresponda, mientras que los indicadores de menor magnitud podrán utilizar kilogramos para facilitar su lectura.
+
+Las tarjetas deberán presentar la información de forma concisa, utilizando títulos claros, valores destacados y referencias temporales cuando sean necesarias.
+
+## 2.2. Visualización de emisiones por alcance
+
+El sistema deberá procesar los registros de consumo disponibles para calcular las emisiones asociadas a cada uno de los alcances definidos en la plataforma.
+
+A partir de estos datos, se generarán gráficos que permitan:
+
+- Consultar la cantidad de CO₂ emitida en cada alcance.
+- Identificar la participación porcentual de cada alcance sobre el total de emisiones.
+- Comparar los alcances entre sí.
+- Reconocer cuáles tienen mayor incidencia en el impacto ambiental del usuario.
+
+Se utilizarán gráficos circulares o de tipo dona para representar la distribución porcentual de las emisiones. Cada segmento deberá distinguirse mediante colores específicos y contar con leyendas que permitan identificar el alcance, el porcentaje correspondiente y la cantidad de CO₂ emitida.
+
+Además, cada gráfico deberá indicar los parámetros utilizados para calcular sus resultados, evitando que la información dependa exclusivamente de la interpretación de los colores.
+
+Los gráficos podrán incorporar animaciones de carga progresiva y efectos visuales sutiles que refuercen la percepción de actividad, sin dificultar la lectura ni alterar la interpretación de los datos.
+
+## 2.3. Evolución temporal de las emisiones
+
+El dashboard deberá incluir un gráfico de líneas que permita analizar la evolución de las emisiones a lo largo del tiempo.
+
+Este gráfico deberá representar los valores correspondientes a distintos períodos y permitir identificar tendencias, incrementos, reducciones y variaciones significativas.
+
+La visualización deberá facilitar la comparación entre períodos y permitir interpretar si las emisiones presentan una tendencia creciente, decreciente o estable.
+
+Cuando resulte pertinente, se podrán incorporar filtros temporales para consultar información por día, mes, trimestre, año o intervalo de fechas personalizado.
+
+## 2.4. Tarjetas y componentes estadísticos adicionales
+
+El dashboard conservará las siguientes secciones complementarias:
+
+- **Emisiones por tipo:** distribución de las emisiones según su clasificación o categoría.
+- **Principales fuentes emisoras:** identificación de las fuentes que generan las mayores cantidades de CO₂.
+- **Lectura rápida:** indicadores resumidos que permitan comprender el estado general de las emisiones sin necesidad de examinar cada gráfico individualmente.
+
+Estas secciones deberán mostrar inicialmente información resumida, como nombres, porcentajes, cantidades y otros indicadores esenciales.
+
+Cada tarjeta o componente deberá poder expandirse para consultar información adicional. Cuando esté contraído, mostrará únicamente un título, un resumen y un indicador visual que comunique la posibilidad de desplegarlo. Cuando esté expandido, presentará el detalle disponible de forma ordenada.
+
+Este comportamiento deberá aplicarse de manera consistente a los componentes del dashboard, manteniendo una presentación limpia y evitando la saturación de información.
+
+# 3. Generación y descarga de reportes
+
+## 3.1. Reportes para usuarios
+
+Los usuarios deberán disponer de una funcionalidad que les permita generar reportes personalizados a partir de los registros de emisiones y consumos asociados a su cuenta.
+
+El sistema deberá permitir seleccionar uno o varios criterios de filtrado, combinándolos cuando sea necesario para obtener resultados específicos.
+
+Entre los criterios disponibles se contemplan:
+
+- Período de tiempo.
+- Alcance de las emisiones.
+- Tipo de emisión.
+- Fuente emisora.
+- Tipo de consumo.
+- Registros individuales o conjuntos de registros.
+- Total acumulado de emisiones durante todo el período disponible.
+
+Los reportes deberán calcular los resultados correspondientes a los filtros seleccionados y permitir la descarga de la información en formato PDF.
+
+Un reporte podrá contener un único registro o múltiples registros, según los criterios aplicados y los resultados obtenidos.
+
+El documento generado deberá presentar, cuando corresponda, un título, el período analizado, los filtros aplicados, la fecha de generación, los registros incluidos, los totales calculados y las métricas relevantes.
+
+La información deberá organizarse de manera legible, con tablas, indicadores y gráficos cuando aporten valor al análisis.
+
+## 3.2. Reportes y métricas para administradores
+
+Se incorporará una sección específica para la generación de reportes administrativos y el análisis de métricas globales de la plataforma.
+
+Esta funcionalidad permitirá consultar información agregada sobre los registros de emisiones de los usuarios, respetando los permisos de acceso establecidos.
+
+El administrador podrá generar reportes utilizando criterios como:
+
+- Tipos de usuarios y sus respectivas categorías o subcategorías.
+- Distribución geográfica de las emisiones.
+- Períodos temporales específicos.
+- Alcances y tipos de emisiones.
+- Cantidad de usuarios y registros asociados a diferentes categorías, cuando corresponda.
+- Emisiones acumuladas por zona geográfica, período o grupo de usuarios.
+- Comparaciones entre diferentes categorías, zonas o intervalos temporales.
+
+Los filtros deberán poder combinarse para realizar análisis multidimensionales. Por ejemplo, el administrador podrá consultar las emisiones de un alcance específico, correspondientes a una zona geográfica determinada, durante un período concreto y para una categoría particular de usuarios.
+
+Los resultados podrán incluir estadísticas, indicadores agregados, porcentajes de participación, comparaciones y tendencias temporales.
+
+El administrador deberá poder descargar los reportes en PDF para su consulta, presentación y distribución.
+
+# 4. Diseño visual e identidad gráfica
+
+## 4.1. Paleta de colores
+
+La identidad visual de la plataforma deberá basarse en una paleta de colores sobria, equilibrada y vinculada con la temática ambiental y el análisis de datos.
+
+Se utilizarán principalmente las siguientes familias cromáticas:
+
+- **Verdes:** asociados con el ambiente, la sostenibilidad y los indicadores ambientales.
+- **Marrones:** utilizados como colores complementarios para aportar calidez y vinculación con elementos naturales.
+- **Azules:** destinados a diferenciar categorías, representar información y mejorar la identificación de determinados indicadores.
+- **Grises:** utilizados para fondos, divisiones, textos secundarios y elementos de estructura.
+- **Blancos y negros:** empleados para establecer contraste, jerarquía visual y legibilidad.
+
+Se podrán utilizar degradados, transparencias y variaciones tonales, priorizando los tonos pastel, las transiciones suaves y los colores de saturación moderada.
+
+Los fondos deberán mantener un contraste suficiente con los textos, gráficos y componentes interactivos. Se priorizarán los grises claros, blancos ligeramente tonalizados y degradados discretos para las superficies principales.
+
+También podrán incorporarse texturas sutiles y recursos gráficos inspirados en elementos naturales o ambientales, siempre que aporten personalidad sin distraer de la información.
+
+## 4.2. Modo claro y modo oscuro
+
+La aplicación deberá incluir un control que permita alternar entre el modo claro y el modo oscuro.
+
+Ambos modos deberán conservar la misma identidad visual, jerarquía de contenidos y distribución de componentes, adaptando los colores de fondos, textos, bordes, sombras y gráficos.
+
+En el modo claro se utilizarán superficies claras y una presencia moderada de verdes, azules, grises y marrones.
+
+En el modo oscuro se evitarán los fondos excesivamente negros o uniformes. Se emplearán tonos oscuros equilibrados, con detalles claros, blancos y acentos verdes, azules y grises que mejoren el contraste y permitan distinguir las diferentes secciones.
+
+Los colores de los gráficos deberán seguir siendo distinguibles en ambos modos. El cambio de tema no deberá perjudicar la legibilidad ni la interpretación de los datos.
+
+# 5. Usabilidad y experiencia de usuario (UI/UX)
+
+## 5.1. Tamaño y jerarquía tipográfica
+
+Se incrementará moderadamente el tamaño de las fuentes respecto de la versión actual, manteniendo una apariencia ordenada y profesional.
+
+La jerarquía tipográfica deberá diferenciar claramente:
+
+- Títulos de páginas y secciones.
+- Encabezados de tarjetas y gráficos.
+- Valores estadísticos destacados.
+- Textos descriptivos.
+- Etiquetas, leyendas y metadatos.
+
+Los tamaños, pesos y espaciados deberán permitir reconocer rápidamente las distintas secciones y leer los detalles sin esfuerzo innecesario.
+
+## 5.2. Configuración de accesibilidad
+
+Se incorporará un menú de preferencias de visualización y usabilidad.
+
+Entre sus opciones deberá incluirse la posibilidad de modificar el tamaño de las fuentes para adaptarlo a las necesidades del usuario.
+
+La configuración seleccionada deberá aplicarse de forma coherente a las distintas pantallas y componentes de la aplicación, evitando que algunos elementos pierdan legibilidad o se desorganicen.
+
+También se deberá procurar que los controles interactivos sean reconocibles, que exista suficiente contraste y que las acciones importantes no dependan exclusivamente del color.
+
+## 5.3. Barras de desplazamiento
+
+Todas las barras de desplazamiento de la aplicación deberán utilizar un diseño uniforme, compacto y discreto.
+
+Su apariencia deberá integrarse con la identidad visual de la plataforma, empleando colores neutros, bordes sutiles y contrastes adecuados tanto en el modo claro como en el oscuro.
+
+Las barras de desplazamiento deberán conservar su funcionalidad y no reducir innecesariamente el espacio disponible para el contenido.
+
+## 5.4. Interacciones y efectos de movimiento
+
+Los elementos interactivos podrán incorporar animaciones breves y sutiles para comunicar estados, cambios y respuestas del sistema.
+
+Se contemplan, entre otros, los siguientes efectos:
+
+- Transiciones de bordes inferiores o laterales.
+- Sombras suaves al interactuar con botones y tarjetas.
+- Cambios moderados de escala.
+- Iluminaciones discretas que recorran el contorno de un elemento.
+- Indicadores visuales que destaquen la actualización de un dato.
+- Animaciones de aparición o transición entre estados.
+
+Los efectos deberán utilizarse con un propósito funcional y no únicamente decorativo. Cuando cambie un valor o se actualice un componente, la animación podrá ayudar a identificar el elemento modificado.
+
+Se evitarán los movimientos excesivos, los destellos constantes y las animaciones que dificulten la lectura. En dispositivos móviles, los efectos asociados al hover deberán reducirse al mínimo o adaptarse a las posibilidades de interacción táctil.
+
+Cuando sea posible, se respetará la preferencia del sistema operativo por reducir las animaciones.
+
+## 5.5. Formularios y controles de selección
+
+Los formularios deberán presentar una apariencia minimalista, coherente y profesional.
+
+Los campos de selección, listas desplegables y controles de fechas utilizarán fondos claros u oscuros según el tema activo, bordes discretos, separaciones sutiles y estados visuales claramente diferenciados.
+
+En los formularios de registro de emisiones se deberán incorporar filtros previos por alcance y tipo de emisión, con el objetivo de reducir la cantidad de opciones mostradas y facilitar la selección de los valores pertinentes.
+
+Los controles deberán actualizar sus opciones según los filtros seleccionados cuando exista una relación entre los campos.
+
+Se utilizarán los mecanismos de validación de formularios de Bootstrap para comunicar los errores y las entradas correctas. Los estados inválidos se identificarán mediante colores rojos y mensajes descriptivos, mientras que los estados válidos podrán representarse mediante tonos verdes.
+
+Las validaciones deberán contemplar tanto la presentación visual como la comprobación efectiva de los datos.
+
+## 5.6. Confirmaciones, advertencias y ventanas modales
+
+Las confirmaciones de acciones importantes, advertencias y solicitudes de decisión deberán presentarse mediante ventanas modales coherentes con el diseño general de la aplicación.
+
+Estas ventanas deberán explicar claramente la acción que se realizará y sus posibles consecuencias.
+
+Cuando la acción requiera una decisión explícita, el usuario deberá seleccionar una de las opciones disponibles antes de continuar. Esto podrá aplicarse, por ejemplo, a la eliminación de registros o a otras operaciones que requieran confirmación.
+
+Los botones deberán utilizar etiquetas descriptivas y distinguir las acciones principales de las secundarias.
+
+## 5.7. Notificaciones de resultado
+
+Después de completar un formulario o ejecutar una operación, el sistema deberá informar al usuario sobre el resultado de la acción.
+
+Se utilizarán notificaciones visuales para comunicar:
+
+- Operaciones realizadas correctamente.
+- Errores de validación.
+- Fallos durante el procesamiento o guardado.
+- Advertencias relevantes.
+- Resultados de operaciones que requieran información adicional.
+
+Los mensajes deberán ser breves, comprensibles y coherentes con el estado real de la operación. No se deberá indicar que una acción fue exitosa hasta que el sistema haya confirmado su finalización.
+
+## 5.8. Estados de carga
+
+Cuando el sistema esté obteniendo, procesando o actualizando información, deberá mostrar indicadores visuales que permitan reconocer que la operación continúa en curso.
+
+Se podrán utilizar animaciones de carga, indicadores de progreso, esqueletos de tarjetas (*skeleton loaders*) y transiciones suaves.
+
+Durante estas operaciones se deberá evitar que el usuario interprete la ausencia temporal de información como un resultado vacío o un error.
+
+Los indicadores de carga deberán desaparecer cuando la operación finalice y dar paso a los resultados, mensajes de error o estados vacíos correspondientes.
+
+## 5.9. Paginación de listas
+
+Todas las listas que presenten conjuntos de registros deberán incorporar paginación cuando la cantidad de elementos lo justifique.
+
+El usuario podrá seleccionar la cantidad de registros por página entre las siguientes opciones:
+
+- 10 registros.
+- 20 registros.
+- 50 registros.
+- 100 registros.
+
+La interfaz deberá mostrar la página actual, la cantidad de páginas disponibles y los controles para avanzar, retroceder o seleccionar una página, cuando corresponda.
+
+La paginación deberá conservar una apariencia uniforme en toda la aplicación y adaptarse a las pantallas pequeñas.
+
+Los identificadores originales de los registros deberán conservarse cuando sean necesarios para las operaciones del sistema. Si se requiere mostrar una numeración incremental desde 1 en cada listado, esta deberá calcularse exclusivamente en el frontend como numeración visual, sin modificar los identificadores reales ni la información almacenada en el backend.
+
+# 6. Presentación de resultados y unidades de medida
+
+## 6.1. Unidades de emisión
+
+Los resultados de emisiones deberán expresarse en unidades apropiadas para su magnitud.
+
+Se utilizarán principalmente:
+
+- Kilogramos de CO₂ (kg CO₂) para cantidades pequeñas o medianas.
+- Toneladas de CO₂ (t CO₂) para totales acumulados y cantidades elevadas.
+
+La conversión deberá realizarse de manera consistente:
+
+**1 tonelada de CO₂ = 1.000 kg de CO₂.**
+
+La interfaz podrá adaptar automáticamente la unidad presentada según el valor calculado, siempre que se mantenga clara la interpretación del resultado.
+
+## 6.2. Relación entre las emisiones y la concentración atmosférica
+
+La concentración de CO₂ en la atmósfera suele expresarse en partes por millón (ppm). Esta unidad representa una proporción de concentración, no una unidad de masa emitida.
+
+Como referencia aproximada, un incremento de 1 ppm en la concentración atmosférica de CO₂ equivale a unas 7.800 millones de toneladas de CO₂ en la atmósfera, aunque el valor exacto depende de la conversión utilizada y del contexto del cálculo.
+
+Por este motivo, la aplicación deberá diferenciar claramente entre la masa de CO₂ emitida por las actividades registradas y la concentración atmosférica expresada en ppm.
+
+No se deberá presentar la equivalencia entre toneladas y ppm como una conversión directa de las emisiones registradas, ya que las emisiones generadas no se traducen íntegramente en un incremento equivalente de la concentración atmosférica.
+
+Si se incorpora una referencia a la concentración global de CO₂, esta deberá mostrarse como un indicador contextual independiente, con su fuente, fecha y metodología correspondientes.
+
+# 7. Criterios generales de implementación
+
+Las funcionalidades y los componentes visuales deberán desarrollarse siguiendo criterios de consistencia, reutilización y mantenimiento.
+
+Se deberán priorizar los componentes reutilizables para las tarjetas estadísticas, gráficos, formularios, controles de selección, ventanas modales, notificaciones y elementos de paginación.
+
+El diseño deberá adaptarse a diferentes resoluciones de pantalla, incluyendo computadoras de escritorio, tabletas y dispositivos móviles.
+
+Las visualizaciones deberán mantener una correspondencia fiel con los datos calculados por el sistema. Los porcentajes, totales, agrupaciones y comparaciones deberán obtenerse a partir de los registros correspondientes y de los filtros activos.
+
+La interfaz deberá contemplar estados de carga, ausencia de datos, errores y resultados satisfactorios, de manera que el usuario pueda comprender qué sucede en cada momento.
+
+Finalmente, las funcionalidades deberán respetar los permisos de cada rol, diferenciando las operaciones disponibles para los usuarios comunes de aquellas reservadas para los administradores.
+
+## 8. Resultado esperado
+
+El resultado será una plataforma de gestión y análisis de emisiones de CO₂ que combine visualizaciones estadísticas, indicadores ambientales, generación de reportes y herramientas de configuración de la interfaz.
+
+El dashboard deberá ofrecer una lectura rápida del estado de las emisiones, mientras que los componentes desplegables y los reportes permitirán profundizar en los datos cuando sea necesario.
+
+La experiencia general deberá transmitir profesionalismo, claridad y confianza, utilizando una identidad visual ambiental sobria, interacciones moderadas y herramientas que faciliten tanto el análisis individual como la evaluación global de las emisiones de la plataforma.

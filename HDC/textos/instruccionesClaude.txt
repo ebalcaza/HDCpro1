@@ -41,7 +41,7 @@ BLL (Biblioteca de Clases C#)        -> Capa de Lógica de Negocio
 DAL (Biblioteca de Clases C#)        -> Capa de Acceso a datos
 Entity(DTOs) orm 			->Capa de entidades
 
-La estructura del frontend y del backend, con sus respectivas rutas e interfaces debe tener en cuenta todos los requisitos funcionales y no funcionales especificados anteriormente, teniendo en cuenta los diferentes tipos de usuario, además debe ser responsive adaptándose a distintos tipos de dispositivos, ya sea computadoras, celulares o tablets, así como también un estilo amigable y sencillo de usar para el usuario.
+La estructura del frontend y del backend, con sus respectivas rutas e interfaces debe tener en cuenta todos los requisitos funcionales y no funcionales especificados, teniendo en cuenta los diferentes tipos de usuario, además debe ser responsive adaptándose a distintos tipos de dispositivos, ya sea computadoras, celulares o tablets, así como también un estilo amigable y sencillo de usar para el usuario.
 
 
 
@@ -125,7 +125,7 @@ y realizar comparaciones entre periodos, y visualizar graficos descriptivos de l
 RFR03: El usuario de tipo individuo u organización edita los datos de consumo de un registro seleccionado en “Mis emisiones”.
 RFR04: El usuario de tipo individuo u organización elimina un registro seleccionado en “Mis emisiones”.
 RFR05: El usuario de tipo individuo u organización visualiza una lista de todos los registros de emisiones generados previamente en una tabla.
-RFR06: El usuario selecciona un reporte de la lista de todos los registros generados mostrando el detalle del reporte
+RFR06: El usuario selecciona un reporte de la lista de todos los registros generados, para mostrar el detalle del reporte.
 RFR07: El usuario descarga los datos del registro seleccionado en formato pdf, en su dispositivo.
 
 Requisitos no Funcionales

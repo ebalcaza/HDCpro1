@@ -20,7 +20,8 @@ const ACCESOS = [
 export default function AdminPanel() {
   const ui = useUI()
   const { tienePermiso } = useAuth()
-  const usuarios = useCarga(() => (tienePermiso(P.GESTIONAR_USUARIOS) ? usuariosApi.listar() : Promise.resolve(null)), [])
+  // Solo los conteos (dos COUNT en la base), no la lista entera de usuarios
+  const usuarios = useCarga(() => (tienePermiso(P.GESTIONAR_USUARIOS) ? usuariosApi.resumen() : Promise.resolve(null)), [])
   const global = useCarga(() => (tienePermiso(P.REPORTES_GLOBALES) ? reportesApi.generar({}, true) : Promise.resolve(null)), [])
 
   const u = usuarios.datos
@@ -44,8 +45,8 @@ export default function AdminPanel() {
         {u && (
           <>
             <div className="col-md-4"><div className="tarjeta kpi kpi-verde aparecer h-100"><div className="kpi-icono"><i className="bi bi-people" /></div>
-              <div className="kpi-etiqueta">Usuarios registrados</div><div className="kpi-valor">{u.length}</div>
-              <div className="small texto-2">{u.filter((x) => x.activo).length} activos</div></div></div>
+              <div className="kpi-etiqueta">Usuarios registrados</div><div className="kpi-valor">{u.total}</div>
+              <div className="small texto-2">{u.activos} activos</div></div></div>
           </>
         )}
         {g && (

@@ -15,7 +15,7 @@ RUN dotnet publish HDC.API/HDC.API.csproj -c Release -o /app --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 COPY --from=build /app .
-ENV ASPNETCORE_URLS=http://+:8080 \
+ENV ASPNETCORE_URLS=http://+:8081 \
     TZ=America/Argentina/Buenos_Aires
-EXPOSE 8080
+EXPOSE 8081
 ENTRYPOINT ["dotnet", "HDC.API.dll"]

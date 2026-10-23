@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace HDC.DAL;
 
 /// <summary>
-/// Mapeo de las entidades al esquema definido en Scripts/01_esquema.sql.
+/// Mapeo de las entidades al esquema definido en Scripts/HDC_base_datos.sql.
 /// La base se crea con ese script (no con migraciones) para que el SQL sea la fuente de verdad.
 /// </summary>
 public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(options)
@@ -23,7 +23,6 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
     public DbSet<TipoEmision> TiposEmision => Set<TipoEmision>();
     public DbSet<FuenteEmision> FuentesEmision => Set<FuenteEmision>();
     public DbSet<Domicilio> Domicilios => Set<Domicilio>();
-    public DbSet<DomicilioFuente> DomicilioFuentes => Set<DomicilioFuente>();
     public DbSet<Registro> Registros => Set<Registro>();
     public DbSet<DetalleRegistro> DetallesRegistro => Set<DetalleRegistro>();
     public DbSet<Colaboracion> Colaboraciones => Set<Colaboracion>();
@@ -192,16 +191,6 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.TotalKgCo2).HasColumnName("TOTAL_KG_CO2").HasPrecision(18, 6);
             e.HasOne(x => x.Ciudad).WithMany().HasForeignKey(x => x.IdCiudad);
             e.HasOne(x => x.Usuario).WithMany(u => u.Domicilios).HasForeignKey(x => x.IdUsuario);
-        });
-
-        mb.Entity<DomicilioFuente>(e =>
-        {
-            e.ToTable("DOMICILIO_FUENTE");
-            e.HasKey(x => new { x.IdDomicilio, x.IdFuenteEmision });
-            e.Property(x => x.IdDomicilio).HasColumnName("ID_DOMICILIO");
-            e.Property(x => x.IdFuenteEmision).HasColumnName("ID_FUENTE_EMISION");
-            e.HasOne(x => x.Domicilio).WithMany(d => d.Fuentes).HasForeignKey(x => x.IdDomicilio);
-            e.HasOne(x => x.FuenteEmision).WithMany().HasForeignKey(x => x.IdFuenteEmision);
         });
 
         mb.Entity<Registro>(e =>

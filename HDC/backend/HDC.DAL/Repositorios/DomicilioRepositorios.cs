@@ -40,10 +40,7 @@ public class GeoRepositorio(HdcDbContext ctx) : Repositorio<Provincia>(ctx)
 public class DomicilioRepositorio(HdcDbContext ctx) : Repositorio<Domicilio>(ctx)
 {
     private IQueryable<Domicilio> Completos() => Ctx.Domicilios
-        .Include(d => d.Ciudad).ThenInclude(c => c.Distrito).ThenInclude(di => di.Provincia)
-        .Include(d => d.Fuentes).ThenInclude(f => f.FuenteEmision).ThenInclude(f => f.UnidadMedida)
-        .Include(d => d.Fuentes).ThenInclude(f => f.FuenteEmision).ThenInclude(f => f.TipoEmision).ThenInclude(t => t.Alcance)
-        .AsSplitQuery();
+        .Include(d => d.Ciudad).ThenInclude(c => c.Distrito).ThenInclude(di => di.Provincia);
 
     public Task<List<Domicilio>> ListarPorUsuarioAsync(long idUsuario, bool incluirBajas = false) => Completos().AsNoTracking()
         .Where(d => d.IdUsuario == idUsuario && (incluirBajas || d.FechaBaja == null))
@@ -64,6 +61,4 @@ public class DomicilioRepositorio(HdcDbContext ctx) : Repositorio<Domicilio>(ctx
             .ToDictionaryAsync(x => x.Key, x => x.n);
         return ids.ToDictionary(id => id, id => (registros.GetValueOrDefault(id), colaboradores.GetValueOrDefault(id)));
     }
-
-    public void QuitarFuentes(IEnumerable<DomicilioFuente> fuentes) => Ctx.DomicilioFuentes.RemoveRange(fuentes);
 }

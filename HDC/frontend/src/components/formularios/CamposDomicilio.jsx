@@ -4,7 +4,7 @@ import CampoTelefono, { completarCaracteristica, telefonoARequest } from './Camp
 
 export const domicilioVacio = {
   calle: '', numero: '', departamento: '', piso: '', block: '', manzana: '',
-  idProvincia: '', idDistrito: '', idCiudad: '', codigoPostal: '', telefono: '', idsFuentes: [],
+  idProvincia: '', idDistrito: '', idCiudad: '', codigoPostal: '', telefono: '',
 }
 
 export const validarDomicilio = (v) => errores({
@@ -27,7 +27,6 @@ export const domicilioARequest = (v) => ({
   idCiudad: Number(v.idCiudad),
   codigoPostal: v.codigoPostal.trim(),
   telefono: telefonoARequest(v.telefono),
-  idsFuentes: v.idsFuentes || [],
 })
 
 /**

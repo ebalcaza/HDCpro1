@@ -40,9 +40,16 @@ public class DomiciliosController(DomicilioServicio domicilios) : ControladorBas
 [Route("api/registros"), Authorize(Policy = Politicas.CargarEmisiones)]
 public class RegistrosController(RegistroServicio registros) : ControladorBase
 {
-    /// <summary>RFR05 - Registros propios y cargados como colaborador.</summary>
+    /// <summary>
+    /// RFR05 - Registros propios y cargados como colaborador, paginados en el servidor.
+    /// Ej: GET /api/registros?pagina=1&amp;tamanio=20&amp;orden=totalKgCo2&amp;asc=false&amp;idDomicilio=3&amp;desde=2026-01-01
+    /// </summary>
     [HttpGet]
-    public async Task<List<RegistroListaDto>> Listar([FromQuery] long? idDomicilio) => await registros.ListarAsync(IdUsuario, idDomicilio);
+    public async Task<PaginaRegistrosDto> Listar([FromQuery] FiltroRegistros filtro) => await registros.ListarAsync(IdUsuario, filtro);
+
+    /// <summary>Domicilios para el filtro de "Mis emisiones" (antes se sacaban de la lista completa, que ya no viaja entera).</summary>
+    [HttpGet("domicilios")]
+    public async Task<List<OpcionDomicilioDto>> Domicilios() => await registros.DomiciliosConRegistrosAsync(IdUsuario);
 
     /// <summary>RFR06</summary>
     [HttpGet("{id:long}")]

@@ -106,12 +106,6 @@ public record UsuarioListaDto(
 
 public record UsuarioDetalleDto(PerfilDto Perfil, IReadOnlyList<DomicilioDto> Domicilios, int CantidadRegistros);
 
-public class CambiarRolRequest
-{
-    [Range(1, long.MaxValue)]
-    public long IdRol { get; set; }
-}
-
 public class CambiarEstadoRequest
 {
     public bool Activo { get; set; }

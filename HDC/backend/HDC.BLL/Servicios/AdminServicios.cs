@@ -11,14 +11,14 @@ public class UsuarioServicio(
     PerfilServicio perfiles,
     DomicilioServicio domicilios)
 {
-    public async Task<List<UsuarioListaDto>> ListarAsync()
+    /// <summary>RFA05 paginado: la base filtra, ordena, cuenta y devuelve solo la página pedida.</summary>
+    public Task<PaginaDto<UsuarioListaDto>> ListarAsync(FiltroUsuarios filtro) => usuarios.PaginarAsync(filtro);
+
+    /// <summary>KPI del panel admin + opciones del filtro "Tipo" (antes se calculaban bajando la lista entera de usuarios).</summary>
+    public async Task<ResumenUsuariosDto> ResumenAsync()
     {
-        var lista = await usuarios.ListarAsync();
-        return lista.Select(u => new UsuarioListaDto(
-            u.IdUsuario, u.Email, u.IdRol, u.Rol.Nombre, Mapeos.NombreMostrar(u), Mapeos.TipoPerfil(u),
-            u.Telefono, u.FechaAlta, u.FechaBaja, u.FechaBaja == null,
-            u.Domicilios.Count(d => d.FechaBaja == null),
-            u.Domicilios.Sum(d => d.TotalKgCo2))).ToList();
+        var (total, activos) = await usuarios.ContarAsync();
+        return new ResumenUsuariosDto(total, activos, await roles.ListarOpcionesAsync());
     }
 
     public async Task<UsuarioDetalleDto> ObtenerAsync(long idUsuario)
@@ -28,15 +28,6 @@ public class UsuarioServicio(
             await perfiles.APerfilAsync(u),
             await domicilios.ListarAsync(idUsuario, incluirBajas: true),
             await usuarios.ContarRegistrosAsync(idUsuario));
-    }
-
-    public async Task CambiarRolAsync(long idAdmin, long idUsuario, long idRol)
-    {
-        if (idAdmin == idUsuario) throw new NegocioException("No podés cambiar tu propio tipo de usuario");
-        var u = await usuarios.ObtenerPorIdAsync(idUsuario) ?? throw new NoEncontradoException("Usuario no encontrado");
-        _ = await roles.ObtenerPorIdAsync(idRol) ?? throw new NegocioException("El tipo de usuario no existe");
-        u.IdRol = idRol;
-        await usuarios.GuardarAsync();
     }
 
     public async Task CambiarEstadoAsync(long idAdmin, long idUsuario, bool activo)
@@ -87,7 +78,7 @@ public class RolServicio(RolRepositorio roles, PermisoRepositorio permisos)
     {
         var rol = await roles.ObtenerPorIdAsync(idRol) ?? throw new NoEncontradoException("Tipo de usuario no encontrado");
         if (rol.EsSistema) throw new NegocioException("No se puede eliminar un tipo de usuario del sistema");
-        if (await roles.TieneUsuariosAsync(idRol)) throw new ConflictoException("Hay usuarios con este tipo asignado; reasignalos antes de eliminarlo");
+        if (await roles.TieneUsuariosAsync(idRol)) throw new ConflictoException("Hay usuarios con este tipo asignado; no se puede eliminar");
         roles.Eliminar(rol);
         await roles.GuardarAsync();
     }

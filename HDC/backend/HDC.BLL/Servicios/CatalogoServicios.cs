@@ -9,11 +9,15 @@ public class CatalogoServicio(
     AlcanceRepositorio alcances,
     UnidadMedidaRepositorio unidades,
     TipoEmisionRepositorio tipos,
-    GeoRepositorio geo)
+    GeoRepositorio geo,
+    CacheCatalogos cache)
 {
+    // Los listados pasan por la cache: la base se consulta solo la primera vez o después de un cambio.
+
     // ---------- Alcances ----------
-    public async Task<List<AlcanceDto>> ListarAlcancesAsync() =>
-        (await alcances.ListarAsync()).Select(a => new AlcanceDto(a.IdAlcance, a.Nombre, a.Descripcion, a.TiposEmision.Count)).ToList();
+    public Task<List<AlcanceDto>> ListarAlcancesAsync() =>
+        cache.ObtenerAsync(CacheCatalogos.GrupoCatalogos, "alcances", async () =>
+            (await alcances.ListarAsync()).Select(a => new AlcanceDto(a.IdAlcance, a.Nombre, a.Descripcion, a.TiposEmision.Count)).ToList());
 
     public async Task<AlcanceDto> GuardarAlcanceAsync(long? id, AlcanceRequest req)
     {
@@ -26,6 +30,7 @@ public class CatalogoServicio(
         a.Descripcion = Mapeos.Limpiar(req.Descripcion);
         if (id is null) alcances.Agregar(a);
         await alcances.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
         return new AlcanceDto(a.IdAlcance, a.Nombre, a.Descripcion, 0);
     }
 
@@ -35,11 +40,13 @@ public class CatalogoServicio(
         if (await alcances.EnUsoAsync(id)) throw new ConflictoException("El alcance tiene tipos de emisión asociados");
         alcances.Eliminar(a);
         await alcances.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
     }
 
     // ---------- Unidades de medida ----------
-    public async Task<List<UnidadMedidaDto>> ListarUnidadesAsync() =>
-        (await unidades.ListarConUsoAsync()).Select(x => new UnidadMedidaDto(x.Unidad.IdUnidadMedida, x.Unidad.Nombre, x.Fuentes)).ToList();
+    public Task<List<UnidadMedidaDto>> ListarUnidadesAsync() =>
+        cache.ObtenerAsync(CacheCatalogos.GrupoCatalogos, "unidades", async () =>
+            (await unidades.ListarConUsoAsync()).Select(x => new UnidadMedidaDto(x.Unidad.IdUnidadMedida, x.Unidad.Nombre, x.Fuentes)).ToList());
 
     public async Task<UnidadMedidaDto> GuardarUnidadAsync(long? id, UnidadMedidaRequest req)
     {
@@ -51,6 +58,7 @@ public class CatalogoServicio(
         u.Nombre = nombre;
         if (id is null) unidades.Agregar(u);
         await unidades.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
         return new UnidadMedidaDto(u.IdUnidadMedida, u.Nombre, 0);
     }
 
@@ -60,13 +68,15 @@ public class CatalogoServicio(
         if (await unidades.EnUsoAsync(id)) throw new ConflictoException("La unidad está asignada a fuentes de emisión");
         unidades.Eliminar(u);
         await unidades.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
     }
 
     // ---------- Tipos de emisión ----------
-    public async Task<List<TipoEmisionDto>> ListarTiposAsync() =>
-        (await tipos.ListarConUsoAsync())
-            .Select(x => new TipoEmisionDto(x.Tipo.IdTipoEmision, x.Tipo.IdAlcance, x.Tipo.Alcance.Nombre, x.Tipo.Nombre, x.Fuentes))
-            .ToList();
+    public Task<List<TipoEmisionDto>> ListarTiposAsync() =>
+        cache.ObtenerAsync(CacheCatalogos.GrupoCatalogos, "tipos", async () =>
+            (await tipos.ListarConUsoAsync())
+                .Select(x => new TipoEmisionDto(x.Tipo.IdTipoEmision, x.Tipo.IdAlcance, x.Tipo.Alcance.Nombre, x.Tipo.Nombre, x.Fuentes))
+                .ToList());
 
     public async Task<TipoEmisionDto> GuardarTipoAsync(long? id, TipoEmisionRequest req)
     {
@@ -78,6 +88,7 @@ public class CatalogoServicio(
         t.Nombre = req.Nombre.Trim();
         if (id is null) tipos.Agregar(t);
         await tipos.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
         return new TipoEmisionDto(t.IdTipoEmision, t.IdAlcance, alcance.Nombre, t.Nombre, 0);
     }
 
@@ -87,23 +98,30 @@ public class CatalogoServicio(
         if (await tipos.EnUsoAsync(id)) throw new ConflictoException("El tipo de emisión está en uso por fuentes o colaboraciones");
         tipos.Eliminar(t);
         await tipos.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
     }
 
     // ---------- Geografía ----------
-    public async Task<List<ProvinciaDto>> ListarProvinciasAsync() =>
-        (await geo.ListarProvinciasAsync()).Select(p => new ProvinciaDto(p.IdProvincia, p.Nombre)).ToList();
+    // Se cachea cada provincia/distrito por separado (clave con el id); se invalida al sincronizar con georef.
+    public Task<List<ProvinciaDto>> ListarProvinciasAsync() =>
+        cache.ObtenerAsync(CacheCatalogos.GrupoGeo, "provincias", async () =>
+            (await geo.ListarProvinciasAsync()).Select(p => new ProvinciaDto(p.IdProvincia, p.Nombre)).ToList());
 
-    public async Task<List<DistritoDto>> ListarDistritosAsync(long idProvincia) =>
-        (await geo.ListarDistritosAsync(idProvincia)).Select(d => new DistritoDto(d.IdDistrito, d.IdProvincia, d.Nombre)).ToList();
+    public Task<List<DistritoDto>> ListarDistritosAsync(long idProvincia) =>
+        cache.ObtenerAsync(CacheCatalogos.GrupoGeo, $"distritos:{idProvincia}", async () =>
+            (await geo.ListarDistritosAsync(idProvincia)).Select(d => new DistritoDto(d.IdDistrito, d.IdProvincia, d.Nombre)).ToList());
 
-    public async Task<List<CiudadDto>> ListarCiudadesAsync(long idDistrito) =>
-        (await geo.ListarCiudadesAsync(idDistrito)).Select(c => new CiudadDto(c.IdCiudad, c.IdDistrito, c.Nombre)).ToList();
+    public Task<List<CiudadDto>> ListarCiudadesAsync(long idDistrito) =>
+        cache.ObtenerAsync(CacheCatalogos.GrupoGeo, $"ciudades:{idDistrito}", async () =>
+            (await geo.ListarCiudadesAsync(idDistrito)).Select(c => new CiudadDto(c.IdCiudad, c.IdDistrito, c.Nombre)).ToList());
 }
 
-public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedidaRepositorio unidades, TipoEmisionRepositorio tipos)
+public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedidaRepositorio unidades, TipoEmisionRepositorio tipos, CacheCatalogos cache)
 {
-    public async Task<List<FuenteEmisionDto>> ListarAsync(bool incluirBajas) =>
-        (await fuentes.ListarAsync(incluirBajas)).Select(Mapeos.ToDto).ToList();
+    // Es el catálogo que más se pide (cada vez que se abre el formulario de un registro): se cachea por variante
+    public Task<List<FuenteEmisionDto>> ListarAsync(bool incluirBajas) =>
+        cache.ObtenerAsync(CacheCatalogos.GrupoCatalogos, $"fuentes:{incluirBajas}", async () =>
+            (await fuentes.ListarAsync(incluirBajas)).Select(Mapeos.ToDto).ToList());
 
     public async Task<FuenteEmisionDto> CrearAsync(FuenteEmisionRequest req)
     {
@@ -112,6 +130,7 @@ public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedid
         Aplicar(f, req);
         fuentes.Agregar(f);
         await fuentes.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
         return Mapeos.ToDto((await fuentes.ObtenerCompletaAsync(f.IdFuenteEmision))!);
     }
 
@@ -122,6 +141,7 @@ public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedid
         Aplicar(f, req);
         f.FechaModificacion = DateTime.Now;
         await fuentes.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
         return Mapeos.ToDto((await fuentes.ObtenerCompletaAsync(id))!);
     }
 
@@ -133,10 +153,12 @@ public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedid
         {
             f.FechaBaja = DateTime.Now;
             await fuentes.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
             return false;
         }
         fuentes.Eliminar(f);
         await fuentes.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
         return true;
     }
 
@@ -146,6 +168,7 @@ public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedid
         f.FechaBaja = null;
         f.FechaModificacion = DateTime.Now;
         await fuentes.GuardarAsync();
+        cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
         return Mapeos.ToDto(f);
     }
 

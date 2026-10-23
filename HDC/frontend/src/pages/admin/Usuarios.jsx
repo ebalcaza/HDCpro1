@@ -1,25 +1,32 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usuariosApi } from '../../api/servicios'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useUI } from '../../context/UIContext.jsx'
 import { EncabezadoPagina, ErrorCarga, useCarga } from '../../components/comunes/Basicos.jsx'
-import TablaPaginada from '../../components/comunes/TablaPaginada.jsx'
+import TablaPaginada, { consultaAParams } from '../../components/comunes/TablaPaginada.jsx'
 import { fecha, toneladas } from '../../utils/formato'
 
-/** RFA05 */
+/** RFA05: listado de usuarios paginado en el servidor (búsqueda, orden y filtros los resuelve la API). */
 export default function Usuarios() {
   const ui = useUI()
   const navigate = useNavigate()
   const { usuario } = useAuth()
-  const { datos, cargando, error, recargar } = useCarga(() => usuariosApi.listar(), [])
-  const [rol, setRol] = useState('')
+  const [idRol, setIdRol] = useState('')
   const [estado, setEstado] = useState('')
   const [resaltado, setResaltado] = useState(null)
+  // Estado de la tabla ({ pagina, tamanio, orden, texto }) que se traduce en parámetros de la API
+  const [consulta, setConsulta] = useState(null)
 
-  const roles = useMemo(() => [...new Set((datos || []).map((u) => u.rol))].sort(), [datos])
-  const filtrados = useMemo(() => (datos || []).filter((u) =>
-    (!rol || u.rol === rol) && (!estado || (estado === 'activos' ? u.activo : !u.activo))), [datos, rol, estado])
+  const { datos, cargando, error, recargar } = useCarga(
+    () => (consulta
+      ? usuariosApi.listar({ ...consultaAParams(consulta), idRol: idRol || undefined, estado: estado || undefined })
+      : Promise.resolve(null)),
+    [consulta],
+  )
+  // Tipos de usuario para el filtro (antes salían de la lista completa, que ya no se descarga)
+  const resumen = useCarga(() => usuariosApi.resumen(), [])
+  const roles = resumen.datos?.roles || []
 
   const cambiarEstado = async (u) => {
     const ok = await ui.confirmar({
@@ -49,12 +56,13 @@ export default function Usuarios() {
     <>
       <EncabezadoPagina titulo="Usuarios" descripcion="Todas las cuentas registradas en la aplicación." icono="bi-person-lines-fill" />
       {error ? <ErrorCarga error={error} onReintentar={recargar} /> : (
-        <TablaPaginada columnas={columnas} datos={filtrados} cargando={cargando} idFila={(u) => u.idUsuario} resaltarId={resaltado}
+        <TablaPaginada columnas={columnas} datos={datos?.items} total={datos?.total} cargando={cargando} idFila={(u) => u.idUsuario} resaltarId={resaltado}
+          onConsulta={setConsulta} claveFiltros={`${idRol}|${estado}`}
           textoBusqueda="Buscar por nombre o email..."
           alClickFila={(u) => navigate(`/admin/usuarios/${u.idUsuario}`)}
           barra={<>
-            <select className="form-select form-select-sm w-auto" value={rol} onChange={(e) => setRol(e.target.value)} aria-label="Filtrar por tipo">
-              <option value="">Todos los tipos</option>{roles.map((r) => <option key={r}>{r}</option>)}
+            <select className="form-select form-select-sm w-auto" value={idRol} onChange={(e) => setIdRol(e.target.value)} aria-label="Filtrar por tipo">
+              <option value="">Todos los tipos</option>{roles.map((r) => <option key={r.idRol} value={r.idRol}>{r.nombre}</option>)}
             </select>
             <select className="form-select form-select-sm w-auto" value={estado} onChange={(e) => setEstado(e.target.value)} aria-label="Filtrar por estado">
               <option value="">Todos los estados</option><option value="activos">Activos</option><option value="inactivos">Deshabilitados</option>

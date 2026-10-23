@@ -12,12 +12,15 @@ services:
       - "${DB_PORT:-14330}:1433"
     volumes:
       - sqldata:/var/opt/mssql
+    # En equipos con poca RAM SQL Server puede tardar ~10 min en quedar listo;
+    # se da margen amplio (5 min de gracia + 60 reintentos x 15s = ~20 min)
+    # para que no se marque "unhealthy" antes de tiempo y bloquee a la API.
     healthcheck:
       test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
-      interval: 10s
-      timeout: 20s
-      retries: 30
-      start_period: 60s
+      interval: 15s
+      timeout: 30s
+      retries: 60
+      start_period: 300s
     restart: unless-stopped
 
   api:
@@ -31,11 +34,11 @@ services:
       Jwt__ExpiraMinutos: ${JWT_EXPIRA_MINUTOS:-120}
       Admin__Email: ${ADMIN_EMAIL:-admin@hdc.com}
       Admin__Contrasena: ${ADMIN_CONTRASENA}
-      Cors__Origenes__0: "http://localhost:${FRONTEND_PORT:-8080}"
+      Cors__Origenes__0: "http://localhost:${FRONTEND_PORT:-8081}"
       Cors__Origenes__1: "http://localhost:5173"
       Swagger__Habilitado: "true"
     ports:
-      - "${API_PORT:-5000}:8080"
+      - "${API_PORT:-5000}:8081"
     depends_on:
       db:
         condition: service_healthy
@@ -44,7 +47,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      - "${FRONTEND_PORT:-8081}:80"
     depends_on:
       - api
     restart: unless-stopped

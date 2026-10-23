@@ -1,45 +1,19 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { catalogoApi, domiciliosApi } from '../../api/servicios'
+import { domiciliosApi } from '../../api/servicios'
 import { useUI } from '../../context/UIContext.jsx'
 import { BotonCarga, Dato, EncabezadoPagina, ErrorCarga, useCarga } from '../../components/comunes/Basicos.jsx'
 import { useFormulario } from '../../components/comunes/Formulario.jsx'
 import Modal from '../../components/comunes/Modal.jsx'
 import TablaPaginada from '../../components/comunes/TablaPaginada.jsx'
-import { Chips } from '../../components/comunes/Selectores.jsx'
 import CamposDomicilio, { domicilioARequest, domicilioVacio, validarDomicilio } from '../../components/formularios/CamposDomicilio.jsx'
 import { fecha, toneladas } from '../../utils/formato'
 
-/** Selector de fuentes habituales del domicilio, filtrable por alcance */
-function SelectorFuentes({ fuentes, seleccion, onChange }) {
-  const [alcance, setAlcance] = useState('')
-  const alcances = useMemo(() => [...new Map(fuentes.map((f) => [f.idAlcance, f.alcance])).entries()], [fuentes])
-  const visibles = fuentes.filter((f) => !alcance || f.idAlcance === Number(alcance))
-  return (
-    <div>
-      <div className="d-flex flex-wrap gap-2 align-items-center mb-2">
-        <label className="form-label mb-0 me-auto">Fuentes de emisión habituales</label>
-        <select className="form-select form-select-sm w-auto" value={alcance} onChange={(e) => setAlcance(e.target.value)} aria-label="Filtrar por alcance">
-          <option value="">Todos los alcances</option>
-          {alcances.map(([id, n]) => <option key={id} value={id}>{n}</option>)}
-        </select>
-      </div>
-      <Chips
-        opciones={visibles.map((f) => ({ valor: f.idFuenteEmision, texto: `${f.nombre} (${f.unidadMedida})` }))}
-        seleccion={seleccion}
-        onChange={onChange}
-      />
-      <div className="form-text">Se precargan al crear un registro de emisiones para este domicilio.</div>
-    </div>
-  )
-}
-
-function FormularioDomicilio({ abierto, domicilio, fuentes, onCerrar, onGuardado }) {
+function FormularioDomicilio({ abierto, domicilio, onCerrar, onGuardado }) {
   const ui = useUI()
   const inicial = domicilio ? {
     ...domicilioVacio,
     ...Object.fromEntries(Object.entries(domicilio).map(([k, v]) => [k, v ?? ''])),
-    idsFuentes: domicilio.fuentes.map((f) => f.idFuenteEmision),
   } : domicilioVacio
   const f = useFormulario(inicial, validarDomicilio)
 
@@ -68,8 +42,6 @@ function FormularioDomicilio({ abierto, domicilio, fuentes, onCerrar, onGuardado
       </>}>
       <form id="form-domicilio" noValidate onSubmit={guardar}>
         <CamposDomicilio f={f} />
-        <div className="separador" />
-        <SelectorFuentes fuentes={fuentes} seleccion={f.valores.idsFuentes} onChange={(v) => f.cambiar('idsFuentes', v)} />
       </form>
     </Modal>
   )
@@ -102,14 +74,6 @@ function DetalleDomicilio({ d, onCerrar, onEditar }) {
         <Dato className="col-6 col-md-4" etiqueta="Colaboradores activos">{d.cantidadColaboradores}</Dato>
         <Dato className="col-6 col-md-4" etiqueta="Alta">{fecha(d.fechaAlta)}</Dato>
         {d.fechaBaja && <Dato className="col-6 col-md-4" etiqueta="Baja">{fecha(d.fechaBaja)}</Dato>}
-        <div className="col-12">
-          <div className="dato-etiqueta mb-2">Fuentes de emisión habituales</div>
-          {d.fuentes.length === 0 ? <span className="text-muted">Sin fuentes asignadas</span> : (
-            <div className="d-flex flex-wrap gap-2">
-              {d.fuentes.map((f) => <span key={f.idFuenteEmision} className="badge-suave badge-verde">{f.nombre} · {f.alcance}</span>)}
-            </div>
-          )}
-        </div>
       </div>
     </Modal>
   )
@@ -119,7 +83,6 @@ export default function Domicilios() {
   const ui = useUI()
   const [verBajas, setVerBajas] = useState(false)
   const { datos, cargando, error, recargar } = useCarga(() => domiciliosApi.listar(verBajas), [verBajas])
-  const fuentes = useCarga(() => catalogoApi('fuentes').listar(), [])
   const [form, setForm] = useState({ abierto: false, domicilio: null, clave: 0 })
   const [detalle, setDetalle] = useState(null)
   const [resaltado, setResaltado] = useState(null)
@@ -157,7 +120,6 @@ export default function Domicilios() {
     { clave: 'ciudad', titulo: 'Ubicación', ordenable: true, valor: (d) => `${d.ciudad} ${d.provincia}`, render: (d) => (
       <div><div>{d.ciudad}</div><div className="small text-muted">{d.provincia}</div></div>
     ) },
-    { clave: 'fuentes', titulo: 'Fuentes', valor: (d) => d.fuentes.length, render: (d) => <span className="badge-suave badge-gris">{d.fuentes.length}</span> },
     { clave: 'cantidadRegistros', titulo: 'Registros', ordenable: true, numerico: true },
     { clave: 'totalKgCo2', titulo: 't CO₂', ordenable: true, numerico: true, render: (d) => <b>{toneladas(d.totalKgCo2)}</b> },
     { clave: 'estado', titulo: 'Estado', valor: (d) => (d.fechaBaja ? 'Baja' : 'Activo'), render: (d) => (
@@ -204,7 +166,6 @@ export default function Domicilios() {
         key={form.clave}
         abierto={form.abierto}
         domicilio={form.domicilio}
-        fuentes={fuentes.datos || []}
         onCerrar={() => setForm((f) => ({ ...f, abierto: false }))}
         onGuardado={(d) => { setForm((f) => ({ ...f, abierto: false })); setResaltado(d.idDomicilio); recargar() }}
       />

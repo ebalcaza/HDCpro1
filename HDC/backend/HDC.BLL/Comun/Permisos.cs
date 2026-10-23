@@ -1,6 +1,6 @@
 namespace HDC.BLL.Comun;
 
-/// <summary>Permisos que el código verifica. Deben existir en la tabla PERMISOS (ver 02_datos_iniciales.sql).</summary>
+/// <summary>Permisos que el código verifica. Deben existir en la tabla PERMISOS (ver Scripts/HDC_base_datos.sql).</summary>
 public static class Permisos
 {
     public const string AdminPanel = "ADMIN_PANEL";

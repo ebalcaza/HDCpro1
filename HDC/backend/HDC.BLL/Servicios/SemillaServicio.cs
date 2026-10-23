@@ -17,7 +17,8 @@ public class SemillaServicio(
     GeoRepositorio geo,
     IHttpClientFactory httpFactory,
     IConfiguration config,
-    ILogger<SemillaServicio> logger)
+    ILogger<SemillaServicio> logger,
+    CacheCatalogos cache)
 {
     public const string ClienteGeoref = "georef";
     private const int TamanioPagina = 5000;
@@ -85,6 +86,8 @@ public class SemillaServicio(
         }
 
         await geo.ReemplazarTodoAsync(provincias, distritos, ciudades);
+        // La geografía cambió: se descartan las listas de provincias/distritos/ciudades que estaban en cache
+        cache.Invalidar(CacheCatalogos.GrupoGeo);
         logger.LogInformation("Georef: {P} provincias, {D} distritos, {C} ciudades cargadas.", provincias.Count, distritos.Count, ciudades.Count);
         return ciudades.Count;
     }

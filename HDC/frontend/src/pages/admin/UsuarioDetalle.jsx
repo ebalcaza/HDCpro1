@@ -1,8 +1,5 @@
-import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { rolesApi, usuariosApi } from '../../api/servicios'
-import { PERMISOS as P, useAuth } from '../../context/AuthContext.jsx'
-import { useUI } from '../../context/UIContext.jsx'
+import { usuariosApi } from '../../api/servicios'
 import { Dato, EncabezadoPagina, ErrorCarga, useCarga } from '../../components/comunes/Basicos.jsx'
 import { EsqueletoTarjeta } from '../../components/comunes/Esqueleto.jsx'
 import Destello from '../../components/comunes/Destello.jsx'
@@ -12,29 +9,12 @@ import { fecha, toneladas } from '../../utils/formato'
 /** RFA06: más información del usuario seleccionado */
 export default function UsuarioDetalle() {
   const { id } = useParams()
-  const ui = useUI()
-  const { usuario, tienePermiso } = useAuth()
   const { datos, cargando, error, recargar } = useCarga(() => usuariosApi.obtener(id), [id])
-  const roles = useCarga(() => (tienePermiso(P.GESTIONAR_ROLES) ? rolesApi.listar() : Promise.resolve([])), [])
-  const [idRol, setIdRol] = useState('')
 
   if (error) return <ErrorCarga error={error} onReintentar={recargar} />
   if (cargando || !datos) return <><EncabezadoPagina titulo="Usuario" icono="bi-person" /><EsqueletoTarjeta alto={260} /></>
 
   const p = datos.perfil
-  const propio = p.idUsuario === usuario.idUsuario
-
-  const cambiarRol = async () => {
-    const nuevo = (roles.datos || []).find((r) => r.idRol === Number(idRol))
-    if (!nuevo) return
-    const ok = await ui.confirmar({
-      titulo: `¿Cambiar el tipo de usuario a "${nuevo.nombre}"?`,
-      mensaje: 'Cambian los permisos de la cuenta. Se aplica en su próximo inicio de sesión.',
-      tipo: 'aviso', textoConfirmar: 'Cambiar tipo',
-    })
-    if (!ok) return
-    try { const r = await usuariosApi.cambiarRol(p.idUsuario, nuevo.idRol); ui.exito(r.mensaje); setIdRol(''); recargar() } catch (err) { ui.error(err) }
-  }
 
   return (
     <>
@@ -51,18 +31,6 @@ export default function UsuarioDetalle() {
             <Dato etiqueta="Total emitido">{toneladas(p.totalKgCo2)} t CO₂</Dato>
             <Dato etiqueta="Registros de emisiones">{datos.cantidadRegistros}</Dato>
           </Destello>
-          {tienePermiso(P.GESTIONAR_ROLES) && !propio && (
-            <div className="tarjeta tarjeta-cuerpo">
-              <label className="form-label">Cambiar tipo de usuario</label>
-              <div className="d-flex gap-2">
-                <select className="form-select" value={idRol} onChange={(e) => setIdRol(e.target.value)}>
-                  <option value="">Seleccioná</option>
-                  {(roles.datos || []).filter((r) => r.idRol !== p.idRol).map((r) => <option key={r.idRol} value={r.idRol}>{r.nombre}</option>)}
-                </select>
-                <button type="button" className="btn btn-primary" disabled={!idRol} onClick={cambiarRol}>Aplicar</button>
-              </div>
-            </div>
-          )}
         </div>
         <div className="col-lg-8 d-flex flex-column gap-4">
           <div className="tarjeta tarjeta-cuerpo">

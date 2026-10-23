@@ -5,8 +5,9 @@ import { useUI } from '../../context/UIContext.jsx'
 import { Dato, EncabezadoPagina, ErrorCarga, useCarga } from '../../components/comunes/Basicos.jsx'
 import { EsqueletoTarjeta } from '../../components/comunes/Esqueleto.jsx'
 import { GraficoDona } from '../../components/graficos/Graficos.jsx'
+import TablaPaginada from '../../components/comunes/TablaPaginada.jsx'
 import { fechaHora, numero, periodo, porcentaje, toneladas } from '../../utils/formato'
-import { pdfRegistro } from '../../utils/pdf'
+import { descargarPdfRegistro } from '../../utils/pdfDiferido'
 
 /** RFR06: detalle de un registro, con descarga en PDF (RFR07) */
 export default function RegistroDetalle() {
@@ -39,7 +40,10 @@ export default function RegistroDetalle() {
     <>
       <EncabezadoPagina titulo={`Registro de ${periodo(r.periodo, true)}`} descripcion={`${r.domicilio}, ${r.ciudad}`} icono="bi-receipt">
         <Link to="/emisiones" className="btn btn-outline-secondary"><i className="bi bi-arrow-left me-1" />Volver</Link>
-        <button type="button" className="btn btn-outline-secondary" onClick={() => { pdfRegistro(r); ui.exito('El PDF se descargó', 'Descarga lista') }}>
+        <button type="button" className="btn btn-outline-secondary" onClick={async () => {
+          // El generador de PDF se descarga recién al hacer click (ver utils/pdfDiferido.js)
+          try { await descargarPdfRegistro(r); ui.exito('El PDF se descargó', 'Descarga lista') } catch (err) { ui.error(err) }
+        }}>
           <i className="bi bi-file-earmark-pdf me-1" />Descargar PDF
         </button>
         {r.puedeEditar && <>
@@ -72,26 +76,14 @@ export default function RegistroDetalle() {
           </div>
           <div className="tarjeta">
             <div className="p-3 pb-0"><h2 className="tarjeta-titulo">Consumos ({r.detalles.length})</h2></div>
-            <div className="tabla-contenedor p-2">
-              <table className="table tabla-hdc">
-                <thead>
-                  <tr><th className="col-num">#</th><th>Fuente</th><th>Tipo / Alcance</th><th className="text-end">Consumo</th><th className="text-end">Factor</th><th className="text-end">kg CO₂</th><th className="text-end">%</th></tr>
-                </thead>
-                <tbody>
-                  {r.detalles.map((d, i) => (
-                    <tr key={d.idDetalle}>
-                      <td className="col-num">{i + 1}</td>
-                      <td className="fw-semibold">{d.fuente}</td>
-                      <td><div>{d.tipoEmision}</div><div className="small text-muted">{d.alcance}</div></td>
-                      <td className="num">{numero(d.consumo, 4)} {d.unidadMedida}</td>
-                      <td className="num text-muted">{numero(d.valorFactorEmision, 6)}</td>
-                      <td className="num fw-bold">{numero(d.kgCo2)}</td>
-                      <td className="num">{porcentaje(r.totalKgCo2 ? (d.kgCo2 / r.totalKgCo2) * 100 : 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <TablaPaginada plana busqueda={false} idFila={(d) => d.idDetalle} datos={r.detalles} columnas={[
+              { clave: 'fuente', titulo: 'Fuente', ordenable: true, clase: 'fw-semibold' },
+              { clave: 'tipoEmision', titulo: 'Tipo / Alcance', ordenable: true, render: (d) => <><div>{d.tipoEmision}</div><div className="small text-muted">{d.alcance}</div></> },
+              { clave: 'consumo', titulo: 'Consumo', ordenable: true, numerico: true, render: (d) => `${numero(d.consumo, 4)} ${d.unidadMedida}` },
+              { clave: 'valorFactorEmision', titulo: 'Factor', numerico: true, clase: 'text-muted', render: (d) => numero(d.valorFactorEmision, 6) },
+              { clave: 'kgCo2', titulo: 'kg CO₂', ordenable: true, numerico: true, clase: 'fw-bold', render: (d) => numero(d.kgCo2) },
+              { clave: 'porcentaje', titulo: '%', numerico: true, render: (d) => porcentaje(r.totalKgCo2 ? (d.kgCo2 / r.totalKgCo2) * 100 : 0) },
+            ]} />
           </div>
         </div>
       </div>

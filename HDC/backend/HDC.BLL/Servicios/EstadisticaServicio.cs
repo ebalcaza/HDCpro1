@@ -6,7 +6,12 @@ using HDC.Entity.Entities;
 
 namespace HDC.BLL.Servicios;
 
-/// <summary>Dashboard y reportes: se obtienen las emisiones "planas" filtradas y se agregan en memoria.</summary>
+/// <summary>
+/// Dashboard y reportes.
+/// - Dashboard: las sumas (GROUP BY) las hace SQL Server y acá solo se arman los porcentajes y la serie mensual.
+/// - Reportes: necesitan el detalle fila por fila (tabla y PDF), así que se traen las emisiones "planas"
+///   filtradas y, como ya están en memoria, se agrupan acá sin volver a consultar la base.
+/// </summary>
 public class EstadisticaServicio(
     RegistroRepositorio registros,
     ReporteRepositorio reportes,
@@ -30,38 +35,54 @@ public class EstadisticaServicio(
             Hasta = hasta is DateOnly h ? Mapeos.InicioDeMes(h) : null,
         };
         if (idDomicilio is long id) filtro.IdsDomicilios.Add(id);
-        var datos = await registros.ObtenerEmisionesAsync(filtro);
 
-        var total = datos.Sum(x => x.KgCo2);
+        // Todo llega ya sumado por SQL Server: acá solo se combinan unas pocas filas (meses × alcances, tipos, fuentes...)
+        var a = await registros.ObtenerAgregadosAsync(filtro);
+
+        var total = a.PorPeriodoAlcance.Sum(x => x.KgCo2);
         var mes = Mapeos.MesActual();
-        var mesActual = datos.Where(x => x.Periodo == mes).Sum(x => x.KgCo2);
-        var mesAnterior = datos.Where(x => x.Periodo == mes.AddMonths(-1)).Sum(x => x.KgCo2);
+        var mesActual = a.PorPeriodoAlcance.Where(x => x.Periodo == mes).Sum(x => x.KgCo2);
+        var mesAnterior = a.PorPeriodoAlcance.Where(x => x.Periodo == mes.AddMonths(-1)).Sum(x => x.KgCo2);
         decimal? variacion = mesAnterior > 0 ? Math.Round((mesActual - mesAnterior) / mesAnterior * 100, 2) : null;
 
-        var porAlcance = Agrupar(datos, x => x.IdAlcance, x => x.Alcance, total);
-        var evolucion = Evolucion(datos);
+        // Dona por alcance: se juntan los meses de cada alcance
+        var porAlcance = a.PorPeriodoAlcance
+            .GroupBy(x => new { x.IdAlcance, x.Alcance })
+            .Select(g => new SerieItemDto(g.Key.IdAlcance, g.Key.Alcance, g.Sum(x => x.KgCo2), Porcentaje(g.Sum(x => x.KgCo2), total)))
+            .OrderByDescending(s => s.KgCo2)
+            .ToList();
+
+        var evolucion = Evolucion(a.PorPeriodoAlcance.Select(x => (x.Periodo, x.Alcance, x.KgCo2)));
         var conDatos = evolucion.Where(e => e.KgCo2 > 0).ToList();
 
         var lectura = new LecturaRapidaDto(
             evolucion.Count > 0 ? Math.Round(total / evolucion.Count, 4) : 0,
             conDatos.MaxBy(e => e.KgCo2) is { } max ? new PeriodoValorDto(max.Periodo, max.KgCo2) : null,
             conDatos.MinBy(e => e.KgCo2) is { } min ? new PeriodoValorDto(min.Periodo, min.KgCo2) : null,
-            datos.Select(x => x.IdRegistro).Distinct().Count(),
+            a.CantidadRegistros,
             conDatos.Count,
-            datos.Select(x => x.IdDomicilio).Distinct().Count(),
-            datos.Where(x => x.IdUsuarioCarga != x.IdUsuarioTitular).Select(x => x.IdUsuarioCarga).Distinct().Count());
+            a.CantidadDomicilios,
+            a.PorColaborador.Count); // cada grupo es un colaborador distinto
 
         return new DashboardDto(
             total, mesActual, mesAnterior, variacion,
             porAlcance.FirstOrDefault(),
             porAlcance,
-            Agrupar(datos, x => x.IdTipoEmision, x => x.TipoEmision, total, x => x.Alcance),
-            PorFuente(datos, total),
-            Agrupar(datos, x => x.IdDomicilio, x => $"{x.DomicilioTexto} - {x.Ciudad}", total),
-            Agrupar(datos.Where(x => x.IdUsuarioCarga != x.IdUsuarioTitular), x => x.IdUsuarioCarga, x => x.UsuarioCarga, total),
+            ASerie(a.PorTipo, total),
+            ASerie(a.PorFuente, total),
+            ASerie(a.PorDomicilio, total),
+            ASerie(a.PorColaborador, total),
             evolucion,
             lectura);
     }
+
+    /// <summary>Convierte los grupos sumados por SQL en la serie que espera el frontend (con % y ordenada de mayor a menor).</summary>
+    private static List<SerieItemDto> ASerie(IEnumerable<SumaGrupo> grupos, decimal total) =>
+        grupos
+            .Select(g => new SerieItemDto(g.Id, g.Nombre, g.KgCo2, Porcentaje(g.KgCo2, total), g.Grupo,
+                g.Unidad != null ? g.Consumo : null, g.Unidad)) // consumo y unidad solo tienen sentido en fuentes
+            .OrderByDescending(s => s.KgCo2)
+            .ToList();
 
     // ======================= REPORTES =======================
 
@@ -70,7 +91,7 @@ public class EstadisticaServicio(
         var f = Normalizar(filtros, idUsuario, global);
         var datos = await registros.ObtenerEmisionesAsync(f);
         var total = datos.Sum(x => x.KgCo2);
-        var evolucion = Evolucion(datos);
+        var evolucion = Evolucion(datos.Select(x => (x.Periodo, x.Alcance, x.KgCo2)));
 
         var resumen = new ReporteResumenDto(
             total,
@@ -214,12 +235,17 @@ public class EstadisticaServicio(
             .OrderByDescending(s => s.KgCo2)
             .ToList();
 
-    /// <summary>Serie mensual continua (los meses sin datos quedan en 0) con el desglose por alcance.</summary>
-    private static List<PuntoEvolucionDto> Evolucion(List<EmisionPlana> datos)
+    /// <summary>
+    /// Serie mensual continua (los meses sin datos quedan en 0) con el desglose por alcance.
+    /// Recibe tuplas (mes, alcance, kg): el Dashboard le pasa las sumas que ya calculó SQL
+    /// y el reporte le pasa sus filas de detalle; el resultado es el mismo.
+    /// </summary>
+    private static List<PuntoEvolucionDto> Evolucion(IEnumerable<(DateOnly Periodo, string Alcance, decimal KgCo2)> datos)
     {
-        if (datos.Count == 0) return [];
-        var nombresAlcance = datos.Select(x => x.Alcance).Distinct().OrderBy(a => a).ToList();
-        var porMes = datos.GroupBy(x => x.Periodo).ToDictionary(g => g.Key, g => g.ToList());
+        var lista = datos.ToList();
+        if (lista.Count == 0) return [];
+        var nombresAlcance = lista.Select(x => x.Alcance).Distinct().OrderBy(a => a).ToList();
+        var porMes = lista.GroupBy(x => x.Periodo).ToDictionary(g => g.Key, g => g.ToList());
         var res = new List<PuntoEvolucionDto>();
         for (var p = porMes.Keys.Min(); p <= porMes.Keys.Max(); p = p.AddMonths(1))
         {

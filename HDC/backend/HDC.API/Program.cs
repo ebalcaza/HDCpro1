@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text;
 using HDC.API.Infraestructura;
 using HDC.BLL;
@@ -6,6 +7,7 @@ using HDC.BLL.Servicios;
 using HDC.DAL;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -67,6 +69,18 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyHeader()
     .AllowAnyMethod()));
 
+// Compresión de respuestas: el JSON (listados, dashboard, reportes) es texto muy repetitivo
+// y se reduce entre 70 % y 90 %. Brotli si el navegador lo soporta; si no, gzip.
+// Nivel "Fastest": casi toda la ganancia de tamaño con muy poco uso de CPU.
+builder.Services.AddResponseCompression(o =>
+{
+    o.EnableForHttps = true; // la respuesta lleva solo datos del propio usuario, sin secretos que puedan filtrarse por BREACH
+    o.Providers.Add<BrotliCompressionProvider>();
+    o.Providers.Add<GzipCompressionProvider>();
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -85,6 +99,8 @@ var app = builder.Build();
 
 await InicializarDatosAsync(app);
 
+// Va primero para que comprima todas las respuestas, incluidas las de error
+app.UseResponseCompression();
 app.UseMiddleware<ManejoErroresMiddleware>();
 
 if (app.Environment.IsDevelopment() || config.GetValue<bool>("Swagger:Habilitado"))

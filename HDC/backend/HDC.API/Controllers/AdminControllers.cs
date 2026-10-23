@@ -147,20 +147,17 @@ public class PermisosController(PermisoServicio permisos) : ControladorBase
 [Route("api/usuarios"), Authorize(Policy = Permisos.GestionarUsuarios)]
 public class UsuariosController(UsuarioServicio usuarios) : ControladorBase
 {
-    /// <summary>RFA05</summary>
+    /// <summary>RFA05 - paginado en el servidor. Ej: GET /api/usuarios?pagina=1&amp;tamanio=20&amp;estado=activos&amp;busqueda=juan</summary>
     [HttpGet]
-    public async Task<List<UsuarioListaDto>> Listar() => await usuarios.ListarAsync();
+    public async Task<PaginaDto<UsuarioListaDto>> Listar([FromQuery] FiltroUsuarios filtro) => await usuarios.ListarAsync(filtro);
+
+    /// <summary>Totales para el panel admin y tipos de usuario para el filtro del listado.</summary>
+    [HttpGet("resumen")]
+    public async Task<ResumenUsuariosDto> Resumen() => await usuarios.ResumenAsync();
 
     /// <summary>RFA06</summary>
     [HttpGet("{id:long}")]
     public async Task<UsuarioDetalleDto> Obtener(long id) => await usuarios.ObtenerAsync(id);
-
-    [HttpPut("{id:long}/rol"), Authorize(Policy = Permisos.GestionarRoles)]
-    public async Task<MensajeDto> CambiarRol(long id, CambiarRolRequest req)
-    {
-        await usuarios.CambiarRolAsync(IdUsuario, id, req.IdRol);
-        return new MensajeDto("Tipo de usuario actualizado. Se aplicará en su próximo inicio de sesión.");
-    }
 
     [HttpPut("{id:long}/estado")]
     public async Task<MensajeDto> CambiarEstado(long id, CambiarEstadoRequest req)

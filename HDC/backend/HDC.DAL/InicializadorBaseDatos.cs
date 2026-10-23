@@ -6,12 +6,17 @@ using Microsoft.Extensions.Logging;
 namespace HDC.DAL;
 
 /// <summary>
-/// Crea la base de datos si no existe y ejecuta los scripts embebidos (esquema + datos iniciales).
+/// Crea la base de datos si no existe y ejecuta el script embebido Scripts/HDC_base_datos.sql
+/// (esquema + datos iniciales + índices).
 /// Reintenta la conexión porque el contenedor de SQL Server puede tardar en aceptar conexiones.
 /// </summary>
 public static partial class InicializadorBaseDatos
 {
-    private static readonly string[] Scripts = ["01_esquema.sql", "02_datos_iniciales.sql"];
+    /// <summary>
+    /// Script único de la base. Es idempotente (IF NOT EXISTS ...), por eso se ejecuta en CADA
+    /// arranque: en una base vacía crea todo y en una existente solo agrega lo que falte.
+    /// </summary>
+    private const string ScriptBase = "HDC_base_datos.sql";
 
     public static async Task InicializarAsync(string connectionString, ILogger logger, int intentos = 30)
     {
@@ -44,27 +49,18 @@ public static partial class InicializadorBaseDatos
         await using var conexion = new SqlConnection(connectionString);
         await conexion.OpenAsync();
 
-        await using (var existe = new SqlCommand("SELECT COUNT(*) FROM sys.tables WHERE name = 'ROL'", conexion))
+        // Todo en una transacción: si un lote falla, la base no queda a medio crear
+        await using (var tx = (SqlTransaction)await conexion.BeginTransactionAsync())
         {
-            if ((int)(await existe.ExecuteScalarAsync())! > 0)
+            foreach (var lote in DividirEnLotes(LeerScript(ScriptBase)))
             {
-                logger.LogInformation("La base {Base} ya tiene el esquema creado.", nombreBase);
-                return;
-            }
-        }
-
-        logger.LogInformation("Creando el esquema de la base {Base}...", nombreBase);
-        await using var tx = (SqlTransaction)await conexion.BeginTransactionAsync();
-        foreach (var script in Scripts)
-        {
-            foreach (var lote in DividirEnLotes(LeerScript(script)))
-            {
-                await using var cmd = new SqlCommand(lote, conexion, tx) { CommandTimeout = 120 };
+                // Crear un índice en una tabla grande puede tardar: se da un tiempo amplio
+                await using var cmd = new SqlCommand(lote, conexion, tx) { CommandTimeout = 600 };
                 await cmd.ExecuteNonQueryAsync();
             }
+            await tx.CommitAsync();
         }
-        await tx.CommitAsync();
-        logger.LogInformation("Esquema y datos iniciales creados.");
+        logger.LogInformation("Script {Script} aplicado a la base {Base}.", ScriptBase, nombreBase);
     }
 
     private static string LeerScript(string nombre)

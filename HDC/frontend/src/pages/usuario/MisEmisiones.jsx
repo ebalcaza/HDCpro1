@@ -1,13 +1,18 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { registrosApi } from '../../api/servicios'
 import { useUI } from '../../context/UIContext.jsx'
 import { EncabezadoPagina, ErrorCarga, useCarga } from '../../components/comunes/Basicos.jsx'
-import TablaPaginada from '../../components/comunes/TablaPaginada.jsx'
+import TablaPaginada, { consultaAParams } from '../../components/comunes/TablaPaginada.jsx'
 import { SelectorMes } from '../../components/comunes/Selectores.jsx'
-import { aMes, mesActual, numero, periodo, toneladas } from '../../utils/formato'
-import { pdfRegistro } from '../../utils/pdf'
+import { desdeMes, mesActual, numero, periodo, toneladas } from '../../utils/formato'
+import { descargarPdfRegistro } from '../../utils/pdfDiferido'
 
+/**
+ * RFR05: listado de registros paginado EN EL SERVIDOR.
+ * La tabla avisa qué página/orden/búsqueda quiere (onConsulta) y acá se pide solo esa página a la API,
+ * junto con los filtros de domicilio y período. Así nunca viaja la lista completa.
+ */
 export default function MisEmisiones() {
   const ui = useUI()
   const navigate = useNavigate()
@@ -15,17 +20,21 @@ export default function MisEmisiones() {
   const idDomicilio = params.get('domicilio') || ''
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
-  const { datos, cargando, error, recargar } = useCarga(() => registrosApi.listar(), [])
+  // Estado actual de la tabla ({ pagina, tamanio, orden, texto }); null hasta que la tabla se monta
+  const [consulta, setConsulta] = useState(null)
 
-  const domicilios = useMemo(() => [...new Map((datos || []).map((r) => [r.idDomicilio, r.domicilio])).entries()], [datos])
+  const { datos, cargando, error, recargar } = useCarga(
+    () => (consulta
+      ? registrosApi.listar({ ...consultaAParams(consulta), idDomicilio: idDomicilio || undefined, desde: desdeMes(desde) || undefined, hasta: desdeMes(hasta) || undefined })
+      : Promise.resolve(null)),
+    // Los filtros externos no van acá: al cambiar, la tabla vuelve a la página 1 y eso cambia `consulta` (una sola llamada)
+    [consulta],
+  )
+  // Opciones del filtro de domicilio: endpoint propio, porque la lista ya no llega completa
+  const domicilios = useCarga(() => registrosApi.domicilios(), [])
 
-  const filtrados = useMemo(() => (datos || []).filter((r) => {
-    const m = aMes(r.periodo)
-    return (!idDomicilio || r.idDomicilio === Number(idDomicilio))
-      && (!desde || m >= desde) && (!hasta || m <= hasta)
-  }), [datos, idDomicilio, desde, hasta])
-
-  const totalFiltrado = filtrados.reduce((a, r) => a + r.totalKgCo2, 0)
+  // La suma la calcula el servidor sobre TODOS los registros filtrados, no solo los de la página
+  const totalFiltrado = datos?.totalKgCo2 ?? 0
 
   const eliminar = async (r) => {
     const ok = await ui.confirmar({
@@ -44,7 +53,8 @@ export default function MisEmisiones() {
 
   const descargar = async (r) => {
     try {
-      pdfRegistro(await registrosApi.obtener(r.idRegistro))
+      // Primero se trae el registro completo; el módulo de PDF se descarga recién la primera vez (pdfDiferido.js)
+      await descargarPdfRegistro(await registrosApi.obtener(r.idRegistro))
       ui.exito('El PDF del registro se descargó', 'Descarga lista')
     } catch (err) { ui.error(err) }
   }
@@ -73,7 +83,7 @@ export default function MisEmisiones() {
           <label className="form-label">Domicilio</label>
           <select className="form-select" value={idDomicilio} onChange={(e) => setParams(e.target.value ? { domicilio: e.target.value } : {})}>
             <option value="">Todos</option>
-            {domicilios.map(([id, n]) => <option key={id} value={id}>{n}</option>)}
+            {(domicilios.datos || []).map((d) => <option key={d.idDomicilio} value={d.idDomicilio}>{d.descripcion}</option>)}
           </select>
         </div>
         <div><label className="form-label">Desde</label><SelectorMes valor={desde} permitirVacio max={hasta || mesActual()} onChange={setDesde} /></div>
@@ -87,7 +97,10 @@ export default function MisEmisiones() {
       {error ? <ErrorCarga error={error} onReintentar={recargar} /> : (
         <TablaPaginada
           columnas={columnas}
-          datos={filtrados}
+          datos={datos?.items}
+          total={datos?.total}
+          onConsulta={setConsulta}
+          claveFiltros={`${idDomicilio}|${desde}|${hasta}`}
           cargando={cargando}
           idFila={(r) => r.idRegistro}
           textoBusqueda="Buscar por domicilio, período, alcance..."

@@ -1,0 +1,20 @@
+domiciilios:
++vas a quitar  las fuentes de emision habituales de los domicilios.
+
+
+en general:
++en los formularios de agregar domicilio, y cerrar sesion,
+en los hover de los botones de guardar y cancelar,
+vas a dejar solo el efecto que hace que el boton se ilumine,
+quita los efectos de bordes arriba y abajo.
+
++en el formulario de ingreso, la opcion para visualizar la clave, aveces aparece 2 veces.
+
+
+administrador:
++quita la funcionalidad de cambiar el tipo de usuario de una cuenta de usuario.
+
+individuo/organizacion:
++cuando agrego un consumo voy a poder ingresarlo en un input que me vaya
+sugiriendo una "fuente de emision" valida, a medida que voy escribiendo.
+usa labels para indicar al usuario que tiene que ingresar una fuente de emision.

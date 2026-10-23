@@ -1,3 +1,4 @@
+using HDC.BLL.Comun;
 using HDC.BLL.Servicios;
 using HDC.DAL;
 using HDC.DAL.Repositorios;
@@ -24,6 +25,10 @@ public static class DependencyInjection
         services.AddScoped<RegistroRepositorio>();
         services.AddScoped<ColaboracionRepositorio>();
         services.AddScoped<ReporteRepositorio>();
+
+        // Cache de catálogos y geografía: Singleton para que la compartan todos los requests
+        services.AddMemoryCache();
+        services.AddSingleton<CacheCatalogos>();
 
         // BLL
         services.AddScoped<TokenServicio>();

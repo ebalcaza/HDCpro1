@@ -16,17 +16,28 @@ public class RegistroServicio(
     FuenteEmisionRepositorio fuentes,
     ColaboracionRepositorio colaboraciones)
 {
-    public async Task<List<RegistroListaDto>> ListarAsync(long idUsuario, long? idDomicilio)
+    /// <summary>RFR05 paginado: la base filtra, ordena y devuelve solo la página pedida.</summary>
+    public async Task<PaginaRegistrosDto> ListarAsync(long idUsuario, FiltroRegistros filtro)
     {
-        var lista = await registros.ListarVisiblesAsync(idUsuario, idDomicilio);
-        return lista.Select(r => new RegistroListaDto(
+        // Los períodos siempre se guardan como el día 1 del mes
+        if (filtro.Desde is DateOnly d) filtro.Desde = Mapeos.InicioDeMes(d);
+        if (filtro.Hasta is DateOnly h) filtro.Hasta = Mapeos.InicioDeMes(h);
+
+        var (pagina, total, totalKg) = await registros.PaginarVisiblesAsync(idUsuario, filtro);
+        var items = pagina.Select(r => new RegistroListaDto(
             r.IdRegistro, r.IdDomicilio, Mapeos.DescripcionCompleta(r.Domicilio), r.Periodo, r.TotalKgCo2,
             r.Detalles.Count, r.IdUsuarioCarga, Mapeos.NombreMostrar(r.UsuarioCarga),
             r.IdUsuarioCarga != r.Domicilio.IdUsuario,
             PuedeEditar(r, idUsuario),
             r.Detalles.Select(d => d.FuenteEmision.TipoEmision.Alcance.Nombre).Distinct().OrderBy(a => a).ToList(),
             r.FechaCreacion, r.FechaUltimaModificacion)).ToList();
+        return new PaginaRegistrosDto(items, total, totalKg);
     }
+
+    /// <summary>Opciones del filtro "Domicilio" de Mis emisiones.</summary>
+    public async Task<List<OpcionDomicilioDto>> DomiciliosConRegistrosAsync(long idUsuario) =>
+        (await registros.DomiciliosVisiblesAsync(idUsuario))
+            .Select(d => new OpcionDomicilioDto(d.IdDomicilio, Mapeos.DescripcionCompleta(d))).ToList();
 
     public async Task<RegistroDetalleDto> ObtenerAsync(long idUsuario, long idRegistro)
     {
