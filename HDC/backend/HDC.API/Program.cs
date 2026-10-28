@@ -87,11 +87,10 @@ await InicializarDatosAsync(app);
 
 app.UseMiddleware<ManejoErroresMiddleware>();
 
-if (app.Environment.IsDevelopment() || config.GetValue<bool>("Swagger:Habilitado"))
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+
+app.UseSwagger();
+app.UseSwaggerUI();
+
 
 app.UseCors();
 app.UseAuthentication();

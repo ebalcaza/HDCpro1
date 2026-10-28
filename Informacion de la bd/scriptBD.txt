@@ -332,13 +332,11 @@ CREATE TABLE COLABORA
        );
 
 
-
- "ConnectionStrings": {
-    "DefaultConnection":"Server=EMILIOSK8\\SQLEXPRESS02;Database=prueba1;Trusted_Connection=True;TrustServerCertificate=True;"
+"ConnectionStrings": {
+    "DefaultConnection": "Server=NOMBRE_SERVIDOR\\INSTANCIA;Database=NOMBRE_BD;Trusted_Connection=True;TrustServerCertificate=True;"
   },
   "Jwt": {
-    "Clave": "emilioBalcaza22232425262728293031323334353637383940",
+    "Clave": "REEMPLAZAR_POR_UNA_CLAVE_SECRETA_LARGA",
     "Emisor": "backend.API",
     "Audiencia": "frontend",
     "ExpiraMinutos": 120
-
