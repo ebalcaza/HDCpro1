@@ -9,7 +9,7 @@ import TarjetaDesplegable from '../../components/comunes/TarjetaDesplegable.jsx'
 import TablaPaginada from '../../components/comunes/TablaPaginada.jsx'
 import { SelectorMes } from '../../components/comunes/Selectores.jsx'
 import { GraficoDona, GraficoEvolucion, ListaProgreso } from '../../components/graficos/Graficos.jsx'
-import { desdeMes, mesActual, numero, periodo, porcentaje, ppm, toneladas } from '../../utils/formato'
+import { desdeMes, EQUIVALENCIA_PPM, mesActual, numero, periodo, porcentaje, ppm, toneladas } from '../../utils/formato'
 
 function Kpi({ etiqueta, valor, unidad, color, icono, children, cambio }) {
   return (
@@ -117,7 +117,7 @@ export default function Dashboard() {
           {/* Tres tarjetas iniciales */}
           <div className="col-md-4 aparecer">
             <Kpi etiqueta="Emisiones totales" valor={toneladas(d.totalKgCo2)} unidad="t CO₂" color="verde" icono="bi-cloud-haze2" cambio={d.totalKgCo2}>
-              {numero(d.totalKgCo2)} kg · <span title="1 ppm = 17.600 millones de t de CO₂">{ppm(d.totalKgCo2)}</span>
+              {numero(d.totalKgCo2)} kg · <span title={EQUIVALENCIA_PPM}>{ppm(d.totalKgCo2)}</span>
             </Kpi>
           </div>
           <div className="col-md-4 aparecer" style={{ animationDelay: '60ms' }}>

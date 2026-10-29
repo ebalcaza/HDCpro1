@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { fechaHora, numero, periodo, porcentaje, ppm } from './formato'
+import { EQUIVALENCIA_PPM, fechaHora, numero, periodo, porcentaje, ppm } from './formato'
 
 // La fuente estándar de jsPDF no tiene el subíndice de CO₂: en el PDF se escribe CO2
 const toneladasTexto = (kg) => `${numero(kg / 1000, 3)} t CO2`
@@ -222,7 +222,8 @@ export function pdfReporte(rep, { nombre, graficos = {} } = {}) {
   ])
   doc.setFontSize(8)
   doc.setTextColor(...GRIS)
-  doc.text(`Equivalente atmosférico: ${ppm(r.totalKgCo2)} (1 ppm = 17.600 millones de t CO2)`, 14, y - 3)
+  // El "₂" se pasa a "2" porque las fuentes estándar de jsPDF no tienen ese carácter
+  doc.text(`Equivalente atmosférico: ${ppm(r.totalKgCo2)} (${EQUIVALENCIA_PPM.replace('₂', '2')})`, 14, y - 3)
   doc.setTextColor(...TEXTO)
   y += 4
 

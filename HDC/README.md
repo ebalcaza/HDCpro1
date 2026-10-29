@@ -244,7 +244,7 @@ Después actualizá la entidad en `HDC.Entity/Entities` y su mapeo en `HDC.DAL/H
 - `kg CO₂ = consumo × factor de emisión`. El factor **queda guardado** en cada detalle del registro, así que si
   el administrador cambia un factor no se altera el histórico.
 - Los totales se muestran en **toneladas de CO₂**, junto con su equivalente atmosférico:
-  `1 ppm = 17.600 millones de t CO₂`.
+  `1 ppm = 7.800 millones de t CO₂`.
 - Los factores iniciales son **valores de referencia**: revisalos con la fuente oficial que uses.
 
 ### Alcances (GHG Protocol)
@@ -278,7 +278,7 @@ Los permisos del sistema y los 3 roles iniciales están protegidos contra borrad
 | `FECHA_BAJA` admite NULL | Activo = sin fecha de baja |
 | `REGISTROS` pasa a cabecera (domicilio + período + quién cargó) con `DETALLE_REGISTRO` (fuente, consumo, factor, kg CO₂) | Un registro mensual tiene varios consumos; el factor se congela |
 | `ROL_PERMISO` (N:M) | Un permiso puede pertenecer a varios tipos de usuario |
-| `INDIVIDUO` + DNI, género · `ORGANIZACION` + descripción, cantidad de miembros · `DOMICILIO` + block, manzana, teléfono · `VEHICULO` | Datos del glosario |
+| `INDIVIDUO` + DNI, género · `ORGANIZACION` + descripción, cantidad de miembros · `DOMICILIO` + block, manzana, teléfono | Datos del glosario |
 | `COLABORACION` + `COLABORACION_TIPO_EMISION` (reemplaza `COLABORA`) | Ver colaboradores |
 | `REPORTE` | Guardar combinaciones de filtros |
 | Unidades `kWh` y `km` | Necesarias para electricidad y transporte |

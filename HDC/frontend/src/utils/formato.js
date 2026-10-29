@@ -1,5 +1,9 @@
-/** 1 ppm de CO2 atmosférico ≈ 17.600 millones de toneladas de CO2 */
-export const TONELADAS_POR_PPM = 17_600_000_000
+/** 1 ppm de CO2 atmosférico ≈ 7.800 millones de toneladas de CO2
+ *  (≈ 2,13 Gt de carbono × 3,664 = masa de CO2). Único lugar donde se define. */
+export const TONELADAS_POR_PPM = 7_800_000_000
+
+/** Texto de referencia de la equivalencia, para tooltips y el PDF (así no se repite el número a mano) */
+export const EQUIVALENCIA_PPM = '1 ppm = 7.800 millones de t CO₂'
 
 const nf = (min, max) => new Intl.NumberFormat('es-AR', { minimumFractionDigits: min, maximumFractionDigits: max })
 const n0 = nf(0, 0)
