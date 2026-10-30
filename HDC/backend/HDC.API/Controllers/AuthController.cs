@@ -21,6 +21,11 @@ public class AuthController(AuthServicio auth) : ControladorBase
     [AllowAnonymous, HttpPost("registro/organizacion")]
     public async Task<AuthResponse> RegistrarOrganizacion(RegistroOrganizacionRequest req) => await auth.RegistrarOrganizacionAsync(req);
 
+    /// <summary>RFU01 - Verifica si el email y/o el DNI ya están registrados, antes de avanzar de paso en el registro.</summary>
+    [AllowAnonymous, HttpPost("registro/disponibilidad")]
+    public async Task<Dictionary<string, string>> VerificarDisponibilidad(VerificarDisponibilidadRequest req) =>
+        await auth.VerificarDisponibilidadAsync(req);
+
     /// <summary>Datos de la sesión actual (para restaurar la sesión al recargar la página).</summary>
     [HttpGet("sesion")]
     public async Task<UsuarioSesionDto> Sesion() => await auth.SesionAsync(IdUsuario);

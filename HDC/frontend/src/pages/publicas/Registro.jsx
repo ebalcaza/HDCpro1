@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { rutaInicio, useAuth } from '../../context/AuthContext.jsx'
 import { useUI } from '../../context/UIContext.jsx'
+import { authApi } from '../../api/servicios'
 import {
   AREAS_ORGANIZACION, Campo, campoNombre, errores, LARGOS, normalizarNombre, reglas, useFormulario, validarNombre,
 } from '../../components/comunes/Formulario.jsx'
@@ -25,6 +26,7 @@ export default function Registro() {
   const navigate = useNavigate()
   const [tipo, setTipo] = useState('INDIVIDUO')
   const [paso, setPaso] = useState(0)
+  const [verificando, setVerificando] = useState(false)
 
   const f = useFormulario({
     email: '', contrasena: '', confirmacion: '', telefono: '',
@@ -34,7 +36,7 @@ export default function Registro() {
   }, (v) => errores({
     // --- Paso 1: cuenta ---
     email: reglas.requerido(v.email) || reglas.email(v.email),
-    // Contraseña: mínimo 8, letras + números, sin espacios
+    // Contraseña: mínimo 8, al menos una letra, un número y un símbolo, sin espacios
     contrasena: reglas.requerido(v.contrasena) || reglas.minimo(v.contrasena, 8) || reglas.contrasena(v.contrasena),
     confirmacion: v.confirmacion !== v.contrasena ? 'Las contraseñas no coinciden' : null,
     telefono: reglas.telefono(v.telefono),
@@ -65,7 +67,25 @@ export default function Registro() {
     return conError.length === 0
   }
 
-  const siguiente = () => { if (pasoValido(paso)) setPaso((p) => p + 1) }
+  const siguiente = async () => {
+    if (!pasoValido(paso)) return
+    // Antes de avanzar se verifica en la base que el email (paso Cuenta) y el DNI (paso Perfil) no estén registrados
+    const v = f.valores
+    const datos = paso === 0 ? { email: v.email.trim() }
+      : paso === 1 && tipo === 'INDIVIDUO' ? { dni: v.dni.trim() } : null
+    if (datos) {
+      setVerificando(true)
+      try {
+        const enUso = await authApi.verificarDisponibilidad(datos)
+        if (Object.keys(enUso).length > 0) return f.aplicarErroresServidor(enUso)
+      } catch (err) {
+        return ui.error(err)
+      } finally {
+        setVerificando(false)
+      }
+    }
+    setPaso((p) => p + 1)
+  }
 
   const enviar = async (e) => {
     e.preventDefault()
@@ -133,7 +153,7 @@ export default function Registro() {
                   <input type="email" autoComplete="email" {...f.campo('email')} />
                 </Campo>
                 <CampoTelefono f={f} />
-                <Campo className="col-md-6" etiqueta="Contraseña" requerido error={f.errores.contrasena} tocado={t.contrasena} ayuda="Mínimo 8 caracteres, con letras y números, sin espacios">
+                <Campo className="col-md-6" etiqueta="Contraseña" requerido error={f.errores.contrasena} tocado={t.contrasena} ayuda="Mínimo 8 caracteres, con al menos una letra, un número y un símbolo, sin espacios">
                   <input type="password" autoComplete="new-password" {...f.campo('contrasena')} />
                 </Campo>
                 <Campo className="col-md-6" etiqueta="Repetir contraseña" requerido error={f.errores.confirmacion} tocado={t.confirmacion}>
@@ -146,7 +166,7 @@ export default function Registro() {
               <div className="row g-3 aparecer">
                 <Campo className="col-md-6" etiqueta="Nombres" requerido error={f.errores.nombres} tocado={t.nombres}><input {...campoNombre(f, 'nombres', LARGOS.nombres)} /></Campo>
                 <Campo className="col-md-6" etiqueta="Apellidos" requerido error={f.errores.apellidos} tocado={t.apellidos}><input {...campoNombre(f, 'apellidos', LARGOS.apellidos)} /></Campo>
-                <Campo className="col-md-4" etiqueta="DNI" requerido error={f.errores.dni} tocado={t.dni}><input inputMode="numeric" maxLength={8} {...f.campo('dni')} /></Campo>
+                <Campo className="col-md-4" etiqueta="DNI" requerido error={f.errores.dni} tocado={t.dni}><input inputMode="numeric" maxLength={8} {...f.campo('dni')} onChange={(e) => f.cambiar('dni', e.target.value.replace(/\D/g, ''))} /></Campo>
                 <Campo className="col-md-4" etiqueta="Fecha de nacimiento" error={f.errores.fechaNacimiento} tocado={t.fechaNacimiento} exito={null}>
                   <input type="date" max={new Date().toISOString().slice(0, 10)} {...f.campo('fechaNacimiento')} />
                 </Campo>
@@ -188,7 +208,7 @@ export default function Registro() {
                 ? <button type="button" className="btn btn-outline-secondary" onClick={() => setPaso((p) => p - 1)}><i className="bi bi-arrow-left me-1" />Atrás</button>
                 : <span />}
               {paso < PASOS.length - 1
-                ? <button type="button" className="btn btn-primary" onClick={siguiente}>Siguiente<i className="bi bi-arrow-right ms-1" /></button>
+                ? <button type="button" className="btn btn-primary" onClick={siguiente} disabled={verificando}>Siguiente<i className="bi bi-arrow-right ms-1" /></button>
                 : <BotonCarga cargando={f.enviando}><i className="bi bi-check2 me-1" />Crear cuenta</BotonCarga>}
             </div>
           </form>

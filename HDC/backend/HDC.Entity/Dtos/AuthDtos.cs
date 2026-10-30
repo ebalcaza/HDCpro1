@@ -35,19 +35,26 @@ public abstract class RegistroBaseRequest
 
 public class RegistroIndividuoRequest : RegistroBaseRequest
 {
-    [Required, NombrePersona(200)]
+    [Required, NombrePersona(199)]
     public string Nombres { get; set; } = string.Empty;
 
     [Required, NombrePersona(250)]
     public string Apellidos { get; set; } = string.Empty;
 
-    [Required, RegularExpression(@"^\d{7,8}$", ErrorMessage = "El DNI debe tener 7 u 8 dígitos")]
+    [Required, RegularExpression(@"^\d{8}$", ErrorMessage = "El DNI debe tener exactamente 8 dígitos numéricos")]
     public string Dni { get; set; } = string.Empty;
 
     public DateOnly? FechaNacimiento { get; set; }
 
     [MaxLength(30)]
     public string? Genero { get; set; }
+}
+
+/// <summary>Datos a verificar en la base antes de avanzar de paso en el registro (los vacíos no se verifican).</summary>
+public class VerificarDisponibilidadRequest
+{
+    public string? Email { get; set; }
+    public string? Dni { get; set; }
 }
 
 public class RegistroOrganizacionRequest : RegistroBaseRequest

@@ -14,7 +14,7 @@ namespace HDC.API.Controllers;
 [Route("api/catalogos")]
 public class CatalogosController(CatalogoServicio catalogos, FuenteEmisionServicio fuentes, SemillaServicio semilla) : ControladorBase
 {
-    // ----- Alcances (RFA31-34) -----
+    // ----- Alcances  -----
     [HttpGet("alcances")]
     public async Task<List<AlcanceDto>> Alcances() => await catalogos.ListarAlcancesAsync();
 
@@ -31,7 +31,7 @@ public class CatalogosController(CatalogoServicio catalogos, FuenteEmisionServic
         return new MensajeDto("Alcance eliminado");
     }
 
-    // ----- Unidades de medida (RFA27-30) -----
+    // ----- Unidades de medida  -----
     [HttpGet("unidades")]
     public async Task<List<UnidadMedidaDto>> Unidades() => await catalogos.ListarUnidadesAsync();
 
@@ -48,7 +48,7 @@ public class CatalogosController(CatalogoServicio catalogos, FuenteEmisionServic
         return new MensajeDto("Unidad eliminada");
     }
 
-    // ----- Tipos de emisión (RFA23-26) -----
+    // ----- Tipos de emisión -----
     [HttpGet("tipos-emision")]
     public async Task<List<TipoEmisionDto>> TiposEmision() => await catalogos.ListarTiposAsync();
 
@@ -65,7 +65,7 @@ public class CatalogosController(CatalogoServicio catalogos, FuenteEmisionServic
         return new MensajeDto("Tipo de emisión eliminado");
     }
 
-    // ----- Fuentes de emisión (RFA01-04) -----
+    // ----- Fuentes de emisión  -----
     [HttpGet("fuentes")]
     public async Task<List<FuenteEmisionDto>> Fuentes([FromQuery] bool incluirBajas = false) => await fuentes.ListarAsync(incluirBajas);
 

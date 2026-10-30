@@ -136,7 +136,7 @@ static async Task InicializarDatosAsync(WebApplication app)
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "No se pudo cargar la geografía desde georef. Reintentá desde Administración > Catálogos.");
+            logger.LogError(ex, "No se pudo cargar la geografía desde georef. Reintentá desde Panel general → Cargar geografía .");
         }
     });
 }

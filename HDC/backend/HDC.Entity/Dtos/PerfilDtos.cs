@@ -5,13 +5,13 @@ namespace HDC.Entity.Dtos;
 
 public class IndividuoDto
 {
-    [Required, NombrePersona(200)]
+    [Required, NombrePersona(199)]
     public string Nombres { get; set; } = string.Empty;
 
     [Required, NombrePersona(250)]
     public string Apellidos { get; set; } = string.Empty;
 
-    [Required, RegularExpression(@"^\d{7,8}$", ErrorMessage = "El DNI debe tener 7 u 8 dígitos")]
+    [Required, RegularExpression(@"^\d{8}$", ErrorMessage = "El DNI debe tener exactamente 8 dígitos numéricos")]
     public string Dni { get; set; } = string.Empty;
 
     public DateOnly? FechaNacimiento { get; set; }

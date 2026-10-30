@@ -55,38 +55,32 @@ RFA01: El usuario de tipo administrador agrega una nueva fuente de emisión ingr
 RFA02: El usuario de tipo administrador visualiza todas las fuentes de emisión, en una lista con los datos completos de cada fuente de emisión.
 RFA03: El usuario de tipo administrador edita una fuente de emisión previamente seleccionado.
 RFA04: El usuario de tipo administrador elimina una fuente de emisión previamente seleccionado.
-
 RFA05: El usuario de tipo administrador visualiza una lista de todos los usuarios registrados en la aplicación web.
 RFA06: El usuario de tipo administrador selecciona un usuario de la lista de todos los usuarios registrados para ver más información.
+RFA07: El usuario de tipo administrador agrega un nuevo tipo de usuario.
+RFA08: El usuario de tipo administrador edita un tipo de usuario.
+RFA09: El usuario de tipo administrador elimina un tipo de usuario.
+RFA10: El usuario de tipo administrador lista todos los tipos de usuarios.
 
+RFA11: El usuario de tipo administrador agrega un nuevo permiso de usuario.
+RFA12: El usuario de tipo administrador edita un permiso de usuario.
+RFA13: El usuario de tipo administrador elimina un permiso de usuario.
+RFA14: El usuario de tipo administrador lista todos los permisos de usuarios.
 
-RFA15: El usuario de tipo administrador agrega un nuevo tipo de usuario.
-RFA16: El usuario de tipo administrador edita un tipo de usuario.
-RFA17: El usuario de tipo administrador elimina un tipo de usuario.
-RFA18: El usuario de tipo administrador lista todos los tipos de usuarios.
-
-RFA19: El usuario de tipo administrador agrega un nuevo permiso de usuario.
-RFA20: El usuario de tipo administrador edita un permiso de usuario.
-RFA21: El usuario de tipo administrador elimina un permiso de usuario.
-RFA22: El usuario de tipo administrador lista todos los permisos de usuarios.
-
-RFA23: El usuario de tipo administrador agrega un nuevo tipo de emisión.
-RFA24: El usuario de tipo administrador edita un tipo de emisión.
-RFA25: El usuario de tipo administrador elimina un tipo de emisión.
-RFA26: El usuario de tipo administrador lista todos los tipo de emisión.
-
-RFA27: El usuario de tipo administrador agrega un nuevo tipo de unidad de medida.
-RFA28: El usuario de tipo administrador edita un tipo de unidad de medida.
-RFA29: El usuario de tipo administrador elimina un tipo de unidad de medida.
-RFA30: El usuario de tipo administrador lista todos los tipo de unidad de medida.
-
-
-RFA31: El usuario de tipo administrador agrega un nuevo tipo de alcance.
-RFA32: El usuario de tipo administrador edita un tipo de alcance.
-RFA33: El usuario de tipo administrador elimina un tipo de alcance.
-RFA34: El usuario de tipo administrador lista todos los tipo de alcance.
+RFA15: El usuario de tipo administrador agrega un nuevo tipo de emisión.
+RFA16: El usuario de tipo administrador edita un tipo de emisión.
+RFA17: El usuario de tipo administrador elimina un tipo de emisión.
+RFA18: El usuario de tipo administrador lista todos los tipo de emisión.
+RFA19: El usuario de tipo administrador agrega un nuevo tipo de unidad de medida.
+RFA20: El usuario de tipo administrador edita un tipo de unidad de medida.
+RFA21: El usuario de tipo administrador elimina un tipo de unidad de medida.
+RFA22: El usuario de tipo administrador lista todos los tipo de unidad de medida.
+RFA23: El usuario de tipo administrador agrega un nuevo tipo de alcance.
+RFA24: El usuario de tipo administrador edita un tipo de alcance.
+RFA25: El usuario de tipo administrador elimina un tipo de alcance.
+RFA26: El usuario de tipo administrador lista todos los tipo de alcance.
 Requisitos no Funcionales
-
+No aplica
 
 Usuario
 Requisitos Funcionales

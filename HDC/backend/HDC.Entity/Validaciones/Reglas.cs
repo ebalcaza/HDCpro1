@@ -43,10 +43,19 @@ public static class Reglas
     public static readonly Regex Calle = new($"^[{Letras}0-9]+(?: [{Letras}0-9]+)*$");
 
     /// <summary>
-    /// Contraseña: sin espacios, con al menos una letra y al menos un número.
+    /// Contraseña: sin espacios, con al menos una letra, un número y un símbolo especial
+    /// (cualquier carácter que no sea letra, número ni espacio).
+    /// Devuelve el mensaje de la primera regla que no cumple, o null si es válida.
     /// (El largo mínimo de 8 se valida aparte con [MinLength]).
     /// </summary>
-    public static readonly Regex Contrasena = new($"^(?=.*[{Letras}])(?=.*\\d)\\S+$");
+    public static string? ErrorContrasena(string s)
+    {
+        if (Regex.IsMatch(s, @"\s")) return "La contraseña no puede tener espacios";
+        if (!Regex.IsMatch(s, $"[{Letras}]")) return "La contraseña debe contener al menos una letra";
+        if (!Regex.IsMatch(s, @"\d")) return "La contraseña debe contener al menos un número";
+        if (!Regex.IsMatch(s, $"[^{Letras}0-9]")) return "La contraseña debe contener al menos un símbolo especial (ej: ! @ # $ %)";
+        return null;
+    }
 
     /// <summary>
     /// Teléfono argentino en formato internacional: "+54 {característica} {número}".
@@ -118,15 +127,14 @@ public class CalleAttribute : ValidationAttribute
     }
 }
 
-/// <summary>Valida la composición de la contraseña (ver <see cref="Reglas.Contrasena"/>).</summary>
+/// <summary>Valida la composición de la contraseña (ver <see cref="Reglas.ErrorContrasena"/>).</summary>
 public class ContrasenaAttribute : ValidationAttribute
 {
     protected override ValidationResult? IsValid(object? value, ValidationContext ctx)
     {
         if (value is not string s || s.Length == 0) return ValidationResult.Success;
-        return Reglas.Contrasena.IsMatch(s)
-            ? ValidationResult.Success
-            : new ValidationResult("La contraseña debe combinar letras y números, sin espacios", [ctx.MemberName!]);
+        var error = Reglas.ErrorContrasena(s);
+        return error is null ? ValidationResult.Success : new ValidationResult(error, [ctx.MemberName!]);
     }
 }
 

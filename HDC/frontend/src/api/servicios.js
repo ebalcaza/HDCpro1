@@ -4,6 +4,8 @@ export const authApi = {
   login: (datos) => api.post('/auth/login', datos),
   registrarIndividuo: (datos) => api.post('/auth/registro/individuo', datos),
   registrarOrganizacion: (datos) => api.post('/auth/registro/organizacion', datos),
+  /** Devuelve { email?, dni? } con los mensajes de los datos que ya están registrados ({} si están libres) */
+  verificarDisponibilidad: (datos) => api.post('/auth/registro/disponibilidad', datos),
   sesion: () => api.get('/auth/sesion'),
 }
 

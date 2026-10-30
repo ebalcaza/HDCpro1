@@ -36,6 +36,8 @@ export function useFormulario(inicial, validar) {
   function claseValidacion(nombre, base) {
     const b = base ?? 'form-control'
     if (!tocados[nombre]) return b
+    // Un campo vacío sin error queda con el estilo normal (nunca en verde)
+    if (!errores[nombre] && String(valores[nombre] ?? '').trim() === '') return b
     return `${b} ${errores[nombre] ? 'is-invalid' : 'is-valid'}`
   }
 
@@ -68,6 +70,9 @@ export function useFormulario(inicial, validar) {
 
 /** Contenedor de campo con etiqueta y mensajes de validación */
 export function Campo({ etiqueta, requerido, error, tocado, ayuda, children, className = '', exito = 'Correcto' }) {
+  // Si el hijo es un input con value vacío, no se muestra el mensaje de éxito (los vacíos no van en verde)
+  const props = children?.props
+  if (props && 'value' in props && String(props.value ?? '').trim() === '') exito = null
   return (
     <div className={className}>
       {etiqueta && (
@@ -97,7 +102,6 @@ export function Campo({ etiqueta, requerido, error, tocado, ayuda, children, cla
  *  backend/HDC.Entity/Validaciones/Reglas.cs. El frontend avisa rápido al usuario,
  *  pero la validación que manda es la del backend. Si cambiás una, cambiá la otra.
  *
- *  Largos máximos = largo de la columna en la base de datos (01_esquema.sql).
  * =====================================================================================
  */
 
@@ -105,7 +109,7 @@ export function Campo({ etiqueta, requerido, error, tocado, ayuda, children, cla
 const LETRAS = 'A-Za-zÁÉÍÓÚÜÑáéíóúüñ'
 
 /** Largos máximos de las columnas en la BD */
-export const LARGOS = { nombres: 200, apellidos: 250, calle: 200, area: 100, contrasena: 100 }
+export const LARGOS = { nombres: 199, apellidos: 250, calle: 200, area: 100, contrasena: 100 }
 
 /** Opciones del select "Área" de las organizaciones (mismo listado que Reglas.AreasOrganizacion en el backend) */
 export const AREAS_ORGANIZACION = [
@@ -118,7 +122,7 @@ export const reglas = {
   email: (v) => (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim()) ? 'Ingresá un email válido' : null),
   minimo: (v, n) => (String(v || '').length < n ? `Debe tener al menos ${n} caracteres` : null),
   maximo: (v, n) => (String(v || '').trim().length > n ? `Máximo ${n} caracteres` : null),
-  dni: (v) => (!/^\d{7,8}$/.test(String(v || '')) ? 'El DNI debe tener 7 u 8 dígitos, sin puntos' : null),
+  dni: (v) => (!/^\d{8}$/.test(String(v || '')) ? 'El DNI debe tener exactamente 8 dígitos numéricos' : null),
   cuit: (v) => (!/^\d{2}-?\d{8}-?\d$/.test(String(v || '')) ? 'Formato: 20-12345678-9' : null),
   positivo: (v) => (v === '' || v == null || isNaN(Number(v)) || Number(v) <= 0 ? 'Debe ser un número mayor a 0' : null),
   noNegativo: (v) => (v === '' || v == null || isNaN(Number(v)) || Number(v) < 0 ? 'Debe ser un número mayor o igual a 0' : null),
@@ -142,11 +146,16 @@ export const reglas = {
     return new RegExp(`^[${LETRAS}0-9 ]+$`).test(s) ? null : 'Solo letras, números y espacios'
   },
 
-  /** Contraseña: sin espacios y con al menos una letra y un número (el mínimo de 8 va con `minimo`) */
+  /**
+   * Contraseña: sin espacios y con al menos una letra, un número y un símbolo especial
+   * (cualquier carácter que no sea letra, número ni espacio). El mínimo de 8 va con `minimo`.
+   */
   contrasena: (v) => {
     const s = String(v || '')
     if (/\s/.test(s)) return 'La contraseña no puede tener espacios'
-    if (!new RegExp(`[${LETRAS}]`).test(s) || !/\d/.test(s)) return 'Debe combinar letras y números'
+    if (!new RegExp(`[${LETRAS}]`).test(s)) return 'Debe contener al menos una letra'
+    if (!/\d/.test(s)) return 'Debe contener al menos un número'
+    if (!new RegExp(`[^${LETRAS}0-9]`).test(s)) return 'Debe contener al menos un símbolo especial (ej: ! @ # $ %)'
     return null
   },
 

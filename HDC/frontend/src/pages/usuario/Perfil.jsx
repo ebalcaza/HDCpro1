@@ -59,7 +59,7 @@ function FormPerfil({ perfil, onGuardado, onCancelar }) {
       {esInd && <>
         <Campo className="col-md-6" etiqueta="Nombres" requerido error={f.errores.nombres} tocado={t.nombres}><input {...campoNombre(f, 'nombres', LARGOS.nombres)} /></Campo>
         <Campo className="col-md-6" etiqueta="Apellidos" requerido error={f.errores.apellidos} tocado={t.apellidos}><input {...campoNombre(f, 'apellidos', LARGOS.apellidos)} /></Campo>
-        <Campo className="col-md-4" etiqueta="DNI" requerido error={f.errores.dni} tocado={t.dni}><input inputMode="numeric" maxLength={8} {...f.campo('dni')} /></Campo>
+        <Campo className="col-md-4" etiqueta="DNI" requerido error={f.errores.dni} tocado={t.dni}><input inputMode="numeric" maxLength={8} {...f.campo('dni')} onChange={(e) => f.cambiar('dni', e.target.value.replace(/\D/g, ''))} /></Campo>
         <Campo className="col-md-4" etiqueta="Fecha de nacimiento" exito={null}><input type="date" max={new Date().toISOString().slice(0, 10)} {...f.campo('fechaNacimiento')} /></Campo>
         <Campo className="col-md-4" etiqueta="Género" exito={null}>
           <select {...f.campo('genero')} className="form-select"><option value="">Prefiero no decir</option><option>Femenino</option><option>Masculino</option><option>No binario</option><option>Otro</option></select>
@@ -116,7 +116,7 @@ function FormContrasena({ abierto, onCerrar }) {
         <Campo etiqueta="Contraseña actual" requerido error={f.errores.contrasenaActual} tocado={f.tocados.contrasenaActual} exito={null}>
           <input type="password" autoComplete="current-password" {...f.campo('contrasenaActual')} />
         </Campo>
-        <Campo etiqueta="Nueva contraseña" requerido error={f.errores.contrasenaNueva} tocado={f.tocados.contrasenaNueva} ayuda="Mínimo 8 caracteres, con letras y números, sin espacios">
+        <Campo etiqueta="Nueva contraseña" requerido error={f.errores.contrasenaNueva} tocado={f.tocados.contrasenaNueva} ayuda="Mínimo 8 caracteres, con al menos una letra, un número y un símbolo, sin espacios">
           <input type="password" autoComplete="new-password" {...f.campo('contrasenaNueva')} />
         </Campo>
         <Campo etiqueta="Repetir nueva contraseña" requerido error={f.errores.confirmacion} tocado={f.tocados.confirmacion}>

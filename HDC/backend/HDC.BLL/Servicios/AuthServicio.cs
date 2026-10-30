@@ -53,6 +53,20 @@ public class AuthServicio(UsuarioRepositorio usuarios, DomicilioServicio domicil
         return await GuardarYResponderAsync(u, req.Domicilio);
     }
 
+    /// <summary>
+    /// Verifica si el email y/o el DNI ya están registrados (lo usa el registro al avanzar de paso).
+    /// Devuelve { campo: mensaje } con los que ya existen; vacío si están todos disponibles.
+    /// </summary>
+    public async Task<Dictionary<string, string>> VerificarDisponibilidadAsync(VerificarDisponibilidadRequest req)
+    {
+        var errores = new Dictionary<string, string>();
+        if (!string.IsNullOrWhiteSpace(req.Email) && await usuarios.ExisteEmailAsync(req.Email.Trim().ToLowerInvariant()))
+            errores["email"] = "El email ya está registrado";
+        if (!string.IsNullOrWhiteSpace(req.Dni) && await usuarios.ExisteDniAsync(req.Dni.Trim()))
+            errores["dni"] = "Ya existe un usuario con ese DNI";
+        return errores;
+    }
+
     public async Task<UsuarioSesionDto> SesionAsync(long idUsuario)
     {
         var u = await usuarios.ObtenerCompletoAsync(idUsuario) ?? throw new NoEncontradoException("Usuario no encontrado");
