@@ -22,7 +22,8 @@
    - CIUDAD.NOMBRE pasa de BIGINT a NVARCHAR
    - FECHA_BAJA admite NULL (registro activo = sin fecha de baja)
    - REGISTROS pasa a ser cabecera (domicilio + período) con DETALLE_REGISTRO
-   - ROL_PERMISO (N:M), VEHICULO, REPORTE
+   - ROL_PERMISO (N:M), REPORTE
+   - VEHICULO se eliminó (si existe en una base anterior, se borra)
    - COLABORA se reemplaza por COLABORACION + COLABORACION_TIPO_EMISION
    ===================================================================== */
 
@@ -193,23 +194,10 @@ CREATE TABLE ORGANIZACION
 );
 GO
 
-IF OBJECT_ID(N'VEHICULO', N'U') IS NULL
-CREATE TABLE VEHICULO
-(
-    ID_VEHICULO      BIGINT IDENTITY(1,1) NOT NULL,
-    ID_USUARIO       BIGINT NOT NULL,
-    TIPO_VEHICULO    NVARCHAR(20) NOT NULL,
-    MARCA            NVARCHAR(100) NOT NULL,
-    MODELO           NVARCHAR(100) NOT NULL,
-    PATENTE          VARCHAR(10) NOT NULL,
-    TIPO_COMBUSTIBLE NVARCHAR(20) NOT NULL,
-    TIPO_USO         NVARCHAR(20) NOT NULL,
-    CONSTRAINT PK_VEHICULO PRIMARY KEY (ID_VEHICULO),
-    CONSTRAINT FK_VEHICULO_USUARIO FOREIGN KEY (ID_USUARIO) REFERENCES USUARIO (ID_USUARIO) ON DELETE CASCADE,
-    CONSTRAINT CK_VEHICULO_TIPO CHECK (TIPO_VEHICULO IN (N'Auto', N'Motocicleta', N'Camioneta', N'Camión')),
-    CONSTRAINT CK_VEHICULO_COMBUSTIBLE CHECK (TIPO_COMBUSTIBLE IN (N'Nafta', N'Gasoil', N'GNC')),
-    CONSTRAINT CK_VEHICULO_USO CHECK (TIPO_USO IN (N'Personal', N'Institucional'))
-);
+-- La tabla VEHICULO se eliminó del modelo (la sección de vehículos ya no
+-- existe). Si quedó creada en una base anterior, se borra al arrancar.
+IF OBJECT_ID(N'VEHICULO', N'U') IS NOT NULL
+    DROP TABLE VEHICULO;
 GO
 
 IF OBJECT_ID(N'DOMICILIO', N'U') IS NULL

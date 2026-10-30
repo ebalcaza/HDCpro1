@@ -61,7 +61,7 @@ npm run dev        # http://localhost:5173, redirige /api a http://localhost:500
 | `FECHA_BAJA` admite NULL | Activo = sin fecha de baja |
 | `REGISTROS` pasa a cabecera (domicilio + período + usuario que cargó) con `DETALLE_REGISTRO` (fuente, consumo, factor, kg CO₂) | Un registro mensual tiene varios consumos; el factor se congela para no alterar el histórico |
 | `ROL_PERMISO` (N:M) | Un permiso puede pertenecer a varios tipos de usuario |
-| `INDIVIDUO` + DNI, género · `ORGANIZACION` + descripción, cantidad de miembros · `DOMICILIO` + block, manzana, teléfono · `VEHICULO` | Datos del glosario |
+| `INDIVIDUO` + DNI, género · `ORGANIZACION` + descripción, cantidad de miembros · `DOMICILIO` + block, manzana, teléfono | Datos del glosario |
 | `COLABORACION` + `COLABORACION_TIPO_EMISION` (reemplaza `COLABORA`) | Ver colaboradores |
 | `REPORTE` | Guardar combinaciones de filtros |
 | Unidades `kWh` y `km` | Necesarias para electricidad y transporte |
@@ -79,7 +79,7 @@ Los factores de emisión iniciales son **valores de referencia**: revisalos con 
 ## Cálculo
 
 - `kg CO₂ = consumo × factor de emisión` (el factor queda guardado en el detalle).
-- Los totales se muestran en **toneladas de CO₂**, junto con su equivalente atmosférico: `1 ppm = 17.600 millones de t CO₂`.
+- Los totales se muestran en **toneladas de CO₂**, junto con su equivalente atmosférico: `1 ppm = 7.800 millones de t CO₂`.
 
 ## Seguridad y permisos
 

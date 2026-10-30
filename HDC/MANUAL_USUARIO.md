@@ -42,7 +42,7 @@ Ejemplo: 120 m³ de gas × 1,95 = **234 kg de CO₂**.
 
 Los totales se muestran en **toneladas de CO₂** (1 t = 1.000 kg). En algunas pantallas también vas a ver el
 equivalente en **ppm** (partes por millón de CO₂ en la atmósfera): es un número muy chico, que sirve para dimensionar
-tu aporte al total del planeta (1 ppm ≈ 17.600 millones de toneladas).
+tu aporte al total del planeta (1 ppm ≈ 7.800 millones de toneladas).
 
 ### Los tres alcances
 Las emisiones se agrupan en tres **alcances**, según un estándar internacional (GHG Protocol):
