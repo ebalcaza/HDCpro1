@@ -231,10 +231,16 @@ public class ColaboracionRepositorio(HdcDbContext ctx) : Repositorio<Colaboracio
         .Include(c => c.Colaborador).ThenInclude(u => u.Individuo)
         .Include(c => c.Colaborador).ThenInclude(u => u.Organizacion)
         .Include(c => c.TiposEmision).ThenInclude(t => t.TipoEmision).ThenInclude(t => t.Alcance)
+        // Si nació de una convocatoria, sus tipos habilitados son los de la convocatoria
+        .Include(c => c.Convocatoria).ThenInclude(cv => cv!.TiposEmision).ThenInclude(t => t.TipoEmision).ThenInclude(t => t.Alcance)
         .AsSplitQuery();
 
+    /// <summary>
+    /// Invitaciones individuales del titular. Los miembros de convocatorias NO se listan acá
+    /// (pueden ser miles): se gestionan desde cada convocatoria, con paginado en el servidor.
+    /// </summary>
     public Task<List<Colaboracion>> ListarPorTitularAsync(long idTitular) => Completas().AsNoTracking()
-        .Where(c => c.Domicilio.IdUsuario == idTitular)
+        .Where(c => c.Domicilio.IdUsuario == idTitular && c.IdConvocatoria == null)
         .OrderByDescending(c => c.FechaInvitacion).ToListAsync();
 
     public Task<List<Colaboracion>> ListarPorColaboradorAsync(long idColaborador) => Completas().AsNoTracking()
@@ -246,6 +252,7 @@ public class ColaboracionRepositorio(HdcDbContext ctx) : Repositorio<Colaboracio
     /// <summary>Colaboraciones aceptadas del usuario en ese domicilio que cubren el período.</summary>
     public Task<List<Colaboracion>> ObtenerVigentesAsync(long idColaborador, long idDomicilio, DateOnly periodo) => Ctx.Colaboraciones
         .Include(c => c.TiposEmision)
+        .Include(c => c.Convocatoria).ThenInclude(cv => cv!.TiposEmision)
         .Where(c => c.IdUsuarioColaborador == idColaborador && c.IdDomicilio == idDomicilio
                     && c.Estado == EstadoColaboracion.Aceptada
                     && c.PeriodoDesde <= periodo && (c.PeriodoHasta == null || c.PeriodoHasta >= periodo))

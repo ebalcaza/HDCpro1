@@ -9,6 +9,9 @@ namespace HDC.BLL.Servicios;
 /// Flujo: el titular invita (PENDIENTE) → el invitado acepta (ACEPTADA) o rechaza (RECHAZADA).
 /// Cualquiera de los dos puede revocarla (REVOCADA). Mientras está aceptada y el período la cubre,
 /// el colaborador carga consumos de los tipos de emisión habilitados, que suman al domicilio del titular.
+///
+/// Desde la v2.2 también hay colaboraciones que nacen de una CONVOCATORIA (ver ConvocatoriaServicio):
+/// sus períodos y tipos los define la convocatoria y se gestionan desde ahí, no desde este servicio.
 /// </summary>
 public class ColaboracionServicio(
     ColaboracionRepositorio colaboraciones,
@@ -55,6 +58,8 @@ public class ColaboracionServicio(
     {
         var c = await ObtenerAsync(id);
         if (c.Domicilio.IdUsuario != idTitular) throw new ProhibidoException();
+        if (c.IdConvocatoria != null)
+            throw new NegocioException("Esta colaboración pertenece a una convocatoria: sus períodos y tipos se editan desde la convocatoria");
         if (c.Estado is not (EstadoColaboracion.Pendiente or EstadoColaboracion.Aceptada))
             throw new NegocioException("Solo se pueden modificar colaboraciones pendientes o aceptadas");
         await AplicarAsync(c, req.PeriodoDesde, req.PeriodoHasta, req.IdsTiposEmision);
@@ -70,10 +75,12 @@ public class ColaboracionServicio(
     {
         var c = await ObtenerAsync(id);
         if (c.Domicilio.IdUsuario != idUsuario && c.IdUsuarioColaborador != idUsuario) throw new ProhibidoException();
-        if (c.Estado is not (EstadoColaboracion.Pendiente or EstadoColaboracion.Aceptada))
+        // SOLICITADA: quien se sumó a una convocatoria puede cancelar su solicitud antes de que la aprueben
+        if (c.Estado is not (EstadoColaboracion.Pendiente or EstadoColaboracion.Solicitada or EstadoColaboracion.Aceptada))
             throw new NegocioException("La colaboración ya no está activa");
         c.Estado = EstadoColaboracion.Revocada;
         c.FechaRespuesta = DateTime.Now;
+        c.IdUsuarioBaja = idUsuario; // si fue el titular, la persona no puede volver a sumarse con el código
         await colaboraciones.GuardarAsync();
         return await ObtenerDtoAsync(id);
     }
@@ -85,6 +92,7 @@ public class ColaboracionServicio(
         if (c.Estado != EstadoColaboracion.Pendiente) throw new NegocioException("La invitación ya fue respondida");
         c.Estado = estado;
         c.FechaRespuesta = DateTime.Now;
+        if (estado == EstadoColaboracion.Rechazada) c.IdUsuarioBaja = idColaborador;
         await colaboraciones.GuardarAsync();
         return await ObtenerDtoAsync(id);
     }
@@ -111,6 +119,9 @@ public class ColaboracionServicio(
     private async Task<Colaboracion> ObtenerAsync(long id) =>
         await colaboraciones.ObtenerCompletaAsync(id) ?? throw new NoEncontradoException("Colaboración no encontrada");
 
+    /// <summary>DTO de una colaboración (lo usa ConvocatoriaServicio al sumar a alguien con un código).</summary>
+    public Task<ColaboracionDto> ObtenerDtoPublicoAsync(long id) => ObtenerDtoAsync(id);
+
     private async Task<ColaboracionDto> ObtenerDtoAsync(long id) =>
         (await ADtosAsync([(await colaboraciones.ObtenerCompletaAsync(id))!]))[0];
 
@@ -127,9 +138,12 @@ public class ColaboracionServicio(
                 c.Domicilio.IdUsuario, Mapeos.NombreMostrar(c.Domicilio.Usuario), c.Domicilio.Usuario.Email,
                 c.IdUsuarioColaborador, Mapeos.NombreMostrar(c.Colaborador), c.Colaborador.Email,
                 c.PeriodoDesde, c.PeriodoHasta, c.Estado, c.Mensaje, c.FechaInvitacion, c.FechaRespuesta, vigente,
-                c.TiposEmision.Select(t => new TipoEmisionResumenDto(t.IdTipoEmision, t.TipoEmision.Nombre, t.TipoEmision.IdAlcance, t.TipoEmision.Alcance.Nombre))
+                // Tipos habilitados: los de la convocatoria si nació de una, o los propios de la invitación
+                (c.Convocatoria != null ? c.Convocatoria.TiposEmision.Select(t => t.TipoEmision) : c.TiposEmision.Select(t => t.TipoEmision))
+                    .Select(t => new TipoEmisionResumenDto(t.IdTipoEmision, t.Nombre, t.IdAlcance, t.Alcance.Nombre))
                     .OrderBy(t => t.Alcance).ThenBy(t => t.Nombre).ToList(),
-                aporte.Registros, aporte.Kg);
+                aporte.Registros, aporte.Kg,
+                c.IdConvocatoria, c.Convocatoria?.Nombre);
         }).ToList();
     }
 }

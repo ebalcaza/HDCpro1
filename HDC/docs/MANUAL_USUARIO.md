@@ -1,6 +1,6 @@
 # Manual de usuario — Huella de Carbono (HDC)
 
-> **Última actualización:** 31/10/2026 · Versión del sistema: 2.1 (ver [CHANGELOG](CHANGELOG.md))
+> **Última actualización:** 31/10/2026 · Versión del sistema: 2.2 (ver [CHANGELOG](CHANGELOG.md))
 
 Este manual explica cómo usar la aplicación **Huella de Carbono** para medir cuánto CO₂ generan tus
 consumos de todos los meses, ver cómo evoluciona tu huella y descargar reportes.
@@ -128,7 +128,7 @@ A la izquierda (en el celular, con el botón ☰ arriba) tenés el menú **Mi hu
 | **Mis emisiones**  | Lista de tus registros mensuales; desde acá cargás uno nuevo              |
 | **Fuentes de emisión** | Todo lo que podés cargar: unidad, factor, dónde encontrar el dato y una calculadora rápida |
 | **Domicilios**     | Los lugares donde medís                                                   |
-| **Colaboraciones** | Invitar a otros a cargar datos, o aceptar invitaciones. Un número indica invitaciones pendientes |
+| **Colaboraciones** | Invitar a otros a cargar datos (por email o con una **convocatoria** con código), sumarte con un código o aceptar invitaciones. Un número indica invitaciones pendientes |
 | **Reportes**       | Reportes filtrados y descargables en PDF                                  |
 | **Mi perfil**      | Tus datos y cambio de contraseña                                          |
 
@@ -288,8 +288,46 @@ Sirve para que **otras personas carguen datos en tu domicilio**. Por ejemplo, un
 empleados a cargar los kilómetros que hacen para llegar a la oficina. Esas emisiones **suman a la huella del
 domicilio del titular**.
 
-### Invitar a un colaborador (titular)
-1. **Colaboraciones → Invitar colaborador**.
+Hay dos formas de sumar colaboradores:
+
+| Forma | Conviene para | Cómo funciona |
+|---|---|---|
+| **Invitación por email** | Pocas personas (un contador, un familiar) | Invitás a cada una con su email y ella acepta |
+| **Convocatoria con código** | Muchas personas (todo el personal, cientos o miles) | Compartís un código; cada uno se suma solo y vos aprobás o das de baja |
+
+### Convocatorias: sumar a muchas personas con un código (titular)
+1. **Colaboraciones → Nueva convocatoria**.
+2. Completá:
+   - **Domicilio** donde van a cargar y un **Nombre** (por ejemplo, "Transporte del personal 2026").
+   - **Instrucciones** (opcional): qué tienen que cargar.
+   - **Desde** y **Hasta (opcional)**: los meses en que pueden cargar.
+   - **Información que pueden cargar:** los tipos de emisión habilitados.
+   - **Aprobación automática:** si está activada, quien escribe el código queda aceptado al instante. Si no,
+     queda *esperando aprobación* hasta que lo aceptes.
+3. **Crear y obtener código**. El sistema genera un código como **`ECSR-2K26`**. Usá **Copiar** y compartilo
+   por email, WhatsApp, la intranet, un cartel…
+
+En la pestaña **Convocatorias** ves cada una con su código y cuántas personas hay activas, por aprobar y dadas
+de baja. Desde ahí podés:
+- **Editar**: los cambios de períodos y tipos se aplican **a todos** sus colaboradores a la vez.
+- **Cerrar**: nadie más puede sumarse, pero los activos siguen cargando. Se puede volver a **Abrir**.
+- **Generar código nuevo** (menú ⋮): el código anterior deja de funcionar, por ejemplo si se difundió donde no debía.
+- **Finalizar** (menú ⋮): nadie carga más y el código deja de funcionar. No se puede deshacer; lo cargado se conserva.
+- **Eliminar** (menú ⋮): solo si todavía no se sumó nadie.
+
+**Gestionar los colaboradores de una convocatoria:** botón **Colaboradores**.
+- Filtrá por estado (*Por aprobar*, *Activos*, *Dados de baja*, *Rechazados*) y buscá por nombre, DNI o email.
+- Cada fila tiene sus botones: **Aceptar** o **Rechazar** (solicitudes), **Dar de baja** (activos) y **Reactivar**.
+- **De a varios:** marcá las casillas (la del título marca toda la página) y usá la barra que aparece arriba.
+- **Todos de una vez:** **Aplicar a los N filtrados** actúa sobre todos los que cumplen el filtro, aunque estén
+  en otras páginas. Por ejemplo: filtro *Por aprobar* → *Aplicar a los 250 filtrados* → *Aceptar*.
+
+> **Dejar de recibir aportes de alguien:** usá **Dar de baja** (o **Rechazar** si todavía no lo aprobaste).
+> Esa persona no puede cargar más consumos **ni volver a sumarse con el código**. Lo que ya cargó se conserva.
+> Si cambiás de opinión, usá **Reactivar**.
+
+### Invitar a un colaborador por email (titular)
+1. **Colaboraciones → Invitar por email**.
 2. Completá:
    - **Domicilio** donde va a colaborar.
    - **Email del colaborador** (tiene que tener una cuenta en la aplicación).
@@ -298,10 +336,21 @@ domicilio del titular**.
    - **Mensaje (opcional)**, por ejemplo: "Cargá los km que hacés para venir a la oficina cada mes".
 3. **Enviar invitación**. Queda *pendiente* hasta que la otra persona responda.
 
-En **Mis colaboradores** ves cada colaboración, su estado y cuánto CO₂ aportó. Podés **Editar** (períodos y tipos)
+En **Invitaciones por email** ves cada colaboración, su estado y cuánto CO₂ aportó. Podés **Editar** (períodos y tipos)
 o **Finalizar** la colaboración. Al finalizar, los registros ya cargados se conservan.
 
-### Responder una invitación (colaborador)
+### Sumarte a una convocatoria con un código (colaborador)
+1. **Colaboraciones → Sumarme con un código**.
+2. Escribí el código que te pasaron (da igual con o sin guion, en mayúsculas o minúsculas) y **Buscar**.
+3. Revisá a quién pertenece, los períodos y qué vas a poder cargar. Si es correcto, **Sumarme**.
+4. Según cómo esté configurada, quedás **aceptado** al instante o **esperando aprobación** del titular.
+   Lo ves en la pestaña **Donde colaboro**; mientras esperás, podés **Cancelar solicitud**.
+5. Una vez aceptado, cargás consumos igual que con una invitación (ver abajo).
+
+Si el código "no existe", revisá que esté bien escrito o pedile uno nuevo al titular (puede haberlo cambiado o
+haber finalizado la convocatoria). Por seguridad, después de 20 intentos en 15 minutos hay que esperar.
+
+### Responder una invitación por email (colaborador)
 1. Cuando te invitan, aparece un número junto a **Colaboraciones** en el menú.
 2. Entrá, revisá quién te invitó y qué podés cargar, y elegí **Aceptar** o **Rechazar**.
 3. Si aceptás, en **Nuevo registro** vas a ver ese domicilio en el grupo **Como colaborador**.

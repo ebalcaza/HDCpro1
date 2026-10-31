@@ -102,6 +102,22 @@ export const registrosApi = {
   eliminar: (id) => api.delete(`/registros/${id}`),
 }
 
+/** Convocatorias (v2.2): colaboración masiva por código */
+export const convocatoriasApi = {
+  listar: () => api.get('/convocatorias'),
+  obtener: (id) => api.get(`/convocatorias/${id}`),
+  crear: (d) => api.post('/convocatorias', d),
+  actualizar: (id, d) => api.put(`/convocatorias/${id}`, d),
+  cambiarEstado: (id, estado) => api.put(`/convocatorias/${id}/estado`, { estado }),
+  regenerarCodigo: (id) => api.post(`/convocatorias/${id}/codigo`),
+  eliminar: (id) => api.delete(`/convocatorias/${id}`),
+  miembros: (id, params) => api.get(`/convocatorias/${id}/miembros`, { params }),
+  accion: (id, d) => api.post(`/convocatorias/${id}/miembros/accion`, d),
+  // Colaborador: ver a qué corresponde un código y sumarse
+  vistaPrevia: (codigo) => api.post('/convocatorias/codigo/vista-previa', { codigo }),
+  unirse: (codigo) => api.post('/convocatorias/unirse', { codigo }),
+}
+
 export const colaboracionesApi = {
   enviadas: () => api.get('/colaboraciones/enviadas'),
   recibidas: () => api.get('/colaboraciones/recibidas'),

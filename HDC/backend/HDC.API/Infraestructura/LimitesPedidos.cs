@@ -12,6 +12,7 @@ namespace HDC.API.Infraestructura;
 public static class LimitesPedidos
 {
     public const string Recuperacion = "recuperacion";
+    public const string CodigoConvocatoria = "codigo-convocatoria";
 
     /// <summary>Máximo de pedidos por IP en cada ventana de tiempo.</summary>
     private const int MaximoPedidos = 5;
@@ -42,6 +43,13 @@ public static class LimitesPedidos
             o.AddPolicy(Recuperacion, http => RateLimitPartition.GetFixedWindowLimiter(
                 http.Connection.RemoteIpAddress?.ToString() ?? "desconocida",
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = MaximoPedidos, Window = Ventana, QueueLimit = 0 }));
+
+            // Códigos de convocatoria: 20 intentos cada 15 minutos por USUARIO (el endpoint exige sesión).
+            // Alcanza de sobra para equivocarse al tipear, pero hace inútil probar códigos al azar
+            // (hay ~1 billón de combinaciones).
+            o.AddPolicy(CodigoConvocatoria, http => RateLimitPartition.GetFixedWindowLimiter(
+                http.User.FindFirst("sub")?.Value ?? http.Connection.RemoteIpAddress?.ToString() ?? "desconocida",
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = Ventana, QueueLimit = 0 }));
         });
 
         return services;

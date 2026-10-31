@@ -1,6 +1,6 @@
 # Documentación técnica — Huella de Carbono (HDC)
 
-> **Última actualización:** 31/10/2026 · Versión del sistema: 2.1 (ver [CHANGELOG](CHANGELOG.md))
+> **Última actualización:** 31/10/2026 · Versión del sistema: 2.2 (ver [CHANGELOG](CHANGELOG.md))
 
 Descripción técnica del sistema para el equipo de desarrollo: arquitectura, tecnologías, modelo de datos,
 API, seguridad y decisiones de diseño. Para instalarlo y trabajarlo, ver la
@@ -17,6 +17,7 @@ API, seguridad y decisiones de diseño. Para instalarlo y trabajarlo, ver la
 8. [Rendimiento](#8-rendimiento)
 9. [Conceptos del dominio](#9-conceptos-del-dominio)
 10. [Decisiones de diseño](#10-decisiones-de-diseño)
+11. [Convocatorias](#11-convocatorias)
 
 ---
 
@@ -93,7 +94,7 @@ descarga la geografía de georef y luego los datos de prueba (si están habilita
 | `src/api/` | `cliente.js` (axios, token JWT, manejo de errores y sesión vencida), `servicios.js` (todas las llamadas) |
 | `src/context/` | `AuthContext` (sesión y permisos), `PreferenciasContext` (tema, accesibilidad), `UIContext` (avisos) |
 | `src/pages/publicas/` | Login, Registro, OlvideContrasena, RestablecerContrasena |
-| `src/pages/usuario/` | Dashboard, Domicilios, MisEmisiones, RegistroForm/Detalle, FuentesEmision (sección informativa), Colaboraciones, Reportes, Perfil |
+| `src/pages/usuario/` | Dashboard, Domicilios, MisEmisiones, RegistroForm/Detalle, FuentesEmision (sección informativa), Colaboraciones, Convocatorias (formulario, "sumarme con un código", listado), ConvocatoriaDetalle (miembros), Reportes, Perfil |
 | `src/pages/admin/` | Panel, Fuentes, Usuarios, Roles, Permisos, Catálogos |
 | `src/components/` | Componentes reutilizables (tablas, formularios, gráficos, layout) |
 | `src/utils/` | Formatos, colores, PDF (carga diferida) |
@@ -123,7 +124,8 @@ fuente de verdad (no se usan migraciones de EF). Tablas y columnas en minúscula
 | Emisiones | `domicilio` | Lugar de medición de un usuario; guarda el total acumulado de kg CO₂ |
 | | `registros` | Cabecera: domicilio + período (día 1 del mes) + quién cargó |
 | | `detalle_registro` | Consumo de una fuente: consumo, factor congelado, kg CO₂ |
-| Colaboración | `colaboracion`, `colaboracion_tipo_emision` | Invitación a cargar ciertos tipos de emisión en un domicilio |
+| Colaboración | `colaboracion`, `colaboracion_tipo_emision` | Permiso de un usuario para cargar ciertos tipos de emisión en un domicilio ajeno (por invitación o por convocatoria) |
+| | `convocatoria`, `convocatoria_tipo_emision` | Colaboración masiva por **código**: períodos, tipos y aprobación definidos una vez para todos sus miembros |
 | Reportes | `reporte` | Filtros guardados (JSON) para regenerar un reporte |
 
 Relaciones principales:
@@ -133,6 +135,7 @@ rol 1─N usuario 1─1 individuo | organizacion
 usuario 1─N domicilio 1─N registros 1─N detalle_registro N─1 fuente_emision N─1 tipo_emision N─1 alcance
 domicilio N─1 ciudad N─1 distrito N─1 provincia
 domicilio 1─N colaboracion N─1 usuario (colaborador);  colaboracion 1─N colaboracion_tipo_emision
+domicilio 1─N convocatoria 1─N colaboracion (miembros);  convocatoria 1─N convocatoria_tipo_emision
 usuario 1─N recuperacion_contrasena
 ```
 
@@ -159,6 +162,8 @@ La documentación interactiva completa está en **`/swagger`**.
 | Domicilios    | `GET/POST domicilios`, `GET/PUT/DELETE domicilios/{id}` | `GESTIONAR_DOMICILIOS` |
 | Registros     | `GET/POST registros` (paginado), `GET registros/domicilios`, `GET/PUT/DELETE registros/{id}` | `GESTIONAR_EMISIONES` o `COLABORAR` |
 | Colaboraciones| `GET enviadas/recibidas`, `POST`, `PUT {id}`, `POST {id}/aceptar · rechazar · revocar` | `GESTIONAR_COLABORACIONES` / `COLABORAR` |
+| Convocatorias (titular) | `GET/POST convocatorias`, `GET/PUT/DELETE convocatorias/{id}`, `PUT {id}/estado`, `POST {id}/codigo`, `GET {id}/miembros` (paginado), `POST {id}/miembros/accion` | `GESTIONAR_COLABORACIONES` |
+| Convocatorias (colaborador) | `POST convocatorias/codigo/vista-previa`, `POST convocatorias/unirse` | `COLABORAR`, límite 20 intentos / 15 min por usuario |
 | Dashboard     | `GET dashboard` | `VER_DASHBOARD` |
 | Reportes      | `POST reportes/generar`, `POST reportes/global/generar`, `GET/POST/DELETE reportes/guardados` | `GENERAR_REPORTES` / `REPORTES_GLOBALES` |
 | Catálogos     | `alcances`, `unidades`, `tipos-emision`, `fuentes` (CRUD), `POST catalogos/georef/sincronizar` | Lectura: autenticado · Escritura: `GESTIONAR_CATALOGOS` / `GESTIONAR_FUENTES` |
@@ -166,7 +171,7 @@ La documentación interactiva completa está en **`/swagger`**.
 | Usuarios (admin) | `GET usuarios` (paginado), `GET usuarios/resumen`, `GET usuarios/{id}`, `PUT usuarios/{id}/estado` | `GESTIONAR_USUARIOS` |
 | Salud | `GET salud` | Público |
 
-Listados paginados (`registros`, `usuarios`): devuelven `{ items, total }`; tamaños 10, 20, 50 o 100.
+Listados paginados (`registros`, `usuarios`, `convocatorias/{id}/miembros`): devuelven `{ items, total }`; tamaños 10, 20, 50 o 100.
 
 ## 6. Seguridad
 
@@ -177,7 +182,8 @@ Listados paginados (`registros`, `usuarios`): devuelven `{ items, total }`; tama
   y el frontend oculta lo que el usuario no puede usar. El administrador puede crear roles nuevos.
 - **Validación** de todos los datos de entrada con atributos en los DTOs (misma regla en el frontend).
 - **Errores:** las respuestas nunca incluyen detalles internos; el detalle queda en el log de la API.
-- **Límite de pedidos** (429) en los endpoints públicos de recuperación de contraseña.
+- **Límite de pedidos** (429): recuperación de contraseña (5 cada 15 min por IP) y códigos de convocatoria
+  (20 cada 15 min por usuario, para que no se puedan adivinar probando).
 - **Base de datos y Mailpit** publicados solo en `127.0.0.1` (no accesibles desde otra máquina).
 - **Secretos** solo en `.env` / variables de entorno (el `.env` está en `.gitignore`).
 
@@ -247,6 +253,8 @@ emails pendientes, esos emails se pierden y el usuario debe volver a pedir el li
 - **Colaboraciones:** el titular invita a un usuario registrado a un domicilio, por un rango de períodos y
   ciertos tipos de emisión. Aceptada y vigente, el colaborador carga solo esos tipos; los registros suman
   al domicilio del titular y quedan marcados con quién los cargó.
+- **Convocatorias (v2.2):** para sumar a muchas personas. El titular crea una convocatoria para un domicilio
+  y comparte su código. Ver la sección 11.
 - **Roles iniciales:** Administrador (panel, fuentes, usuarios, roles/permisos, catálogos, reportes globales);
   Individuo y Organización (dashboard, domicilios, emisiones, colaboraciones, reportes). Los permisos del
   sistema y los 3 roles iniciales no se pueden borrar.
@@ -264,3 +272,55 @@ emails pendientes, esos emails se pierden y el usuario debe volver a pedir el li
 | SMTP genérico (MailKit) en lugar del SDK de un proveedor | Se cambia de proveedor solo con configuración |
 | Cola de emails en memoria | Simple y suficiente para el volumen esperado; una cola persistente (tabla o broker) sería el paso siguiente si el volumen crece |
 | `REGISTROS` como cabecera + `DETALLE_REGISTRO` | Un mes tiene varios consumos; cambios respecto del esquema original detallados en el CHANGELOG (v1.0) |
+| Miembros de convocatoria como filas de `colaboracion` | Toda la lógica de carga y validación de consumos sigue igual; solo cambia de dónde salen los tipos habilitados |
+| Acciones masivas con `ExecuteUpdate` (un UPDATE en SQL) | Aceptar o dar de baja a miles de personas es instantáneo y no carga filas en memoria |
+
+## 11. Convocatorias
+
+Archivos: `HDC.BLL/Servicios/ConvocatoriaServicio.cs`, `HDC.DAL/Repositorios/ConvocatoriaRepositorio.cs`,
+`HDC.API/Controllers/ConvocatoriasController.cs`, `frontend/src/pages/usuario/Convocatorias.jsx` y `ConvocatoriaDetalle.jsx`.
+
+**Problema que resuelve:** una organización puede tener miles de colaboradores; invitarlos uno por uno por
+email no escala. Con una convocatoria el titular comparte un código y cada persona se suma sola.
+
+**Modelo:**
+- `convocatoria`: domicilio, nombre, descripción, **código** (8 caracteres, único), períodos, aprobación automática y estado.
+- `convocatoria_tipo_emision`: tipos de emisión que pueden cargar sus miembros.
+- Cada persona que se suma es una fila de `colaboracion` con `id_convocatoria`. Así la validación de la carga
+  (`RegistroServicio`) es la misma que para las invitaciones; `Colaboracion.IdsTiposHabilitados()` devuelve los
+  tipos de la convocatoria si la colaboración nació de una.
+- Los **tipos** se leen siempre de la convocatoria (no se copian). Los **períodos** se copian a cada miembro
+  porque los usa la consulta de colaboraciones vigentes; al editar la convocatoria se sincronizan con un único UPDATE.
+- `colaboracion.id_usuario_baja`: quién rechazó o finalizó la colaboración (el titular o el propio colaborador).
+
+**Estados:**
+
+| Convocatoria | Significado |
+|---|---|
+| `ABIERTA` | Se puede sumar gente con el código |
+| `CERRADA` | No entra nadie nuevo; los aceptados siguen cargando. Se puede reabrir |
+| `FINALIZADA` | Nadie carga más: los aceptados pasan a `REVOCADA` y las solicitudes a `RECHAZADA`. El código deja de funcionar. No se reabre |
+
+| Miembro (`colaboracion.estado`) | Significado | Acciones del titular |
+|---|---|---|
+| `SOLICITADA` | Se sumó con el código y espera aprobación | Aceptar · Rechazar |
+| `ACEPTADA` | Puede cargar consumos | Dar de baja |
+| `RECHAZADA` / `REVOCADA` | Rechazado o dado de baja | Reactivar (solo si lo decidió el titular) |
+
+**Reglas de reingreso con el código:**
+- Ya activo o esperando aprobación → 409 "Ya formás parte".
+- Rechazado o dado de baja **por el titular** → 403: no puede volver a entrar (solo el titular puede reactivarlo).
+- Se fue **por su cuenta** → puede volver a sumarse; se reutiliza su fila y conserva el historial.
+
+**Acciones masivas** (`POST convocatorias/{id}/miembros/accion`): sobre una lista de ids o sobre **todos** los que
+cumplen el filtro (estado + búsqueda), aunque no estén en la página visible. Cada acción solo modifica a los
+miembros cuyo estado lo permite (por ejemplo, "aceptar" ignora a los ya aceptados) y devuelve cuántos cambiaron.
+
+**Código:** 8 caracteres de un alfabeto sin `0/O` ni `1/I` (32^8 ≈ 1,1 billón de combinaciones), generado con
+`RandomNumberGenerator`. Se guarda sin guion y se muestra como `XXXX-XXXX`; al ingresarlo se ignoran guiones,
+espacios y minúsculas. El titular puede regenerarlo; un código inexistente y uno finalizado dan el mismo mensaje.
+Antes de sumarse, el usuario ve una vista previa (titular, domicilio, períodos, tipos) para no sumarse por error.
+
+**Escala:** el listado de miembros se pagina, ordena y filtra en SQL (el aporte de cada uno se calcula con
+subconsultas); los conteos por estado son un `GROUP BY`; hay índice `(id_convocatoria, estado)`. La lista de
+"Invitaciones por email" excluye a los miembros de convocatorias para no traer miles de filas.

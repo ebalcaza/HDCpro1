@@ -116,9 +116,10 @@ if (app.Environment.IsDevelopment() || config.GetValue<bool>("Swagger:Habilitado
 }
 
 app.UseCors();
-app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+// Después de la autenticación: el límite de los códigos de convocatoria se cuenta por usuario (claim "sub")
+app.UseRateLimiter();
 
 app.MapGet("/api/salud", () => Results.Ok(new { estado = "ok", fecha = DateTime.Now }));
 app.MapControllers();

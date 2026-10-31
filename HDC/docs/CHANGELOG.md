@@ -9,6 +9,83 @@ cambió, por qué y qué archivos se tocaron.
 
 ---
 
+## [2.2] — 31/10/2026 — Convocatorias: colaboración masiva por código
+
+Pedido original: `textos/fix5.txt`.
+
+**Por qué:** una organización puede tener 1.000, 2.000 o 3.000 colaboradores, e invitarlos uno por uno por
+email no escala. Se pidió que el titular comparta un código para que las personas se sumen solas, y que pueda
+editar qué y en qué períodos cargan, aceptar las colaboraciones de a una, todas o filtradas, y gestionarlas.
+
+**Decisiones tomadas con el autor:**
+- Disponible para **cualquier titular** (individuos y organizaciones), no solo organizaciones.
+- Esquema de **convocatorias**: cada una tiene su código, domicilio, períodos y tipos de emisión. Un titular
+  puede tener varias (por ejemplo, una por planta o por grupo).
+- **Aprobación automática opcional** por convocatoria.
+- El titular puede **dejar de recibir aportes de cualquier persona en cualquier momento** (dar de baja o
+  rechazar, de a uno o en grupo). Quien fue dado de baja por el titular no puede volver a entrar con el código.
+- No se puede "buscar perfiles" por nombre: el código solo identifica la convocatoria, para no exponer qué
+  personas u organizaciones usan el sistema. Antes de sumarse, el usuario ve una vista previa.
+- Las invitaciones por email se mantienen para casos puntuales.
+
+**Qué se hizo:**
+
+| Archivo | Cambio |
+|---|---|
+| `backend/HDC.DAL/Scripts/HDC_base_datos.sql` | Tablas `convocatoria` y `convocatoria_tipo_emision`; columnas `colaboracion.id_convocatoria` e `id_usuario_baja` (`ADD COLUMN IF NOT EXISTS`); estado `SOLICITADA` (bloque `DO` que reemplaza la restricción de estados solo si hace falta, para bases de versiones anteriores); índices `(id_convocatoria, estado)` y `convocatoria(id_domicilio)` |
+| `backend/HDC.Entity/Entities/Emisiones.cs` | Entidades `Convocatoria`, `ConvocatoriaTipoEmision`, constantes `EstadoConvocatoria`, estado `Solicitada`, `Colaboracion.IdConvocatoria/IdUsuarioBaja` y `IdsTiposHabilitados()` |
+| `backend/HDC.Entity/Dtos/ColaboracionDtos.cs` | DTOs de convocatorias (alta, edición, estado, miembros, acciones masivas, vista previa del código); `ColaboracionDto` informa la convocatoria de origen |
+| `backend/HDC.DAL/HdcDbContext.cs` | Mapeo de las tablas y columnas nuevas |
+| `backend/HDC.DAL/Repositorios/ConvocatoriaRepositorio.cs` | **Nuevo.** Listados con conteos y aportes (`GROUP BY`), miembros paginados en SQL, filtros y acciones masivas con `ExecuteUpdate` |
+| `backend/HDC.DAL/Repositorios/EmisionRepositorios.cs` | `ColaboracionRepositorio` incluye la convocatoria (sus tipos) y las "invitaciones enviadas" excluyen a los miembros de convocatorias |
+| `backend/HDC.BLL/Servicios/ConvocatoriaServicio.cs` | **Nuevo.** Reglas de negocio: crear/editar (los cambios valen para todos los miembros), abrir/cerrar/finalizar, regenerar código, eliminar (solo sin miembros), sumarse con código, reglas de reingreso y acciones masivas |
+| `backend/HDC.BLL/Servicios/ColaboracionServicio.cs` | Registra quién dio de baja (`IdUsuarioBaja`), permite cancelar una solicitud, impide editar individualmente una colaboración de convocatoria y usa los tipos de la convocatoria |
+| `backend/HDC.BLL/Servicios/RegistroServicio.cs` | La validación de carga usa `IdsTiposHabilitados()` (tipos de la convocatoria si corresponde) |
+| `backend/HDC.API/Controllers/ConvocatoriasController.cs` | **Nuevo.** Endpoints del titular y del colaborador |
+| `backend/HDC.API/Infraestructura/LimitesPedidos.cs`, `Program.cs` | Límite de 20 intentos de código cada 15 min por usuario; `UseRateLimiter` pasa después de la autenticación para poder identificar al usuario |
+| `backend/HDC.BLL/Servicios/DatosPruebaServicio.cs` | Convocatoria de prueba de EcoSur (código `ECSR-2K26`) con 30 empleados en distintos estados. Los bloques de datos de prueba pasan a ser idempotentes por separado |
+| `frontend/src/pages/usuario/Convocatorias.jsx` | **Nuevo.** Formulario de convocatoria, modal "Sumarme con un código" con vista previa y pestaña con las convocatorias (código, copiar, conteos, acciones) |
+| `frontend/src/pages/usuario/ConvocatoriaDetalle.jsx` | **Nueva** pantalla de miembros: paginado en el servidor, filtro por estado, buscador, selección con casillas, acciones por fila, sobre los seleccionados o sobre todos los filtrados |
+| `frontend/src/pages/usuario/Colaboraciones.jsx` | Pestañas "Invitaciones por email", "Convocatorias" y "Donde colaboro"; botones "Sumarme con un código" y "Nueva convocatoria"; estado "Esperando aprobación" y "Cancelar solicitud" |
+| `frontend/src/components/comunes/Selectores.jsx` | `SelectorTipos` se movió acá para reutilizarlo |
+| `frontend/src/api/servicios.js`, `utils/formato.js`, `App.jsx` | `convocatoriasApi`, estados nuevos y ruta `/colaboraciones/convocatorias/:id` |
+| `backend/HDC.BLL/HDC.BLL.csproj` | **Seguridad:** MailKit 4.9.0 → 4.18.2. La 4.9.0 (agregada en la v2.0) tiene una vulnerabilidad moderada ([GHSA-9j88-vvj5-vhgr](https://github.com/advisories/GHSA-9j88-vvj5-vhgr)). `dotnet list package --vulnerable` ya no reporta paquetes vulnerables. Probado en Docker: el email de recuperación de contraseña llega a Mailpit |
+
+Documentos actualizados: MANUAL_USUARIO (§ 3 menú, § 9 Colaboraciones), DOCUMENTACION_TECNICA (§ 3.2, § 4, § 5,
+§ 6, § 9, § 10 y nueva § 11 Convocatorias), GUIA_DESARROLLADOR (§ 3 datos de prueba). Nueva [GUIA_PRUEBAS](GUIA_PRUEBAS.md): resumen de lo hecho en v2.0–v2.2
+y pruebas paso a paso en el navegador. Se completaron los comentarios de los métodos de `ConvocatoriaServicio`,
+`ConvocatoriaRepositorio`, `AccionMiembrosRequest` y `Convocatorias.jsx` que no tenían.
+
+**Verificación realizada** (API local contra la base de la v2.1 existente; luego imágenes de Docker):
+
+| Prueba | Resultado |
+|---|---|
+| `dotnet build` y `npm run build` | Sin errores |
+| Migración sobre la base existente (tablas, columnas, restricción de estados) y datos de prueba | OK |
+| Listado de convocatorias con conteos (20 activos, 7 por aprobar, 3 bajas) y aportes | OK |
+| Miembros paginados, filtro por estado, búsqueda y orden por aporte | OK |
+| Aceptar 2 seleccionados / rechazar todos los filtrados / repetir sobre ya aceptados | 2 / 5 / 0 afectados |
+| Dar de baja a todos los que coinciden con una búsqueda; reactivar a todos | 9 / 17 afectados |
+| Otro usuario consulta los miembros | 403 |
+| Vista previa con código en minúsculas y con espacio; código inexistente | OK / 404 |
+| El titular intenta sumarse a su propia convocatoria | 400 |
+| Sumarse (aprobación manual) / sumarse de nuevo | SOLICITADA / 409 |
+| Rechazado por el titular intenta volver con el código | 403 |
+| Se fue por su cuenta y vuelve | Vuelve a SOLICITADA |
+| Convocatoria cerrada: sumarse | 400 |
+| Aprobación automática: sumarse | ACEPTADA al instante |
+| Cargar un tipo habilitado / no habilitado | 200 / 403 |
+| El titular agrega un tipo a la convocatoria y el miembro lo carga | 200 (el cambio alcanza a todos) |
+| Miembro dado de baja intenta cargar | 403 |
+| Eliminar convocatoria con miembros | 409 |
+| Finalizar: miembros dados de baja, el código deja de funcionar, no se puede reabrir | OK / 404 / 400 |
+| 21 intentos de código en 15 minutos | El 21.º responde 429 |
+
+Limitación conocida: los buscadores distinguen tildes ("lucia" no encuentra "Lucía"), igual que los demás
+buscadores del sistema. Se podría resolver con la extensión `unaccent` de PostgreSQL.
+
+---
+
 ## [2.1] — 31/10/2026 — Sección "Fuentes de emisión" para usuarios y corrección de catálogos del admin
 
 ### 2.1.1 Nueva sección "Fuentes de emisión" (Mi huella)

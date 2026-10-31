@@ -4,7 +4,7 @@ Aplicación web para que personas y organizaciones calculen su **huella de carbo
 consumos mensuales (gas, electricidad, combustible, transporte, residuos, agua…), vean su evolución y
 descarguen reportes.
 
-**Versión 2.1** · React 19 + .NET 9 + PostgreSQL 17 · Docker Compose
+**Versión 2.2** · React 19 + .NET 9 + PostgreSQL 17 · Docker Compose
 
 ## Documentación
 
@@ -13,6 +13,7 @@ descarguen reportes.
 | [Manual de usuario](docs/MANUAL_USUARIO.md) | Usuarios finales | Cómo usar cada pantalla, recuperar la contraseña, preguntas frecuentes |
 | [Guía del desarrollador](docs/GUIA_DESARROLLADOR.md) | Desarrolladores | Levantar el proyecto, variables, datos de prueba, desarrollo local, producción, problemas frecuentes |
 | [Documentación técnica](docs/DOCUMENTACION_TECNICA.md) | Equipo técnico | Arquitectura, tecnologías, modelo de datos, API, seguridad, decisiones de diseño |
+| [Guía de pruebas](docs/GUIA_PRUEBAS.md) | Quien prueba el sistema | Resumen de lo hecho en v2.0–v2.2 y pruebas paso a paso en el navegador |
 | [Historial de cambios](docs/CHANGELOG.md) | Todos | Qué cambió en cada versión, por qué y en qué archivos |
 
 ## Inicio rápido

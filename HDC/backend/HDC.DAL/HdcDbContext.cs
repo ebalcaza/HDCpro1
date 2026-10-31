@@ -31,6 +31,8 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
     public DbSet<ColaboracionTipoEmision> ColaboracionTiposEmision => Set<ColaboracionTipoEmision>();
     public DbSet<Reporte> Reportes => Set<Reporte>();
     public DbSet<RecuperacionContrasena> RecuperacionesContrasena => Set<RecuperacionContrasena>();
+    public DbSet<Convocatoria> Convocatorias => Set<Convocatoria>();
+    public DbSet<ConvocatoriaTipoEmision> ConvocatoriaTiposEmision => Set<ConvocatoriaTipoEmision>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
@@ -241,7 +243,38 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.FechaInvitacion).HasColumnName("FECHA_INVITACION").HasColumnType("timestamp(3) without time zone");
             e.Property(x => x.FechaRespuesta).HasColumnName("FECHA_RESPUESTA").HasColumnType("timestamp(3) without time zone");
             e.HasOne(x => x.Domicilio).WithMany().HasForeignKey(x => x.IdDomicilio);
+            e.Property(x => x.IdConvocatoria).HasColumnName("ID_CONVOCATORIA");
+            e.Property(x => x.IdUsuarioBaja).HasColumnName("ID_USUARIO_BAJA");
             e.HasOne(x => x.Colaborador).WithMany().HasForeignKey(x => x.IdUsuarioColaborador);
+            e.HasOne(x => x.Convocatoria).WithMany(c => c.Miembros).HasForeignKey(x => x.IdConvocatoria);
+        });
+
+        mb.Entity<Convocatoria>(e =>
+        {
+            e.ToTable("CONVOCATORIA");
+            e.HasKey(x => x.IdConvocatoria);
+            e.Property(x => x.IdConvocatoria).HasColumnName("ID_CONVOCATORIA");
+            e.Property(x => x.IdDomicilio).HasColumnName("ID_DOMICILIO");
+            e.Property(x => x.Nombre).HasColumnName("NOMBRE").HasMaxLength(150);
+            e.Property(x => x.Descripcion).HasColumnName("DESCRIPCION").HasMaxLength(500);
+            e.Property(x => x.Codigo).HasColumnName("CODIGO").HasMaxLength(8);
+            e.Property(x => x.PeriodoDesde).HasColumnName("PERIODO_DESDE");
+            e.Property(x => x.PeriodoHasta).HasColumnName("PERIODO_HASTA");
+            e.Property(x => x.AprobacionAutomatica).HasColumnName("APROBACION_AUTOMATICA");
+            e.Property(x => x.Estado).HasColumnName("ESTADO").HasMaxLength(20);
+            e.Property(x => x.FechaCreacion).HasColumnName("FECHA_CREACION").HasColumnType("timestamp(3) without time zone");
+            e.Property(x => x.FechaModificacion).HasColumnName("FECHA_MODIFICACION").HasColumnType("timestamp(3) without time zone");
+            e.HasOne(x => x.Domicilio).WithMany().HasForeignKey(x => x.IdDomicilio);
+        });
+
+        mb.Entity<ConvocatoriaTipoEmision>(e =>
+        {
+            e.ToTable("CONVOCATORIA_TIPO_EMISION");
+            e.HasKey(x => new { x.IdConvocatoria, x.IdTipoEmision });
+            e.Property(x => x.IdConvocatoria).HasColumnName("ID_CONVOCATORIA");
+            e.Property(x => x.IdTipoEmision).HasColumnName("ID_TIPO_EMISION");
+            e.HasOne(x => x.Convocatoria).WithMany(c => c.TiposEmision).HasForeignKey(x => x.IdConvocatoria);
+            e.HasOne(x => x.TipoEmision).WithMany().HasForeignKey(x => x.IdTipoEmision);
         });
 
         mb.Entity<ColaboracionTipoEmision>(e =>

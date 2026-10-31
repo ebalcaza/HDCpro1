@@ -55,7 +55,16 @@ export const fechaHora = (f) => (f ? new Date(f).toLocaleString('es-AR', { dateS
 
 export const ESTADOS_COLABORACION = {
   PENDIENTE: { texto: 'Pendiente', clase: 'badge-marron', icono: 'bi-hourglass-split' },
+  // Se sumó con el código de una convocatoria y espera la aprobación del titular
+  SOLICITADA: { texto: 'Esperando aprobación', clase: 'badge-azul', icono: 'bi-hourglass-split' },
   ACEPTADA: { texto: 'Aceptada', clase: 'badge-verde', icono: 'bi-check2-circle' },
   RECHAZADA: { texto: 'Rechazada', clase: 'badge-gris', icono: 'bi-x-circle' },
   REVOCADA: { texto: 'Revocada', clase: 'badge-rojo', icono: 'bi-slash-circle' },
+}
+
+/** Estados de una convocatoria de colaboración (v2.2) */
+export const ESTADOS_CONVOCATORIA = {
+  ABIERTA: { texto: 'Abierta', clase: 'badge-verde', icono: 'bi-door-open', ayuda: 'Se pueden sumar personas con el código' },
+  CERRADA: { texto: 'Cerrada', clase: 'badge-marron', icono: 'bi-door-closed', ayuda: 'No entra nadie nuevo; los miembros siguen cargando' },
+  FINALIZADA: { texto: 'Finalizada', clase: 'badge-gris', icono: 'bi-flag', ayuda: 'Nadie carga más' },
 }

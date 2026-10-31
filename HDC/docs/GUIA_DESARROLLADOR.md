@@ -1,6 +1,6 @@
 # Guía del desarrollador — Huella de Carbono (HDC)
 
-> **Última actualización:** 31/10/2026 · Versión del sistema: 2.1 (ver [CHANGELOG](CHANGELOG.md))
+> **Última actualización:** 31/10/2026 · Versión del sistema: 2.2 (ver [CHANGELOG](CHANGELOG.md))
 
 Cómo levantar el proyecto, trabajarlo como desarrollador y ponerlo en producción.
 La arquitectura y las decisiones técnicas están en la [Documentación técnica](DOCUMENTACION_TECNICA.md).
@@ -93,11 +93,15 @@ Con `DATOS_PRUEBA=true` en el `.env`, la API crea estas cuentas la primera vez q
 | `ADMIN_EMAIL` (`admin@hdc.com`)| Administrador | `ADMIN_CONTRASENA` del `.env` | Panel de administración completo                        |
 | `maria.gomez@prueba.com`       | Individuo     | `Prueba2026`             | Casa con 12 meses de consumos; Juan colabora cargando transporte; invitación pendiente de EcoSur |
 | `juan.perez@prueba.com`        | Individuo     | `Prueba2026`             | Casa con 12 meses de consumos; colabora en la casa de María |
-| `contacto@ecosur.prueba.com`   | Organización  | `Prueba2026`             | Planta industrial con 12 meses de consumos; invitó a María |
+| `contacto@ecosur.prueba.com`   | Organización  | `Prueba2026`             | Planta industrial con 12 meses de consumos; invitó a María; convocatoria **ECSR-2K26** |
+| `empleado01@ecosur.prueba.com` … `empleado30@…` | Individuo | `Prueba2026` | Miembros de la convocatoria de EcoSur: 01–20 activos con consumos, 21–27 esperando aprobación, 28–30 dados de baja |
 
 - Los consumos son inventados pero realistas: más gas en invierno, más electricidad en verano. Así el
   Dashboard, los gráficos y los reportes muestran variaciones.
-- Es idempotente: si `maria.gomez@prueba.com` ya existe, no se vuelve a cargar nada.
+- Para probar las convocatorias: entrá como `maria.gomez@prueba.com` → Colaboraciones → **Sumarme con un código** →
+  `ECSR-2K26`. Después entrá como EcoSur → Colaboraciones → Convocatorias → **Colaboradores** para aprobarla.
+- Es idempotente por bloques: si `maria.gomez@prueba.com` ya existe no se recrean los usuarios; si la
+  convocatoria `ECSR2K26` ya existe no se recrea. Por eso una base de una versión anterior recibe los bloques nuevos.
 - Para **regenerarlos**: `docker compose down -v` (borra la base) y `docker compose up -d`.
 - El código está en `backend/HDC.BLL/Servicios/DatosPruebaServicio.cs`.
 - **En producción `DATOS_PRUEBA` debe ser `false`.**

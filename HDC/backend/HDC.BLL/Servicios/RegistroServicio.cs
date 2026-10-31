@@ -116,7 +116,8 @@ public class RegistroServicio(
         if (vigentes.Count == 0)
             throw new ProhibidoException("No tenés una colaboración aceptada en este domicilio para ese período");
 
-        var tiposPermitidos = vigentes.SelectMany(c => c.TiposEmision.Select(t => t.IdTipoEmision)).ToHashSet();
+        // Tipos habilitados de cada colaboración vigente (los de su convocatoria, si nació de una)
+        var tiposPermitidos = vigentes.SelectMany(c => c.IdsTiposHabilitados()).ToHashSet();
         var usadas = await fuentes.ObtenerPorIdsAsync(detalles.Select(d => d.IdFuenteEmision).Distinct());
         var noPermitida = usadas.FirstOrDefault(f => !tiposPermitidos.Contains(f.IdTipoEmision));
         if (noPermitida != null)

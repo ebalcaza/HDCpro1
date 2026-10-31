@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { geoApi } from '../../api/servicios'
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -122,6 +122,25 @@ export function Chips({ opciones, seleccion, onChange, color }) {
           {seleccion.includes(o.valor) && <i className="bi bi-check2" />}
           {o.texto}
         </button>
+      ))}
+    </div>
+  )
+}
+
+/** Tipos de emisión agrupados por alcance, como chips (invitaciones y convocatorias de colaboración) */
+export function SelectorTipos({ tipos, seleccion, onChange }) {
+  const grupos = useMemo(() => {
+    const m = new Map()
+    tipos.forEach((t) => m.set(t.alcance, [...(m.get(t.alcance) || []), t]))
+    return [...m.entries()]
+  }, [tipos])
+  return (
+    <div className="d-flex flex-column gap-2">
+      {grupos.map(([alcance, ts]) => (
+        <div key={alcance}>
+          <div className="dato-etiqueta mb-1">{alcance}</div>
+          <Chips opciones={ts.map((t) => ({ valor: t.idTipoEmision, texto: t.nombre }))} seleccion={seleccion} onChange={onChange} />
+        </div>
       ))}
     </div>
   )

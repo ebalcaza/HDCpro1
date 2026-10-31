@@ -34,7 +34,15 @@ public class DatosPruebaServicio(HdcDbContext ctx, IConfiguration config, ILogge
     public async Task CrearAsync()
     {
         if (!config.GetValue<bool>("DatosPrueba:Habilitado")) return;
-        if (await ctx.Usuarios.AnyAsync(u => u.Email == EmailMaria)) return; // ya se cargaron
+        // Cada bloque es idempotente por separado: así una base creada con una versión anterior
+        // recibe los datos de prueba nuevos (ej. la convocatoria de la v2.2) sin duplicar los viejos.
+        if (!await ctx.Usuarios.AnyAsync(u => u.Email == EmailMaria)) await CrearUsuariosYConsumosAsync();
+        await CrearConvocatoriaAsync();
+    }
+
+    /// <summary>Usuarios de prueba, domicilios, 12 meses de consumos y colaboraciones individuales.</summary>
+    private async Task CrearUsuariosYConsumosAsync()
+    {
 
         var ciudades = await ctx.Ciudades.AsNoTracking()
             .Where(c => CiudadesPreferidas.Contains(c.Nombre.ToLower()))
@@ -146,6 +154,75 @@ public class DatosPruebaServicio(HdcDbContext ctx, IConfiguration config, ILogge
         ctx.ChangeTracker.Clear();
         logger.LogInformation("Datos de prueba creados ({Emails}) con la contraseña {Contrasena}",
             string.Join(", ", EmailMaria, EmailJuan, EmailEcoSur), ContrasenaPrueba);
+    }
+
+    /// <summary>Código fijo de la convocatoria de prueba, para poder escribirlo en la documentación.</summary>
+    public const string CodigoConvocatoriaPrueba = "ECSR2K26";
+    private const int EmpleadosPrueba = 30;
+
+    /// <summary>
+    /// Convocatoria de prueba (v2.2): EcoSur invita a su personal a cargar el transporte con el código ECSR-2K26.
+    /// 30 empleados de prueba: 20 aceptados (con consumos cargados), 7 solicitudes pendientes y 3 dados de baja.
+    /// </summary>
+    private async Task CrearConvocatoriaAsync()
+    {
+        if (await ctx.Convocatorias.AnyAsync(c => c.Codigo == CodigoConvocatoriaPrueba)) return; // ya se cargó
+        var ecoSur = await ctx.Usuarios.FirstOrDefaultAsync(u => u.Email == EmailEcoSur);
+        var planta = ecoSur is null ? null : await ctx.Domicilios.FirstOrDefaultAsync(d => d.IdUsuario == ecoSur.IdUsuario);
+        if (ecoSur is null || planta is null) return;
+
+        var fuentes = await ctx.FuentesEmision.AsNoTracking().ToDictionaryAsync(f => f.Nombre);
+        var colectivo = fuentes["Colectivo urbano"];
+        var auto = fuentes["Auto particular (nafta)"];
+        var ahora = DateTime.Now;
+        var mesActual = Mapeos.MesActual();
+        var desde = mesActual.AddMonths(-3);
+
+        var convocatoria = new Convocatoria
+        {
+            Domicilio = planta, Nombre = "Transporte del personal 2026", Codigo = CodigoConvocatoriaPrueba,
+            Descripcion = "Cargá los kilómetros que hacés cada mes para venir a la planta (colectivo, auto o moto).",
+            PeriodoDesde = desde, Estado = EstadoConvocatoria.Abierta, AprobacionAutomatica = false, FechaCreacion = ahora.AddMonths(-3),
+            // Colectivo y auto particular son del mismo tipo: "Transporte de colaboradores"
+            TiposEmision = [new ConvocatoriaTipoEmision { IdTipoEmision = colectivo.IdTipoEmision }]
+        };
+        ctx.Convocatorias.Add(convocatoria);
+
+        string[] nombres = ["Lucía", "Martín", "Sofía", "Diego", "Valentina", "Pablo", "Camila", "Nicolás", "Julieta", "Tomás"];
+        string[] apellidos = ["Fernández", "Rodríguez", "López", "Martínez", "García", "Romero", "Sosa", "Álvarez", "Torres", "Ruiz"];
+        var hash = AuthServicio.HashContrasena(ContrasenaPrueba);
+
+        for (var i = 1; i <= EmpleadosPrueba; i++)
+        {
+            var empleado = new Usuario
+            {
+                IdRol = RolesSistema.Individuo, Email = $"empleado{i:D2}@ecosur.prueba.com", Contrasena = hash, FechaAlta = ahora.AddMonths(-3),
+                Individuo = new Individuo { Nombres = nombres[(i - 1) % 10], Apellidos = apellidos[(i * 3 + i / 10) % 10], Dni = (40_000_000 + i).ToString() }
+            };
+            ctx.Usuarios.Add(empleado);
+
+            // 1-20 aceptados · 21-27 esperando aprobación · 28-30 dados de baja por EcoSur
+            var estado = i <= 20 ? EstadoColaboracion.Aceptada : i <= 27 ? EstadoColaboracion.Solicitada : EstadoColaboracion.Revocada;
+            ctx.Colaboraciones.Add(new Colaboracion
+            {
+                Domicilio = planta, Colaborador = empleado, Convocatoria = convocatoria, PeriodoDesde = desde,
+                Estado = estado, FechaInvitacion = ahora.AddDays(-80 + i), FechaRespuesta = estado == EstadoColaboracion.Solicitada ? null : ahora.AddDays(-79 + i),
+                IdUsuarioBaja = estado == EstadoColaboracion.Revocada ? ecoSur.IdUsuario : null
+            });
+
+            // Los aceptados ya cargaron sus km de los últimos meses (colectivo los pares, auto los impares)
+            if (estado != EstadoColaboracion.Aceptada) continue;
+            for (var p = desde; p <= mesActual; p = p.AddMonths(1))
+                Registrar(planta, empleado, p, ahora, (i % 2 == 0 ? colectivo : auto, 180 + i * 7));
+        }
+
+        await ctx.SaveChangesAsync();
+
+        // Se recalcula el total del domicilio con todos sus registros (los de la planta y los de los empleados)
+        planta.TotalKgCo2 = await ctx.Registros.Where(r => r.IdDomicilio == planta.IdDomicilio).SumAsync(r => r.TotalKgCo2);
+        await ctx.SaveChangesAsync();
+        ctx.ChangeTracker.Clear();
+        logger.LogInformation("Convocatoria de prueba creada (código {Codigo}) con {N} empleados", CodigoConvocatoriaPrueba, EmpleadosPrueba);
     }
 
     /// <summary>Crea un registro con sus detalles, calculando kg CO2 = consumo × factor (igual que RegistroServicio).</summary>

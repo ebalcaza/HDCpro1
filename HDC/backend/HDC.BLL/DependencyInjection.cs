@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<ColaboracionRepositorio>();
         services.AddScoped<ReporteRepositorio>();
         services.AddScoped<RecuperacionRepositorio>();
+        services.AddScoped<ConvocatoriaRepositorio>();
 
         // Cache de catálogos y geografía: Singleton para que la compartan todos los requests
         services.AddMemoryCache();
@@ -48,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<SemillaServicio>();
         services.AddScoped<DatosPruebaServicio>();
         services.AddScoped<RecuperacionServicio>();
+        services.AddScoped<ConvocatoriaServicio>();
 
         // Emails: la cola es Singleton (compartida) y el envío corre en segundo plano (ver EmailServicio.cs)
         services.AddSingleton<ColaEmails>();
