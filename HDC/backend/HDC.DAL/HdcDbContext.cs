@@ -6,6 +6,8 @@ namespace HDC.DAL;
 /// <summary>
 /// Mapeo de las entidades al esquema definido en Scripts/HDC_base_datos.sql.
 /// La base se crea con ese script (no con migraciones) para que el SQL sea la fuente de verdad.
+/// Motor: PostgreSQL. Los nombres se escriben en MAYÚSCULA para que se lean igual que en el
+/// diagrama del modelo, y al final de OnModelCreating se pasan a minúscula (ver AMinusculas).
 /// </summary>
 public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(options)
 {
@@ -28,6 +30,7 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
     public DbSet<Colaboracion> Colaboraciones => Set<Colaboracion>();
     public DbSet<ColaboracionTipoEmision> ColaboracionTiposEmision => Set<ColaboracionTipoEmision>();
     public DbSet<Reporte> Reportes => Set<Reporte>();
+    public DbSet<RecuperacionContrasena> RecuperacionesContrasena => Set<RecuperacionContrasena>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
@@ -69,8 +72,8 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.Email).HasColumnName("EMAIL").HasMaxLength(100);
             e.Property(x => x.Contrasena).HasColumnName("CONTRASENA").HasMaxLength(250);
             e.Property(x => x.Telefono).HasColumnName("TELEFONO").HasMaxLength(30).IsUnicode(false);
-            e.Property(x => x.FechaAlta).HasColumnName("FECHA_ALTA").HasColumnType("smalldatetime");
-            e.Property(x => x.FechaBaja).HasColumnName("FECHA_BAJA").HasColumnType("smalldatetime");
+            e.Property(x => x.FechaAlta).HasColumnName("FECHA_ALTA").HasColumnType("timestamp(0) without time zone");
+            e.Property(x => x.FechaBaja).HasColumnName("FECHA_BAJA").HasColumnType("timestamp(0) without time zone");
             e.HasOne(x => x.Rol).WithMany(r => r.Usuarios).HasForeignKey(x => x.IdRol);
             e.HasOne(x => x.Individuo).WithOne(i => i.Usuario).HasForeignKey<Individuo>(i => i.IdUsuario);
             e.HasOne(x => x.Organizacion).WithOne(o => o.Usuario).HasForeignKey<Organizacion>(o => o.IdUsuario);
@@ -163,10 +166,11 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.IdUnidadMedida).HasColumnName("ID_UNIDAD_MEDIDA");
             e.Property(x => x.IdTipoEmision).HasColumnName("ID_TIPO_EMISION");
             e.Property(x => x.Nombre).HasColumnName("NOMBRE").HasMaxLength(250);
+            e.Property(x => x.Descripcion).HasColumnName("DESCRIPCION").HasMaxLength(500);
             e.Property(x => x.ValorFactorEmision).HasColumnName("VALOR_FACTOR_EMISION").HasPrecision(18, 6);
-            e.Property(x => x.FechaAlta).HasColumnName("FECHA_ALTA").HasColumnType("smalldatetime");
-            e.Property(x => x.FechaBaja).HasColumnName("FECHA_BAJA").HasColumnType("smalldatetime");
-            e.Property(x => x.FechaModificacion).HasColumnName("FECHA_MODIFICACION").HasColumnType("smalldatetime");
+            e.Property(x => x.FechaAlta).HasColumnName("FECHA_ALTA").HasColumnType("timestamp(0) without time zone");
+            e.Property(x => x.FechaBaja).HasColumnName("FECHA_BAJA").HasColumnType("timestamp(0) without time zone");
+            e.Property(x => x.FechaModificacion).HasColumnName("FECHA_MODIFICACION").HasColumnType("timestamp(0) without time zone");
             e.HasOne(x => x.UnidadMedida).WithMany().HasForeignKey(x => x.IdUnidadMedida);
             e.HasOne(x => x.TipoEmision).WithMany().HasForeignKey(x => x.IdTipoEmision);
         });
@@ -186,8 +190,8 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.Manzana).HasColumnName("MANZANA").HasMaxLength(20);
             e.Property(x => x.CodigoPostal).HasColumnName("CODIGO_POSTAL").HasMaxLength(15);
             e.Property(x => x.Telefono).HasColumnName("TELEFONO").HasMaxLength(30).IsUnicode(false);
-            e.Property(x => x.FechaAlta).HasColumnName("FECHA_ALTA").HasColumnType("smalldatetime");
-            e.Property(x => x.FechaBaja).HasColumnName("FECHA_BAJA").HasColumnType("smalldatetime");
+            e.Property(x => x.FechaAlta).HasColumnName("FECHA_ALTA").HasColumnType("timestamp(0) without time zone");
+            e.Property(x => x.FechaBaja).HasColumnName("FECHA_BAJA").HasColumnType("timestamp(0) without time zone");
             e.Property(x => x.TotalKgCo2).HasColumnName("TOTAL_KG_CO2").HasPrecision(18, 6);
             e.HasOne(x => x.Ciudad).WithMany().HasForeignKey(x => x.IdCiudad);
             e.HasOne(x => x.Usuario).WithMany(u => u.Domicilios).HasForeignKey(x => x.IdUsuario);
@@ -203,8 +207,8 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.Periodo).HasColumnName("PERIODO");
             e.Property(x => x.Observaciones).HasColumnName("OBSERVACIONES").HasMaxLength(500);
             e.Property(x => x.TotalKgCo2).HasColumnName("TOTAL_KG_CO2").HasPrecision(18, 6);
-            e.Property(x => x.FechaCreacion).HasColumnName("FECHA_CREACION").HasColumnType("datetime");
-            e.Property(x => x.FechaUltimaModificacion).HasColumnName("FECHA_ULTIMA_MODIFICACION").HasColumnType("datetime");
+            e.Property(x => x.FechaCreacion).HasColumnName("FECHA_CREACION").HasColumnType("timestamp(3) without time zone");
+            e.Property(x => x.FechaUltimaModificacion).HasColumnName("FECHA_ULTIMA_MODIFICACION").HasColumnType("timestamp(3) without time zone");
             e.HasOne(x => x.Domicilio).WithMany().HasForeignKey(x => x.IdDomicilio);
             e.HasOne(x => x.UsuarioCarga).WithMany().HasForeignKey(x => x.IdUsuarioCarga);
         });
@@ -234,8 +238,8 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.PeriodoHasta).HasColumnName("PERIODO_HASTA");
             e.Property(x => x.Estado).HasColumnName("ESTADO").HasMaxLength(20).IsUnicode(false);
             e.Property(x => x.Mensaje).HasColumnName("MENSAJE").HasMaxLength(500);
-            e.Property(x => x.FechaInvitacion).HasColumnName("FECHA_INVITACION").HasColumnType("datetime");
-            e.Property(x => x.FechaRespuesta).HasColumnName("FECHA_RESPUESTA").HasColumnType("datetime");
+            e.Property(x => x.FechaInvitacion).HasColumnName("FECHA_INVITACION").HasColumnType("timestamp(3) without time zone");
+            e.Property(x => x.FechaRespuesta).HasColumnName("FECHA_RESPUESTA").HasColumnType("timestamp(3) without time zone");
             e.HasOne(x => x.Domicilio).WithMany().HasForeignKey(x => x.IdDomicilio);
             e.HasOne(x => x.Colaborador).WithMany().HasForeignKey(x => x.IdUsuarioColaborador);
         });
@@ -259,8 +263,39 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.Nombre).HasColumnName("NOMBRE").HasMaxLength(200);
             e.Property(x => x.Descripcion).HasColumnName("DESCRIPCION").HasMaxLength(500);
             e.Property(x => x.Filtros).HasColumnName("FILTROS");
-            e.Property(x => x.FechaCreacion).HasColumnName("FECHA_CREACION").HasColumnType("datetime");
+            e.Property(x => x.FechaCreacion).HasColumnName("FECHA_CREACION").HasColumnType("timestamp(3) without time zone");
             e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.IdUsuario);
         });
+
+        mb.Entity<RecuperacionContrasena>(e =>
+        {
+            e.ToTable("RECUPERACION_CONTRASENA");
+            e.HasKey(x => x.IdRecuperacion);
+            e.Property(x => x.IdRecuperacion).HasColumnName("ID_RECUPERACION");
+            e.Property(x => x.IdUsuario).HasColumnName("ID_USUARIO");
+            e.Property(x => x.TokenHash).HasColumnName("TOKEN_HASH").HasMaxLength(64).IsFixedLength();
+            e.Property(x => x.FechaCreacion).HasColumnName("FECHA_CREACION").HasColumnType("timestamp(3) without time zone");
+            e.Property(x => x.FechaExpiracion).HasColumnName("FECHA_EXPIRACION").HasColumnType("timestamp(3) without time zone");
+            e.Property(x => x.FechaUso).HasColumnName("FECHA_USO").HasColumnType("timestamp(3) without time zone");
+            e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.IdUsuario);
+        });
+
+        AMinusculas(mb);
+    }
+
+    /// <summary>
+    /// PostgreSQL convierte a minúscula todo nombre escrito sin comillas (el script crea "usuario",
+    /// "id_usuario", etc.), pero EF Core SIEMPRE pone los nombres entre comillas, y entre comillas
+    /// "USUARIO" y "usuario" son tablas distintas. Por eso se pasan a minúscula todos los nombres
+    /// de tablas y columnas del modelo: así coinciden con los que creó el script.
+    /// </summary>
+    private static void AMinusculas(ModelBuilder mb)
+    {
+        foreach (var entidad in mb.Model.GetEntityTypes())
+        {
+            entidad.SetTableName(entidad.GetTableName()!.ToLowerInvariant());
+            foreach (var propiedad in entidad.GetProperties())
+                propiedad.SetColumnName(propiedad.GetColumnName().ToLowerInvariant());
+        }
     }
 }

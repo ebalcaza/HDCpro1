@@ -5,6 +5,9 @@ export const authApi = {
   registrarIndividuo: (datos) => api.post('/auth/registro/individuo', datos),
   registrarOrganizacion: (datos) => api.post('/auth/registro/organizacion', datos),
   sesion: () => api.get('/auth/sesion'),
+  // Recuperación de contraseña: 1) pedir el link por email  2) definir la nueva clave con el token del link
+  solicitarRecuperacion: (email) => api.post('/auth/recuperar', { email }),
+  restablecerContrasena: (token, contrasenaNueva) => api.post('/auth/restablecer', { token, contrasenaNueva }),
 }
 
 export const perfilApi = {

@@ -36,17 +36,17 @@ public class RegistroRepositorio(HdcDbContext ctx) : Repositorio<Registro>(ctx)
         if (f.Hasta is DateOnly hasta) q = q.Where(r => r.Periodo <= hasta);
 
         // Buscador: domicilio, ciudad, quién cargó, alcance o fuente de alguno de sus consumos.
-        // LIKE en SQL Server no distingue mayúsculas con la intercalación por defecto.
+        // ILIKE: en PostgreSQL LIKE distingue mayúsculas; ILIKE no (ver ExtensionesConsulta.PatronContiene).
         if (!string.IsNullOrWhiteSpace(f.Busqueda))
         {
-            var t = f.Busqueda.Trim();
+            var t = ExtensionesConsulta.PatronContiene(f.Busqueda.Trim());
             q = q.Where(r =>
-                r.Domicilio.Calle.Contains(t) ||
-                r.Domicilio.Ciudad.Nombre.Contains(t) ||
-                r.UsuarioCarga.Email.Contains(t) ||
-                (r.UsuarioCarga.Individuo != null && (r.UsuarioCarga.Individuo.Nombres.Contains(t) || r.UsuarioCarga.Individuo.Apellidos.Contains(t))) ||
-                (r.UsuarioCarga.Organizacion != null && r.UsuarioCarga.Organizacion.RazonSocial.Contains(t)) ||
-                r.Detalles.Any(d => d.FuenteEmision.Nombre.Contains(t) || d.FuenteEmision.TipoEmision.Alcance.Nombre.Contains(t)));
+                EF.Functions.ILike(r.Domicilio.Calle, t) ||
+                EF.Functions.ILike(r.Domicilio.Ciudad.Nombre, t) ||
+                EF.Functions.ILike(r.UsuarioCarga.Email, t) ||
+                (r.UsuarioCarga.Individuo != null && (EF.Functions.ILike(r.UsuarioCarga.Individuo.Nombres, t) || EF.Functions.ILike(r.UsuarioCarga.Individuo.Apellidos, t))) ||
+                (r.UsuarioCarga.Organizacion != null && EF.Functions.ILike(r.UsuarioCarga.Organizacion.RazonSocial, t)) ||
+                r.Detalles.Any(d => EF.Functions.ILike(d.FuenteEmision.Nombre, t) || EF.Functions.ILike(d.FuenteEmision.TipoEmision.Alcance.Nombre, t)));
         }
 
         // Totales sobre TODO lo filtrado (no solo la página): COUNT y SUM en la base

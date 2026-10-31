@@ -64,6 +64,9 @@ builder.Services.AddAuthorization(o =>
     o.AddPolicy(Politicas.Colaboraciones, p => p.RequireClaim(Permisos.Claim, Permisos.GestionarColaboraciones, Permisos.Colaborar));
 });
 
+// Límite de pedidos por IP para la recuperación de contraseña (ver Infraestructura/LimitesPedidos.cs)
+builder.Services.AgregarLimitesPedidos();
+
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(config.GetSection("Cors:Origenes").Get<string[]>() ?? ["http://localhost:5173"])
     .AllowAnyHeader()
@@ -99,6 +102,9 @@ var app = builder.Build();
 
 await InicializarDatosAsync(app);
 
+// Toma la IP real del usuario del encabezado que agrega nginx (necesario para el límite de pedidos por IP)
+app.UseForwardedHeaders();
+
 // Va primero para que comprima todas las respuestas, incluidas las de error
 app.UseResponseCompression();
 app.UseMiddleware<ManejoErroresMiddleware>();
@@ -110,6 +116,7 @@ if (app.Environment.IsDevelopment() || config.GetValue<bool>("Swagger:Habilitado
 }
 
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -137,6 +144,18 @@ static async Task InicializarDatosAsync(WebApplication app)
         catch (Exception ex)
         {
             logger.LogError(ex, "No se pudo cargar la geografía desde georef. Reintentá desde Administración > Catálogos.");
+        }
+
+        // Datos de prueba (solo si DatosPrueba:Habilitado = true). Van después de la geografía
+        // porque los domicilios de prueba necesitan una ciudad.
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<DatosPruebaServicio>().CrearAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "No se pudieron crear los datos de prueba.");
         }
     });
 }

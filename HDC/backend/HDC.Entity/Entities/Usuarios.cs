@@ -39,3 +39,20 @@ public class Organizacion
 
     public Usuario Usuario { get; set; } = null!;
 }
+
+/// <summary>
+/// Pedido de recuperación de contraseña ("Olvidé mi contraseña").
+/// Solo se guarda el hash SHA-256 del token que viaja en el link del email.
+/// </summary>
+public class RecuperacionContrasena
+{
+    public long IdRecuperacion { get; set; }
+    public long IdUsuario { get; set; }
+    public string TokenHash { get; set; } = string.Empty;
+    public DateTime FechaCreacion { get; set; }
+    public DateTime FechaExpiracion { get; set; }
+    /// <summary>Cuándo se usó el link; null = todavía no se usó. Cada link sirve una sola vez.</summary>
+    public DateTime? FechaUso { get; set; }
+
+    public Usuario Usuario { get; set; } = null!;
+}

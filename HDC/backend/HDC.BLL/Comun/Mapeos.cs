@@ -38,7 +38,7 @@ public static class Mapeos
         f.IdUnidadMedida, f.UnidadMedida.Nombre,
         f.IdTipoEmision, f.TipoEmision.Nombre,
         f.TipoEmision.IdAlcance, f.TipoEmision.Alcance.Nombre,
-        f.FechaAlta, f.FechaBaja, f.FechaModificacion, f.FechaBaja == null);
+        f.FechaAlta, f.FechaBaja, f.FechaModificacion, f.FechaBaja == null, f.Descripcion);
 
     public static DomicilioDto ToDto(Domicilio d, int registros, int colaboradores) => new(
         d.IdDomicilio, d.Calle, d.Numero, d.Departamento, d.Piso, d.Block, d.Manzana,

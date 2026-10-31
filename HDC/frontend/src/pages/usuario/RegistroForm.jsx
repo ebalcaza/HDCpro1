@@ -31,7 +31,10 @@ export default function RegistroForm() {
   const [idDomicilio, setIdDomicilio] = useState(query.get('domicilio') || '')
   const [mes, setMes] = useState(mesActual())
   const [observaciones, setObservaciones] = useState('')
-  const [filas, setFilas] = useState([filaVacia()])
+  // Desde la sección "Fuentes de emisión" se puede llegar con ?fuente=ID&consumo=N para precargar la primera fila
+  const fuenteInicial = Number(query.get('fuente')) || ''
+  const consumoInicial = Number(query.get('consumo')) > 0 ? query.get('consumo') : ''
+  const [filas, setFilas] = useState([{ ...filaVacia(fuenteInicial), consumo: consumoInicial }])
   const [intentoEnvio, setIntentoEnvio] = useState(false)
   const [enviando, setEnviando] = useState(false)
 
@@ -45,6 +48,8 @@ export default function RegistroForm() {
       editando ? registrosApi.obtener(id) : Promise.resolve(null),
     ]).then(([fuentes, alcances, tipos, domicilios, colaboraciones, registro]) => {
       setCat({ fuentes, alcances, tipos, domicilios, colaboraciones: colaboraciones.filter((c) => c.estado === 'ACEPTADA') })
+      // Si la fuente precargada por la URL no existe (o está dada de baja), se empieza con la fila vacía
+      if (!registro && fuenteInicial && !fuentes.some((f) => f.idFuenteEmision === fuenteInicial)) setFilas([filaVacia()])
       if (registro) {
         if (!registro.puedeEditar) { ui.error('No podés editar este registro'); navigate('/emisiones'); return }
         setIdDomicilio(String(registro.idDomicilio))

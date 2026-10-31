@@ -30,6 +30,8 @@ public class FuenteEmision
     public long IdUnidadMedida { get; set; }
     public long IdTipoEmision { get; set; }
     public string Nombre { get; set; } = string.Empty;
+    /// <summary>Texto de ayuda para el usuario: qué es la fuente y dónde encontrar el dato del consumo.</summary>
+    public string? Descripcion { get; set; }
     public decimal ValorFactorEmision { get; set; }
     public DateTime FechaAlta { get; set; }
     public DateTime? FechaBaja { get; set; }

@@ -11,13 +11,14 @@ function FormFuente({ fuente, cat, abierto, onCerrar, onGuardado }) {
   const ui = useUI()
   const [alcance, setAlcance] = useState(fuente ? String(fuente.idAlcance) : '')
   const f = useFormulario(fuente
-    ? { nombre: fuente.nombre, valorFactorEmision: String(fuente.valorFactorEmision), idUnidadMedida: fuente.idUnidadMedida, idTipoEmision: fuente.idTipoEmision }
-    : { nombre: '', valorFactorEmision: '', idUnidadMedida: '', idTipoEmision: '' },
+    ? { nombre: fuente.nombre, valorFactorEmision: String(fuente.valorFactorEmision), idUnidadMedida: fuente.idUnidadMedida, idTipoEmision: fuente.idTipoEmision, descripcion: fuente.descripcion || '' }
+    : { nombre: '', valorFactorEmision: '', idUnidadMedida: '', idTipoEmision: '', descripcion: '' },
   (v) => errores({
     nombre: reglas.requerido(v.nombre),
     valorFactorEmision: reglas.requerido(v.valorFactorEmision) || reglas.noNegativo(v.valorFactorEmision),
     idUnidadMedida: reglas.requerido(v.idUnidadMedida, 'Elegí la unidad'),
     idTipoEmision: reglas.requerido(v.idTipoEmision, 'Elegí el tipo de emisión'),
+    descripcion: reglas.maximo(v.descripcion.trim(), 500),
   }))
   const tipos = cat.tipos.filter((t) => !alcance || t.idAlcance === Number(alcance))
 
@@ -26,7 +27,7 @@ function FormFuente({ fuente, cat, abierto, onCerrar, onGuardado }) {
     if (!f.validarTodo()) return ui.error('Revisá los campos marcados en rojo', 'Datos incompletos')
     f.setEnviando(true)
     try {
-      const datos = { nombre: f.valores.nombre.trim(), valorFactorEmision: Number(f.valores.valorFactorEmision), idUnidadMedida: Number(f.valores.idUnidadMedida), idTipoEmision: Number(f.valores.idTipoEmision) }
+      const datos = { nombre: f.valores.nombre.trim(), valorFactorEmision: Number(f.valores.valorFactorEmision), idUnidadMedida: Number(f.valores.idUnidadMedida), idTipoEmision: Number(f.valores.idTipoEmision), descripcion: f.valores.descripcion.trim() || null }
       const r = fuente ? await fuentesApi.actualizar(fuente.idFuenteEmision, datos) : await fuentesApi.crear(datos)
       ui.exito(`La fuente "${r.nombre}" se ${fuente ? 'actualizó' : 'creó'}`)
       onGuardado(r)
@@ -61,6 +62,11 @@ function FormFuente({ fuente, cat, abierto, onCerrar, onGuardado }) {
         <Campo className="col-md-6" etiqueta="Factor de emisión" requerido error={f.errores.valorFactorEmision} tocado={f.tocados.valorFactorEmision}
           ayuda={`kg CO₂ por ${unidad || 'unidad'}`}>
           <input type="number" min="0" step="any" inputMode="decimal" {...f.campo('valorFactorEmision')} />
+        </Campo>
+        {/* Texto de ayuda que ven los usuarios en la sección "Fuentes de emisión" de Mi huella */}
+        <Campo className="col-12" etiqueta="Descripción para los usuarios" error={f.errores.descripcion} tocado={f.tocados.descripcion} exito={null}
+          ayuda={`Qué es y dónde encuentra el usuario el dato del consumo (${f.valores.descripcion.length}/500)`}>
+          <textarea rows={3} maxLength={500} {...f.campo('descripcion')} placeholder="Ej.: El consumo en kWh figura en la factura de luz." />
         </Campo>
         {fuente && <div className="col-12 small text-muted"><i className="bi bi-info-circle me-1" />Cambiar el factor no altera los registros ya cargados: conservan el factor con el que se calcularon.</div>}
       </form>

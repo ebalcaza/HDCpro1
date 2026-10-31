@@ -1,6 +1,6 @@
 using HDC.BLL.Comun;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HDC.API.Infraestructura;
 
@@ -24,11 +24,14 @@ public class ManejoErroresMiddleware(RequestDelegate next, ILogger<ManejoErrores
                 _ => StatusCodes.Status400BadRequest
             }, ex.Message);
         }
-        catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 547 })
+        // Códigos de error estándar de PostgreSQL (SQLSTATE):
+        // 23503 = violación de clave foránea (el dato está en uso por otra tabla)
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation })
         {
             await EscribirAsync(ctx, StatusCodes.Status409Conflict, "El dato está relacionado con otros registros y no puede modificarse o eliminarse");
         }
-        catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2627 or 2601 })
+        // 23505 = violación de restricción UNIQUE (dato duplicado)
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
             await EscribirAsync(ctx, StatusCodes.Status409Conflict, "Ya existe un registro con esos datos");
         }

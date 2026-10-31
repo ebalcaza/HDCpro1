@@ -12,6 +12,7 @@ const SECCIONES = [
     items: [
       { a: '/dashboard', texto: 'Dashboard', icono: 'bi-speedometer2', permisos: [P.VER_DASHBOARD] },
       { a: '/emisiones', texto: 'Mis emisiones', icono: 'bi-cloud-haze2', permisos: [P.GESTIONAR_EMISIONES, P.COLABORAR] },
+      { a: '/fuentes', texto: 'Fuentes de emisión', icono: 'bi-lightbulb', permisos: [P.GESTIONAR_EMISIONES, P.COLABORAR] },
       { a: '/domicilios', texto: 'Domicilios', icono: 'bi-house-door', permisos: [P.GESTIONAR_DOMICILIOS] },
       { a: '/colaboraciones', texto: 'Colaboraciones', icono: 'bi-people', permisos: [P.GESTIONAR_COLABORACIONES, P.COLABORAR], badge: 'invitaciones' },
       { a: '/reportes', texto: 'Reportes', icono: 'bi-file-earmark-bar-graph', permisos: [P.GENERAR_REPORTES], ocultarSi: [P.REPORTES_GLOBALES] },

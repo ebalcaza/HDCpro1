@@ -31,13 +31,13 @@ public class UsuarioRepositorio(HdcDbContext ctx) : Repositorio<Usuario>(ctx)
         if (f.Estado == "activos") q = q.Where(u => u.FechaBaja == null);
         else if (f.Estado == "inactivos") q = q.Where(u => u.FechaBaja != null);
 
-        // Buscador: email, nombre y apellido o razón social
+        // Buscador: email, nombre y apellido o razón social (ILIKE: sin distinguir mayúsculas)
         if (!string.IsNullOrWhiteSpace(f.Busqueda))
         {
-            var t = f.Busqueda.Trim();
-            q = q.Where(u => u.Email.Contains(t)
-                || (u.Individuo != null && (u.Individuo.Nombres.Contains(t) || u.Individuo.Apellidos.Contains(t)))
-                || (u.Organizacion != null && u.Organizacion.RazonSocial.Contains(t)));
+            var t = ExtensionesConsulta.PatronContiene(f.Busqueda.Trim());
+            q = q.Where(u => EF.Functions.ILike(u.Email, t)
+                || (u.Individuo != null && (EF.Functions.ILike(u.Individuo.Nombres, t) || EF.Functions.ILike(u.Individuo.Apellidos, t)))
+                || (u.Organizacion != null && EF.Functions.ILike(u.Organizacion.RazonSocial, t)));
         }
 
         var total = await q.CountAsync();
@@ -111,7 +111,7 @@ public class RolRepositorio(HdcDbContext ctx) : Repositorio<Rol>(ctx)
         .FirstOrDefaultAsync(r => r.IdRol == idRol);
 
     public Task<bool> ExisteNombreAsync(string nombre, long? excluirId = null) =>
-        Ctx.Roles.AnyAsync(r => r.Nombre == nombre && (excluirId == null || r.IdRol != excluirId));
+        Ctx.Roles.AnyAsync(r => r.Nombre.ToLower() == nombre.ToLower() && (excluirId == null || r.IdRol != excluirId));
 
     public Task<bool> TieneUsuariosAsync(long idRol) => Ctx.Usuarios.AnyAsync(u => u.IdRol == idRol);
 }
@@ -127,9 +127,23 @@ public class PermisoRepositorio(HdcDbContext ctx) : Repositorio<Permiso>(ctx)
         Ctx.Permisos.Where(p => ids.Contains(p.IdPermiso)).ToListAsync();
 
     public Task<bool> ExisteNombreAsync(string nombre, long? excluirId = null) =>
-        Ctx.Permisos.AnyAsync(p => p.Nombre == nombre && (excluirId == null || p.IdPermiso != excluirId));
+        Ctx.Permisos.AnyAsync(p => p.Nombre.ToLower() == nombre.ToLower() && (excluirId == null || p.IdPermiso != excluirId));
 
     public Task<Permiso?> ObtenerConRolesAsync(long id) => Ctx.Permisos
         .Include(p => p.RolPermisos).ThenInclude(rp => rp.Rol)
         .FirstOrDefaultAsync(p => p.IdPermiso == id);
+}
+
+/// <summary>Pedidos de recuperación de contraseña (tabla RECUPERACION_CONTRASENA).</summary>
+public class RecuperacionRepositorio(HdcDbContext ctx) : Repositorio<RecuperacionContrasena>(ctx)
+{
+    /// <summary>Busca el pedido por el hash del token, con su usuario (para cambiarle la contraseña).</summary>
+    public Task<RecuperacionContrasena?> ObtenerPorHashAsync(string tokenHash) => Ctx.RecuperacionesContrasena
+        .Include(r => r.Usuario)
+        .FirstOrDefaultAsync(r => r.TokenHash == tokenHash);
+
+    /// <summary>Pedidos del usuario que todavía no se usaron (para invalidarlos cuando pide uno nuevo o cambia la clave).</summary>
+    public Task<List<RecuperacionContrasena>> ListarPendientesAsync(long idUsuario) => Ctx.RecuperacionesContrasena
+        .Where(r => r.IdUsuario == idUsuario && r.FechaUso == null)
+        .ToListAsync();
 }

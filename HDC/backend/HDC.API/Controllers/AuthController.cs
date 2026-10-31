@@ -3,11 +3,12 @@ using HDC.BLL.Servicios;
 using HDC.Entity.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HDC.API.Controllers;
 
 [Route("api/auth")]
-public class AuthController(AuthServicio auth) : ControladorBase
+public class AuthController(AuthServicio auth, RecuperacionServicio recuperacion) : ControladorBase
 {
     /// <summary>RFU02 - Inicio de sesión.</summary>
     [AllowAnonymous, HttpPost("login")]
@@ -24,6 +25,25 @@ public class AuthController(AuthServicio auth) : ControladorBase
     /// <summary>Datos de la sesión actual (para restaurar la sesión al recargar la página).</summary>
     [HttpGet("sesion")]
     public async Task<UsuarioSesionDto> Sesion() => await auth.SesionAsync(IdUsuario);
+
+    /// <summary>
+    /// Recuperación de contraseña, paso 1: envía por email un link para crear una nueva contraseña.
+    /// Responde SIEMPRE lo mismo (exista o no la cuenta) y tiene límite de pedidos por IP.
+    /// </summary>
+    [AllowAnonymous, EnableRateLimiting(LimitesPedidos.Recuperacion), HttpPost("recuperar")]
+    public async Task<MensajeDto> SolicitarRecuperacion(SolicitarRecuperacionRequest req)
+    {
+        await recuperacion.SolicitarAsync(req.Email);
+        return new MensajeDto(RecuperacionServicio.MensajeSolicitud);
+    }
+
+    /// <summary>Recuperación de contraseña, paso 2: con el token del link se define la nueva contraseña.</summary>
+    [AllowAnonymous, EnableRateLimiting(LimitesPedidos.Recuperacion), HttpPost("restablecer")]
+    public async Task<MensajeDto> Restablecer(RestablecerContrasenaRequest req)
+    {
+        await recuperacion.RestablecerAsync(req.Token, req.ContrasenaNueva);
+        return new MensajeDto("Tu contraseña se cambió correctamente. Ya podés iniciar sesión.");
+    }
 }
 
 [Route("api/perfil")]

@@ -1,0 +1,23 @@
+cambios importantes:
++vas a cambiar la base de datos a una base de postgres. vas a comentar el codigo para que sea
+facil entenderlo y vas a crear un archivo md con los detalles del cambio.
+
++vas a crear una funcionalidad donde el usuario pueda recuperar su clave. El usuario puede
+olvidar su clave, y puede requerir cambiarla. Vas a pedir el email del usuario, para enviarle
+un email, donde le enviaras un link, que tiene tiempo de caducidad, donde el usuario
+ingresara a un formulario donde cambiara la clave de su cuenta.
+
+
++vas a crear un archivo, que sea manual de usuario, para los usuarios finales, sobre como usar 
+el sistema, para que sirve, y como aprovechar sus funciones.
+
++Vas a crear un archivo especificanbdo los detalles tecnicos del sistema, arquitectura,
+tecnologias usadas, y demas detalles para el equipo de desarrollo.
+
++vas a crear un manual de usuario con los detalles necesarios para levantar el proyecto,
+y poder trabajarlo como desarrollador. 
+
++quiero dejar todo ordenado y organizado, en el aspecto de archivos,
+para hacer una entrega formal del trabajo practico, no quiero tener mil arrchivos con diferentes
+explicaciones, sino mas bien que quede todo organizado. contempla la idea de que puede haber cambios
+mas adelante y habra que reescribir o agregar informacion a esos archivos.

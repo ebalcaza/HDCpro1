@@ -49,7 +49,8 @@ public record FuenteEmisionDto(
     DateTime FechaAlta,
     DateTime? FechaBaja,
     DateTime? FechaModificacion,
-    bool Activa);
+    bool Activa,
+    string? Descripcion);
 
 public class FuenteEmisionRequest
 {
@@ -64,6 +65,10 @@ public class FuenteEmisionRequest
 
     [Range(1, long.MaxValue, ErrorMessage = "El tipo de emisión es obligatorio")]
     public long IdTipoEmision { get; set; }
+
+    /// <summary>Ayuda que ven los usuarios en la sección "Fuentes de emisión" (opcional).</summary>
+    [MaxLength(500, ErrorMessage = "La descripción admite hasta 500 caracteres")]
+    public string? Descripcion { get; set; }
 }
 
 public record PermisoDto(long IdPermiso, string Nombre, string? Descripcion, IReadOnlyList<string> Roles);

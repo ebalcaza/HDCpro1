@@ -1,0 +1,11 @@
++vamos a cambiar el sistema de colaboradores. El problema principal es que una organizacion
+puede tener muchos colaboradores, 1000, 2000, 3000 personas, y es dificil enviar una por una las 
+invitaciones. 
+podriamos proporcionar un codigo a los colaboradores que quieran agregar consumos a una organizacion.
+las organizaciones tendran la posibilidad de editar los detalles de los consumos que podran agregar
+los colaboradores, como tambien los periodos, y tambien podran decidir aceptar o no las colaboraciones,
+una por una, o todas, o podra filtrarlas para hacer busquedas por diferentes criteros.
+el usuario podra administrar y gestionar las colaboraciones,iniciarlas, finalizarlas, editarlas, eliminarlas,etc.
+los usuarios colaboradores, podran buscar un perfil para colaborar con el,
+proporcionando un codigo que setearan las organizaciones, si el codigo es correcto o existe,
+el usuario podra hacer colaboraciones en ese perfil.

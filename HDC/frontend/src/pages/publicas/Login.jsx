@@ -52,6 +52,10 @@ export default function Login() {
                 </button>
               </div>
             </Campo>
+            {/* Recuperación de contraseña (envía un link por email) */}
+            <div className="text-end" style={{ marginTop: -8 }}>
+              <Link to="/olvide-contrasena" className="small">¿Olvidaste tu contraseña?</Link>
+            </div>
             <BotonCarga cargando={f.enviando} className="btn btn-primary btn-lg mt-2">Ingresar</BotonCarga>
           </form>
           <p className="text-center mt-4 mb-0">

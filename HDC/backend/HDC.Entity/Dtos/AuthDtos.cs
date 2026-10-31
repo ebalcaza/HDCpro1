@@ -78,3 +78,22 @@ public record UsuarioSesionDto(
     IReadOnlyList<string> Permisos);
 
 public record AuthResponse(string Token, DateTime ExpiraEn, UsuarioSesionDto Usuario);
+
+/// <summary>Paso 1 de "Olvidé mi contraseña": el usuario indica su email.</summary>
+public class SolicitarRecuperacionRequest
+{
+    [Required(ErrorMessage = "El email es obligatorio"), EmailAddress(ErrorMessage = "Email inválido"), MaxLength(100)]
+    public string Email { get; set; } = string.Empty;
+}
+
+/// <summary>Paso 2: desde el link del email, el usuario elige su nueva contraseña.</summary>
+public class RestablecerContrasenaRequest
+{
+    /// <summary>Token que viaja en el link (64 caracteres hexadecimales).</summary>
+    [Required(ErrorMessage = "Falta el código del link"), RegularExpression("^[0-9a-fA-F]{64}$", ErrorMessage = "El link no es válido")]
+    public string Token { get; set; } = string.Empty;
+
+    // Mismas reglas que el registro y el cambio de contraseña desde el perfil
+    [Required(ErrorMessage = "La contraseña es obligatoria"), MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres"), MaxLength(100), Contrasena]
+    public string ContrasenaNueva { get; set; } = string.Empty;
+}

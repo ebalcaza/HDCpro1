@@ -1,10 +1,12 @@
 # Manual de usuario — Huella de Carbono (HDC)
 
+> **Última actualización:** 31/10/2026 · Versión del sistema: 2.1 (ver [CHANGELOG](CHANGELOG.md))
+
 Este manual explica cómo usar la aplicación **Huella de Carbono** para medir cuánto CO₂ generan tus
 consumos de todos los meses, ver cómo evoluciona tu huella y descargar reportes.
 
-> Para instalar o poner en marcha la aplicación, ver el [README](README.md).
 > Este manual es para quien **usa** la aplicación desde el navegador.
+> Para instalarla o trabajar en el código, ver la [Guía del desarrollador](GUIA_DESARROLLADOR.md).
 
 ## Índice
 1. [¿Qué es la huella de carbono?](#1-qué-es-la-huella-de-carbono)
@@ -102,6 +104,21 @@ Si algún dato está mal, el campo se marca en rojo con una explicación. Podés
   El ícono del ojo muestra u oculta la contraseña.
 - La sesión dura un tiempo limitado (por defecto 2 horas). Cuando vence, tenés que volver a ingresar.
 
+### ¿Olvidaste tu contraseña?
+1. En la pantalla de inicio de sesión hacé click en **¿Olvidaste tu contraseña?**.
+2. Escribí el **email de tu cuenta** y hacé click en **Enviar link**.
+3. Revisá tu correo (también la carpeta de **spam**). Vas a recibir un email de *Huella de Carbono*
+   con el botón **Crear nueva contraseña**.
+4. El botón abre la aplicación: escribí la contraseña nueva dos veces y hacé click en **Guardar contraseña**.
+5. Ingresá con tu email y la contraseña nueva. También te llega un email avisando que la contraseña cambió.
+
+Para tener en cuenta:
+- El link **vence a los 30 minutos** y sirve **una sola vez**. Si venció, pedí otro desde el paso 1.
+- Si pedís varios links, **solo funciona el último**.
+- Por seguridad, la pantalla siempre muestra el mismo mensaje, aunque el email no esté registrado.
+- Si recibís el email sin haberlo pedido, ignoralo: tu contraseña no cambia.
+- Por protección hay un límite de pedidos: después de 5 intentos seguidos hay que esperar 15 minutos.
+
 ### El menú
 A la izquierda (en el celular, con el botón ☰ arriba) tenés el menú **Mi huella**:
 
@@ -109,6 +126,7 @@ A la izquierda (en el celular, con el botón ☰ arriba) tenés el menú **Mi hu
 |--------------------|---------------------------------------------------------------------------|
 | **Dashboard**      | Resumen de tu huella con gráficos                                         |
 | **Mis emisiones**  | Lista de tus registros mensuales; desde acá cargás uno nuevo              |
+| **Fuentes de emisión** | Todo lo que podés cargar: unidad, factor, dónde encontrar el dato y una calculadora rápida |
 | **Domicilios**     | Los lugares donde medís                                                   |
 | **Colaboraciones** | Invitar a otros a cargar datos, o aceptar invitaciones. Un número indica invitaciones pendientes |
 | **Reportes**       | Reportes filtrados y descargables en PDF                                  |
@@ -145,6 +163,26 @@ El buscador filtra por calle o ciudad, y podés ordenar haciendo click en el tí
 ## 5. Cargar tus consumos del mes
 
 Es la tarea principal: **una vez por mes**, cargá los consumos de cada domicilio.
+
+### Antes de cargar: la sección "Fuentes de emisión"
+En el menú **Mi huella → Fuentes de emisión** está la lista de **todo lo que podés cargar**, para saber
+qué elegir y dónde buscar cada dato:
+
+- Arriba se explica **cómo se calcula** la huella (`consumo × factor`) y qué incluye cada **alcance**.
+- Las fuentes están agrupadas por **alcance** y por **tipo de emisión**. Cada tarjeta muestra:
+  - la **unidad** en la que se carga (m³, kWh, L, km, kg);
+  - el **factor**: cuántos kg de CO₂ genera cada unidad (por ejemplo, 1 kWh = 0,400 kg CO₂);
+  - una **descripción**: qué es esa fuente y dónde encontrar el dato (factura, ticket, estimación).
+- **Buscador:** escribí una palabra ("luz", "garrafa", "colectivo", "kWh"). No hace falta poner tildes.
+  También podés filtrar por alcance.
+- **Calculadora rápida:** escribí un consumo en una tarjeta y ves al instante cuántos kg de CO₂ representa.
+  No guarda nada: sirve para probar.
+- **Cargar:** abre el formulario de carga con esa fuente ya elegida (y el consumo, si lo escribiste en la calculadora).
+  Solo falta elegir el domicilio y el mes.
+
+> Si la fuente que necesitás no está en la lista, pedile al administrador que la agregue.
+
+### Cómo cargar un registro
 
 1. Andá a **Mis emisiones → Nuevo registro** (o el botón **Nuevo registro** del Dashboard).
 2. Elegí el **Domicilio** y el **Período** (mes y año). No se pueden cargar meses futuros.
@@ -318,6 +356,13 @@ Si elegís *Dar de baja y conservar el historial*, sus emisiones siguen en tus e
 **La aplicación me sacó de la sesión.**
 La sesión vence a las 2 horas (o lo que haya configurado el administrador). Volvé a ingresar.
 
+**Pedí recuperar la contraseña y no me llega el email.**
+Revisá la carpeta de spam y que el email sea el de tu cuenta. Esperá unos minutos y pedilo de nuevo. Si tu
+cuenta fue deshabilitada por el administrador, no se envía el link: contactalo.
+
+**El link para crear la contraseña dice "no es válido o ya venció".**
+Pasaron más de 30 minutos, ya lo usaste o pediste otro después. Pedí un link nuevo.
+
 ---
 
 ## 12. Anexo: para el administrador
@@ -328,7 +373,7 @@ El administrador ingresa con el usuario creado en la instalación y ve el menú 
 |-------------------------|---------------------------------------------------------------------------------------------|
 | **Panel general**       | Resumen del sistema y botón **Cargar geografía (georef)** para descargar provincias y ciudades |
 | **Reportes y métricas** | Reportes de todo el sistema: por período, tipo de usuario, zona geográfica y categorías     |
-| **Fuentes de emisión**  | Alta, edición y baja de fuentes y de su **factor de emisión**                               |
+| **Fuentes de emisión**  | Alta, edición y baja de fuentes, de su **factor de emisión** y de la **descripción** que ven los usuarios en *Mi huella → Fuentes de emisión* |
 | **Usuarios**            | Ver usuarios registrados, filtrarlos y consultar su información                             |
 | **Tipos de usuario**    | Crear roles nuevos además de Administrador, Individuo y Organización                       |
 | **Permisos**            | Qué puede hacer cada tipo de usuario                                                        |

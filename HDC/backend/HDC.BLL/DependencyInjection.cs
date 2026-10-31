@@ -12,7 +12,8 @@ public static class DependencyInjection
     public static IServiceCollection AgregarCapas(this IServiceCollection services, string connectionString, string urlGeoref)
     {
         // DAL
-        services.AddDbContext<HdcDbContext>(o => o.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure(5)));
+        // PostgreSQL vía Npgsql. EnableRetryOnFailure reintenta ante cortes momentáneos de conexión.
+        services.AddDbContext<HdcDbContext>(o => o.UseNpgsql(connectionString, pg => pg.EnableRetryOnFailure(5)));
         services.AddScoped<UsuarioRepositorio>();
         services.AddScoped<RolRepositorio>();
         services.AddScoped<PermisoRepositorio>();
@@ -25,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<RegistroRepositorio>();
         services.AddScoped<ColaboracionRepositorio>();
         services.AddScoped<ReporteRepositorio>();
+        services.AddScoped<RecuperacionRepositorio>();
 
         // Cache de catálogos y geografía: Singleton para que la compartan todos los requests
         services.AddMemoryCache();
@@ -44,6 +46,12 @@ public static class DependencyInjection
         services.AddScoped<ColaboracionServicio>();
         services.AddScoped<EstadisticaServicio>();
         services.AddScoped<SemillaServicio>();
+        services.AddScoped<DatosPruebaServicio>();
+        services.AddScoped<RecuperacionServicio>();
+
+        // Emails: la cola es Singleton (compartida) y el envío corre en segundo plano (ver EmailServicio.cs)
+        services.AddSingleton<ColaEmails>();
+        services.AddHostedService<EnvioEmailsServicio>();
 
         services.AddHttpClient(SemillaServicio.ClienteGeoref, c =>
         {

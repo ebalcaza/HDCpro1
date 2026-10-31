@@ -9,7 +9,7 @@ public class AlcanceRepositorio(HdcDbContext ctx) : Repositorio<Alcance>(ctx)
         .Include(a => a.TiposEmision).OrderBy(a => a.Nombre).ToListAsync();
 
     public Task<bool> ExisteNombreAsync(string nombre, long? excluirId = null) =>
-        Ctx.Alcances.AnyAsync(a => a.Nombre == nombre && (excluirId == null || a.IdAlcance != excluirId));
+        Ctx.Alcances.AnyAsync(a => a.Nombre.ToLower() == nombre.ToLower() && (excluirId == null || a.IdAlcance != excluirId));
 
     public Task<bool> EnUsoAsync(long id) => Ctx.TiposEmision.AnyAsync(t => t.IdAlcance == id);
 }
@@ -26,7 +26,7 @@ public class UnidadMedidaRepositorio(HdcDbContext ctx) : Repositorio<UnidadMedid
     }
 
     public Task<bool> ExisteNombreAsync(string nombre, long? excluirId = null) =>
-        Ctx.UnidadesMedida.AnyAsync(u => u.Nombre == nombre && (excluirId == null || u.IdUnidadMedida != excluirId));
+        Ctx.UnidadesMedida.AnyAsync(u => u.Nombre.ToLower() == nombre.ToLower() && (excluirId == null || u.IdUnidadMedida != excluirId));
 
     public Task<bool> EnUsoAsync(long id) => Ctx.FuentesEmision.AnyAsync(f => f.IdUnidadMedida == id);
 }

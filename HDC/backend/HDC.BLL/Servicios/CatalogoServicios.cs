@@ -181,6 +181,7 @@ public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedid
     private static void Aplicar(FuenteEmision f, FuenteEmisionRequest req)
     {
         f.Nombre = req.Nombre.Trim();
+        f.Descripcion = Mapeos.Limpiar(req.Descripcion);
         f.ValorFactorEmision = req.ValorFactorEmision;
         f.IdUnidadMedida = req.IdUnidadMedida;
         f.IdTipoEmision = req.IdTipoEmision;

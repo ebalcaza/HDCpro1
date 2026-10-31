@@ -1,47 +1,70 @@
 ﻿name: hdc
 
 services:
+  # Base de datos PostgreSQL. Usa ~50-100 MB de RAM (SQL Server necesitaba 2 GB).
   db:
-    image: mcr.microsoft.com/mssql/server:2025-latest
+    image: postgres:17-alpine
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_PID: Express
-      MSSQL_SA_PASSWORD: ${DB_SA_PASSWORD}
+      POSTGRES_USER: ${DB_USUARIO:-hdc}
+      POSTGRES_PASSWORD: ${DB_CONTRASENA}
+      POSTGRES_DB: ${DB_NAME:-huellacarbono}
       TZ: America/Argentina/Buenos_Aires
+      PGTZ: America/Argentina/Buenos_Aires
     ports:
-      - "${DB_PORT:-14330}:1433"
+      # Solo se publica en la PC local (127.0.0.1) para conectarse con pgAdmin/DBeaver
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
     volumes:
-      - sqldata:/var/opt/mssql
-    # En equipos con poca RAM SQL Server puede tardar ~10 min en quedar listo;
-    # se da margen amplio (5 min de gracia + 60 reintentos x 15s = ~20 min)
-    # para que no se marque "unhealthy" antes de tiempo y bloquee a la API.
+      - pgdata:/var/lib/postgresql/data
+    # pg_isready responde cuando PostgreSQL ya acepta conexiones (tarda pocos segundos)
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
-      interval: 15s
-      timeout: 30s
-      retries: 60
-      start_period: 300s
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  # Servidor de correo de PRUEBA: recibe los emails que manda la API (recuperación de contraseña)
+  # y los muestra en http://localhost:8025 sin enviarlos a nadie. En producción se configura un
+  # SMTP real en el .env (SMTP_HOST, SMTP_PUERTO, ...) y este servicio deja de usarse.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
     restart: unless-stopped
 
   api:
     build: ./backend
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=${DB_NAME:-HuellaCarbono};User Id=sa;Password=${DB_SA_PASSWORD};TrustServerCertificate=True;"
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${DB_NAME:-huellacarbono};Username=${DB_USUARIO:-hdc};Password=${DB_CONTRASENA}"
       Jwt__Clave: ${JWT_CLAVE}
       Jwt__Emisor: backend.API
       Jwt__Audiencia: frontend
       Jwt__ExpiraMinutos: ${JWT_EXPIRA_MINUTOS:-120}
       Admin__Email: ${ADMIN_EMAIL:-admin@hdc.com}
       Admin__Contrasena: ${ADMIN_CONTRASENA}
+      DatosPrueba__Habilitado: ${DATOS_PRUEBA:-false}
+      # Email (SMTP) y link de recuperación de contraseña
+      Email__Host: ${SMTP_HOST:-mailpit}
+      Email__Puerto: ${SMTP_PUERTO:-1025}
+      Email__Usuario: ${SMTP_USUARIO:-}
+      Email__Contrasena: ${SMTP_CONTRASENA:-}
+      Email__Seguridad: ${SMTP_SEGURIDAD:-Ninguna}
+      Email__Remitente: ${EMAIL_REMITENTE:-no-responder@hdc.local}
+      Email__NombreRemitente: ${EMAIL_NOMBRE_REMITENTE:-Huella de Carbono}
+      Recuperacion__UrlFrontend: ${URL_PUBLICA:-http://localhost:8081}
+      Recuperacion__MinutosValidez: ${RECUPERACION_MINUTOS:-30}
       Cors__Origenes__0: "http://localhost:${FRONTEND_PORT:-8081}"
       Cors__Origenes__1: "http://localhost:5173"
-      Swagger__Habilitado: "true"
+      Swagger__Habilitado: ${SWAGGER:-true}
     ports:
       - "${API_PORT:-5000}:8081"
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     restart: unless-stopped
 
   frontend:
@@ -53,4 +76,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  sqldata:
+  pgdata:
