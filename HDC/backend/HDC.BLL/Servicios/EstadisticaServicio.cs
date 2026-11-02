@@ -14,6 +14,7 @@ public class EstadisticaServicio(
     AlcanceRepositorio alcances,
     TipoEmisionRepositorio tipos,
     FuenteEmisionRepositorio fuentes,
+    DomicilioServicio domicilioServicio, // <-- Inyectamos el servicio de domicilios
     RolRepositorio roles,
     GeoRepositorio geo)
 {
@@ -67,8 +68,10 @@ public class EstadisticaServicio(
 
     public async Task<ReporteResultadoDto> GenerarReporteAsync(long idUsuario, FiltroEmisiones filtros, bool global)
     {
-        var f = Normalizar(filtros, idUsuario, global);
-        var datos = await registros.ObtenerEmisionesAsync(f);
+// Ahora es asíncrono para poder validar los permisos
+    var f = await NormalizarAsync(filtros, idUsuario, global);
+    
+    var datos = await registros.ObtenerEmisionesAsync(f);
         var total = datos.Sum(x => x.KgCo2);
         var evolucion = Evolucion(datos);
 
@@ -144,11 +147,35 @@ public class EstadisticaServicio(
     }
 
     /// <summary>En reportes de usuario se limita a sus domicilios y se ignoran los filtros exclusivos del admin.</summary>
-    private static FiltroEmisiones Normalizar(FiltroEmisiones f, long idUsuario, bool global) => new()
+
+private async Task<FiltroEmisiones> NormalizarAsync(FiltroEmisiones f, long idUsuario, bool global)
+{
+    // 1. Obtenemos los domicilios permitidos para el usuario (propios + colaboraciones)
+    List<long> domiciliosPermitidos = global 
+        ? [] 
+        : await domicilioServicio.ObtenerIdsPermitidosPorUsuarioAsync(idUsuario);
+
+    var idsDomiciliosFinales = f.IdsDomicilios;
+
+    if (!global)
+    {
+        if (idsDomiciliosFinales != null && idsDomiciliosFinales.Any())
+        {
+            // Filtramos estrictamente solo los IDs que le pertenecen o en los que colabora
+            idsDomiciliosFinales = idsDomiciliosFinales.Where(id => domiciliosPermitidos.Contains(id)).ToList();
+        }
+        else
+        {
+            // Si el usuario no seleccionó ninguno, por defecto se restringe a todos sus domicilios permitidos
+            idsDomiciliosFinales = domiciliosPermitidos;
+        }
+    }
+
+    return new FiltroEmisiones
     {
         Desde = f.Desde is DateOnly d ? Mapeos.InicioDeMes(d) : null,
         Hasta = f.Hasta is DateOnly h ? Mapeos.InicioDeMes(h) : null,
-        IdsDomicilios = f.IdsDomicilios.Distinct().ToList(),
+        IdsDomicilios = idsDomiciliosFinales?.Distinct().ToList() ?? [],
         IdsAlcances = f.IdsAlcances.Distinct().ToList(),
         IdsTiposEmision = f.IdsTiposEmision.Distinct().ToList(),
         IdsFuentes = f.IdsFuentes.Distinct().ToList(),
@@ -158,6 +185,7 @@ public class EstadisticaServicio(
         IdsRoles = global ? f.IdsRoles.Distinct().ToList() : [],
         IdsUsuarios = global ? f.IdsUsuarios.Distinct().ToList() : [idUsuario],
     };
+}
 
     private async Task<List<string>> DescribirFiltrosAsync(FiltroEmisiones f, bool global)
     {

@@ -1,4 +1,5 @@
 namespace HDC.DAL.Repositorios;
+using Microsoft.EntityFrameworkCore; // <-- Agrega este using
 
 /// <summary>
 /// Operaciones comunes. Todos los repositorios comparten el mismo DbContext por request,
@@ -7,6 +8,11 @@ namespace HDC.DAL.Repositorios;
 public class Repositorio<T>(HdcDbContext ctx) where T : class
 {
     protected readonly HdcDbContext Ctx = ctx;
+    public async Task<bool> ExisteParaDomicilioYPeriodoAsync(long idDomicilio, DateOnly periodo)
+{
+    return await Ctx.Registros
+        .AnyAsync(r => r.IdDomicilio == idDomicilio && r.Periodo == periodo);
+}
 
     public async Task<T?> ObtenerPorIdAsync(params object[] ids) => await Ctx.Set<T>().FindAsync(ids);
 

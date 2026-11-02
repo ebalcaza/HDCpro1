@@ -7,7 +7,7 @@ public class DetalleRegistroRequest
     [Range(1, long.MaxValue, ErrorMessage = "La fuente de emisión es obligatoria")]
     public long IdFuenteEmision { get; set; }
 
-    [Range(typeof(decimal), "0.0001", "999999999", ErrorMessage = "El consumo debe ser mayor a 0",
+    [Range(typeof(decimal), "0.0001", "99999999.99", ErrorMessage = "El consumo ingresado supera el límite máximo permitido por el sistema",
         ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal Consumo { get; set; }
 }

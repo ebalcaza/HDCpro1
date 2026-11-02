@@ -1,7 +1,10 @@
 using HDC.BLL.Comun;
+using HDC.DAL;
 using HDC.DAL.Repositorios;
 using HDC.Entity.Dtos;
 using HDC.Entity.Entities;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace HDC.BLL.Servicios;
 
@@ -14,7 +17,8 @@ public class RegistroServicio(
     RegistroRepositorio registros,
     DomicilioRepositorio domicilios,
     FuenteEmisionRepositorio fuentes,
-    ColaboracionRepositorio colaboraciones)
+    ColaboracionRepositorio colaboraciones,
+     HdcDbContext context)
 {
     public async Task<List<RegistroListaDto>> ListarAsync(long idUsuario, long? idDomicilio)
     {
@@ -36,122 +40,211 @@ public class RegistroServicio(
         return ADetalle(r, idUsuario);
     }
 
-    public async Task<RegistroDetalleDto> CrearAsync(long idUsuario, RegistroRequest req)
-    {
-        var periodo = Mapeos.InicioDeMes(req.Periodo);
-        var domicilio = await ValidarAccesoCargaAsync(idUsuario, req.IdDomicilio, periodo, req.Detalles);
 
-        var ahora = DateTime.Now;
-        var r = new Registro
+public async Task<RegistroDetalleDto> CrearAsync(long idUsuario, RegistroRequest req)
+{
+    var strategy = context.Database.CreateExecutionStrategy();
+
+    // IMPORTANTE: Asegúrate de que tenga 'async () =>'
+    return await strategy.ExecuteAsync(async () =>
+    {
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
         {
-            IdDomicilio = domicilio.IdDomicilio,
-            IdUsuarioCarga = idUsuario,
-            Periodo = periodo,
-            Observaciones = Mapeos.Limpiar(req.Observaciones),
-            FechaCreacion = ahora,
-            FechaUltimaModificacion = ahora
-        };
-        await AplicarDetallesAsync(r, req.Detalles);
-        registros.Agregar(r);
-        await registros.GuardarAsync();
-        await RecalcularDomicilioAsync(domicilio);
+            var periodo = Mapeos.InicioDeMes(req.Periodo);
+            var domicilio = await ValidarAccesoCargaAsync(idUsuario, req.IdDomicilio, periodo, req.Detalles);
 
-        return ADetalle((await registros.ObtenerCompletoAsync(r.IdRegistro))!, idUsuario);
-    }
+            bool existeRegistro = await registros.ExisteParaDomicilioYPeriodoAsync(domicilio.IdDomicilio, periodo);
+            if (existeRegistro)
+            {
+                throw new NegocioException("Ya existe un registro cargado para este domicilio en el período seleccionado.");
+            }
 
-    public async Task<RegistroDetalleDto> ActualizarAsync(long idUsuario, long idRegistro, RegistroRequest req)
+            var ahora = DateTime.Now;
+            var r = new Registro
+            {
+                IdDomicilio = domicilio.IdDomicilio,
+                IdUsuarioCarga = idUsuario,
+                Periodo = periodo,
+                Observaciones = Mapeos.Limpiar(req.Observaciones),
+                FechaCreacion = ahora,
+                FechaUltimaModificacion = ahora
+            };
+            
+            await AplicarDetallesAsync(r, req.Detalles);
+            registros.Agregar(r);
+            
+            await registros.GuardarAsync();
+            await RecalcularDomicilioAsync(domicilio);
+
+            await transaction.CommitAsync();
+
+            return ADetalle((await registros.ObtenerCompletoAsync(r.IdRegistro))!, idUsuario);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    });
+}
+public async Task<RegistroDetalleDto> ActualizarAsync(long idUsuario, long idRegistro, RegistroRequest req)
+{
+    var strategy = context.Database.CreateExecutionStrategy();
+
+    // IMPORTANTE: Asegúrate de que tenga 'async () =>'
+    return await strategy.ExecuteAsync(async () =>
     {
-        var r = await registros.ObtenerCompletoAsync(idRegistro) ?? throw new NoEncontradoException("Registro no encontrado");
-        if (!PuedeEditar(r, idUsuario)) throw new ProhibidoException("No podés editar este registro");
-        if (req.IdDomicilio != r.IdDomicilio) throw new NegocioException("No se puede cambiar el domicilio de un registro");
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            var r = await registros.ObtenerCompletoAsync(idRegistro) ?? throw new NoEncontradoException("Registro no encontrado");
+            if (!PuedeEditar(r, idUsuario)) throw new ProhibidoException("No podés editar este registro");
+            if (req.IdDomicilio != r.IdDomicilio) throw new NegocioException("No se puede cambiar el domicilio de un registro");
 
-        var periodo = Mapeos.InicioDeMes(req.Periodo);
-        // El titular puede editar registros de sus colaboradores; las restricciones de tipo aplican a quien cargó.
-        await ValidarAccesoCargaAsync(r.IdUsuarioCarga, r.IdDomicilio, periodo, req.Detalles);
+            var periodo = Mapeos.InicioDeMes(req.Periodo);
+            await ValidarAccesoCargaAsync(idUsuario, r.IdDomicilio, periodo, req.Detalles);
 
-        r.Periodo = periodo;
-        r.Observaciones = Mapeos.Limpiar(req.Observaciones);
-        r.FechaUltimaModificacion = DateTime.Now;
-        await AplicarDetallesAsync(r, req.Detalles);
-        await registros.GuardarAsync();
-        await RecalcularDomicilioAsync(r.Domicilio);
+            var domicilio = r.Domicilio; // Aseguramos tener la referencia al domicilio
 
-        return ADetalle((await registros.ObtenerCompletoAsync(idRegistro))!, idUsuario);
-    }
+            r.Periodo = periodo;
+            r.Observaciones = Mapeos.Limpiar(req.Observaciones);
+            r.FechaUltimaModificacion = DateTime.Now;
+            await AplicarDetallesAsync(r, req.Detalles);
+            
+            await registros.GuardarAsync();
+            await RecalcularDomicilioAsync(domicilio);
 
-    public async Task EliminarAsync(long idUsuario, long idRegistro)
+            await transaction.CommitAsync();
+
+            return ADetalle((await registros.ObtenerCompletoAsync(idRegistro))!, idUsuario);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    });
+}
+
+public async Task EliminarAsync(long idUsuario, long idRegistro)
+{
+    var strategy = context.Database.CreateExecutionStrategy();
+
+    // IMPORTANTE: Asegúrate de que tenga 'async () =>'
+    await strategy.ExecuteAsync(async () =>
     {
-        var r = await registros.ObtenerCompletoAsync(idRegistro) ?? throw new NoEncontradoException("Registro no encontrado");
-        if (!PuedeEditar(r, idUsuario)) throw new ProhibidoException("No podés eliminar este registro");
-        var domicilio = r.Domicilio;
-        registros.Eliminar(r);
-        await registros.GuardarAsync();
-        await RecalcularDomicilioAsync(domicilio);
-    }
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            var r = await registros.ObtenerCompletoAsync(idRegistro) ?? throw new NoEncontradoException("Registro no encontrado");
+            if (!PuedeEditar(r, idUsuario)) throw new ProhibidoException("No podés eliminar este registro");
+            
+            var domicilio = r.Domicilio;
+            
+            registros.Eliminar(r);
+            await registros.GuardarAsync();
+            await RecalcularDomicilioAsync(domicilio);
 
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    });
+}
     private static bool PuedeEditar(Registro r, long idUsuario) =>
         r.Domicilio.IdUsuario == idUsuario || r.IdUsuarioCarga == idUsuario;
 
-    private async Task<Domicilio> ValidarAccesoCargaAsync(long idUsuarioCarga, long idDomicilio, DateOnly periodo, List<DetalleRegistroRequest> detalles)
+private async Task<Domicilio> ValidarAccesoCargaAsync(long idUsuarioAccion, long idDomicilio, DateOnly periodo, List<DetalleRegistroRequest> detalles)
+{
+    if (periodo > Mapeos.MesActual()) throw new NegocioException("No se pueden cargar consumos de períodos futuros");
+
+    var domicilio = await domicilios.ObtenerCompletoAsync(idDomicilio) ?? throw new NoEncontradoException("Domicilio no encontrado");
+    if (domicilio.FechaBaja != null) throw new NegocioException("El domicilio está dado de baja");
+
+    // 1. SI EL USUARIO ACTUAL ES EL TITULAR, TIENE ACCESO TOTAL
+    // (Esto soluciona que el titular pueda editar registros de ex-colaboradores)
+    if (domicilio.IdUsuario == idUsuarioAccion) return domicilio;
+
+    // 2. Si no es el titular, validamos que tenga una colaboración vigente para ese período
+    var vigentes = await colaboraciones.ObtenerVigentesAsync(idUsuarioAccion, idDomicilio, periodo);
+    if (vigentes.Count == 0)
+        throw new ProhibidoException("No tenés una colaboración aceptada en este domicilio para ese período");
+
+    var tiposPermitidos = vigentes.SelectMany(c => c.TiposEmision.Select(t => t.IdTipoEmision)).ToHashSet();
+    var usadas = await fuentes.ObtenerPorIdsAsync(detalles.Select(d => d.IdFuenteEmision).Distinct());
+    var noPermitida = usadas.FirstOrDefault(f => !tiposPermitidos.Contains(f.IdTipoEmision));
+    if (noPermitida != null)
+        throw new ProhibidoException($"La colaboración no habilita cargar \"{noPermitida.TipoEmision.Nombre}\" ({noPermitida.Nombre})");
+
+    return domicilio;
+}
+
+private async Task AplicarDetallesAsync(Registro r, List<DetalleRegistroRequest> detalles)
+{
+    var repetida = detalles.GroupBy(d => d.IdFuenteEmision).FirstOrDefault(g => g.Count() > 1);
+    if (repetida != null) throw new NegocioException("Hay fuentes de emisión repetidas; sumá los consumos en una sola fila");
+
+    var ids = detalles.Select(d => d.IdFuenteEmision).ToList();
+    var mapa = (await fuentes.ObtenerPorIdsAsync(ids)).ToDictionary(f => f.IdFuenteEmision);
+    if (mapa.Count != ids.Count) throw new NegocioException("Alguna de las fuentes de emisión no existe");
+
+    var existentes = r.Detalles.ToDictionary(d => d.IdFuenteEmision);
+    var quitar = r.Detalles.Where(d => !ids.Contains(d.IdFuenteEmision)).ToList();
+    registros.QuitarDetalles(quitar);
+    foreach (var q in quitar) r.Detalles.Remove(q);
+
+    // Límite seguro para columnas DECIMAL(18,6) (12 dígitos enteros)
+    const decimal MAX_VALOR_PERMITIDO = 999999999999.99m;
+
+    foreach (var req in detalles)
     {
-        if (periodo > Mapeos.MesActual()) throw new NegocioException("No se pueden cargar consumos de períodos futuros");
+        var fuente = mapa[req.IdFuenteEmision];
+        
+        // Determinamos el factor de emisión a utilizar
+        var factorEmision = existentes.TryGetValue(req.IdFuenteEmision, out var detExistente) 
+            ? detExistente.ValorFactorEmision 
+            : fuente.ValorFactorEmision;
 
-        var domicilio = await domicilios.ObtenerCompletoAsync(idDomicilio) ?? throw new NoEncontradoException("Domicilio no encontrado");
-        if (domicilio.FechaBaja != null) throw new NegocioException("El domicilio está dado de baja");
+        var kgCo2Calculado = Math.Round(req.Consumo * factorEmision, 6);
 
-        if (domicilio.IdUsuario == idUsuarioCarga) return domicilio;
-
-        var vigentes = await colaboraciones.ObtenerVigentesAsync(idUsuarioCarga, idDomicilio, periodo);
-        if (vigentes.Count == 0)
-            throw new ProhibidoException("No tenés una colaboración aceptada en este domicilio para ese período");
-
-        var tiposPermitidos = vigentes.SelectMany(c => c.TiposEmision.Select(t => t.IdTipoEmision)).ToHashSet();
-        var usadas = await fuentes.ObtenerPorIdsAsync(detalles.Select(d => d.IdFuenteEmision).Distinct());
-        var noPermitida = usadas.FirstOrDefault(f => !tiposPermitidos.Contains(f.IdTipoEmision));
-        if (noPermitida != null)
-            throw new ProhibidoException($"La colaboración no habilita cargar \"{noPermitida.TipoEmision.Nombre}\" ({noPermitida.Nombre})");
-
-        return domicilio;
-    }
-
-    private async Task AplicarDetallesAsync(Registro r, List<DetalleRegistroRequest> detalles)
-    {
-        var repetida = detalles.GroupBy(d => d.IdFuenteEmision).FirstOrDefault(g => g.Count() > 1);
-        if (repetida != null) throw new NegocioException("Hay fuentes de emisión repetidas; sumá los consumos en una sola fila");
-
-        var ids = detalles.Select(d => d.IdFuenteEmision).ToList();
-        var mapa = (await fuentes.ObtenerPorIdsAsync(ids)).ToDictionary(f => f.IdFuenteEmision);
-        if (mapa.Count != ids.Count) throw new NegocioException("Alguna de las fuentes de emisión no existe");
-
-        var existentes = r.Detalles.ToDictionary(d => d.IdFuenteEmision);
-        var quitar = r.Detalles.Where(d => !ids.Contains(d.IdFuenteEmision)).ToList();
-        registros.QuitarDetalles(quitar);
-        foreach (var q in quitar) r.Detalles.Remove(q);
-
-        foreach (var req in detalles)
+        // --- VALIDACIÓN DE AUDITORÍA PARA EVITAR DESBORDAMIENTO ---
+        if (kgCo2Calculado > MAX_VALOR_PERMITIDO)
         {
-            var fuente = mapa[req.IdFuenteEmision];
-            if (existentes.TryGetValue(req.IdFuenteEmision, out var det))
-            {
-                // Se conserva el factor histórico con el que se cargó originalmente
-                det.Consumo = req.Consumo;
-                det.KgCo2 = Math.Round(req.Consumo * det.ValorFactorEmision, 6);
-            }
-            else
-            {
-                if (fuente.FechaBaja != null) throw new NegocioException($"La fuente \"{fuente.Nombre}\" fue dada de baja");
-                r.Detalles.Add(new DetalleRegistro
-                {
-                    IdFuenteEmision = fuente.IdFuenteEmision,
-                    Consumo = req.Consumo,
-                    ValorFactorEmision = fuente.ValorFactorEmision,
-                    KgCo2 = Math.Round(req.Consumo * fuente.ValorFactorEmision, 6)
-                });
-            }
+            throw new NegocioException($"El valor calculado de CO2 para la fuente \"{fuente.Nombre}\" supera el límite máximo permitido por el sistema.");
         }
-        r.TotalKgCo2 = r.Detalles.Sum(d => d.KgCo2);
+        // ---------------------------------------------------------
+
+        if (existentes.TryGetValue(req.IdFuenteEmision, out var det))
+        {
+            // Se conserva el factor histórico con el que se cargó originalmente
+            det.Consumo = req.Consumo;
+            det.KgCo2 = kgCo2Calculado;
+        }
+        else
+        {
+            if (fuente.FechaBaja != null) throw new NegocioException($"La fuente \"{fuente.Nombre}\" fue dada de baja");
+            r.Detalles.Add(new DetalleRegistro
+            {
+                IdFuenteEmision = fuente.IdFuenteEmision,
+                Consumo = req.Consumo,
+                ValorFactorEmision = fuente.ValorFactorEmision,
+                KgCo2 = kgCo2Calculado
+            });
+        }
     }
 
+    r.TotalKgCo2 = r.Detalles.Sum(d => d.KgCo2);
+
+    // Opcional: Validar también que la suma total del registro no desborde la columna general
+    if (r.TotalKgCo2 > MAX_VALOR_PERMITIDO)
+    {
+        throw new NegocioException("El total acumulado de emisiones del registro supera la capacidad máxima permitida.");
+    }
+}
     private async Task RecalcularDomicilioAsync(Domicilio domicilio)
     {
         var tracked = await domicilios.ObtenerPorIdAsync(domicilio.IdDomicilio);

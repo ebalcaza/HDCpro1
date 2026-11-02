@@ -1,14 +1,14 @@
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using HDC.API.Infraestructura;
 using HDC.BLL;
 using HDC.BLL.Comun;
 using HDC.BLL.Servicios;
-using HDC.DAL;
+//using HDC.DAL;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
 
@@ -85,6 +85,8 @@ var app = builder.Build();
 
 await InicializarDatosAsync(app);
 
+
+
 app.UseMiddleware<ManejoErroresMiddleware>();
 
 
@@ -104,10 +106,26 @@ app.Run();
 static async Task InicializarDatosAsync(WebApplication app)
 {
     var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Inicializacion");
-    await InicializadorBaseDatos.InicializarAsync(app.Configuration.GetConnectionString("DefaultConnection")!, logger);
-
+    
     using (var scope = app.Services.CreateScope())
-        await scope.ServiceProvider.GetRequiredService<SemillaServicio>().CrearAdministradorAsync();
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            // Aplica las migraciones pendientes automáticamente y crea la base de datos en PostgreSQL
+     
+            var context = services.GetRequiredService<HDC.DAL.HdcDbContext>();
+            await context.Database.MigrateAsync();
+            logger.LogInformation("Base de datos y migraciones aplicadas correctamente.");
+
+            // Crea el administrador inicial
+            await services.GetRequiredService<SemillaServicio>().CrearAdministradorAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Ocurrió un error al inicializar la base de datos o aplicar las migraciones.");
+        }
+    }
 
     // La geografía se descarga en segundo plano para no demorar el arranque de la API
     _ = Task.Run(async () =>

@@ -1,10 +1,12 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using HDC.DAL;
 using HDC.BLL.Comun;
 using HDC.DAL.Repositorios;
 using HDC.Entity.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace HDC.BLL.Servicios;
 
@@ -13,6 +15,7 @@ namespace HDC.BLL.Servicios;
 /// y la geografía argentina desde la API georef (provincias → departamentos → localidades).
 /// </summary>
 public class SemillaServicio(
+    HdcDbContext context,
     UsuarioRepositorio usuarios,
     GeoRepositorio geo,
     IHttpClientFactory httpFactory,
@@ -22,28 +25,35 @@ public class SemillaServicio(
     public const string ClienteGeoref = "georef";
     private const int TamanioPagina = 5000;
 
-    public async Task CrearAdministradorAsync()
+public async Task CrearAdministradorAsync()
+{
+    if (await usuarios.HayAdministradorAsync(RolesSistema.Administrador)) return;
+
+    var email = (config["Admin:Email"] ?? "admin@hdc.com").Trim().ToLowerInvariant();
+    var contrasena = config["Admin:Contrasena"];
+    if (string.IsNullOrWhiteSpace(contrasena))
     {
-        if (await usuarios.HayAdministradorAsync(RolesSistema.Administrador)) return;
-
-        var email = (config["Admin:Email"] ?? "admin@hdc.com").Trim().ToLowerInvariant();
-        var contrasena = config["Admin:Contrasena"];
-        if (string.IsNullOrWhiteSpace(contrasena))
-        {
-            logger.LogWarning("No se configuró Admin:Contrasena; no se crea el administrador inicial.");
-            return;
-        }
-
-        usuarios.Agregar(new Usuario
-        {
-            IdRol = RolesSistema.Administrador,
-            Email = email,
-            Contrasena = AuthServicio.HashContrasena(contrasena),
-            FechaAlta = DateTime.Now
-        });
-        await usuarios.GuardarAsync();
-        logger.LogInformation("Administrador inicial creado: {Email}", email);
+        logger.LogWarning("No se configuró Admin:Contrasena; no se crea el administrador inicial.");
+        return;
     }
+
+    // 1. Asegurarnos de que el rol de administrador exista en la base de datos
+    // (Asumiendo que tienes acceso al contexto de datos o a un repositorio de roles)
+  await context.Database.ExecuteSqlRawAsync(
+    "INSERT INTO \"ROL\" (\"ID_ROL\", \"NOMBRE\",\"DESCRIPCION\", \"ES_SISTEMA\") VALUES ({0}, 'Administrador','Gestiona cuentas, factores de emisión y parametrización del sistema', {1}) ON CONFLICT (\"ID_ROL\") DO NOTHING;",
+    RolesSistema.Administrador);
+
+    // 2. Crear el usuario administrador
+    usuarios.Agregar(new Usuario
+    {
+        IdRol = RolesSistema.Administrador,
+        Email = email,
+        Contrasena = AuthServicio.HashContrasena(contrasena),
+        FechaAlta = DateTime.Now
+    });
+    await usuarios.GuardarAsync();
+    logger.LogInformation("Administrador inicial creado: {Email}", email);
+}
 
     /// <summary>Carga provincias, distritos y ciudades si la tabla CIUDAD está vacía.</summary>
     public async Task<int> SincronizarGeorefAsync(CancellationToken ct = default)

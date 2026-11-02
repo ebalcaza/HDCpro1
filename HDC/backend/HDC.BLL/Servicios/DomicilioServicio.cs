@@ -1,7 +1,9 @@
 using HDC.BLL.Comun;
+using HDC.DAL;
 using HDC.DAL.Repositorios;
 using HDC.Entity.Dtos;
 using HDC.Entity.Entities;
+using Microsoft.EntityFrameworkCore; // <-- Asegúrate de tener este using
 
 namespace HDC.BLL.Servicios;
 
@@ -10,7 +12,8 @@ public class DomicilioServicio(
     GeoRepositorio geo,
     FuenteEmisionRepositorio fuentes,
     RegistroRepositorio registros,
-    ColaboracionRepositorio colaboraciones)
+    ColaboracionRepositorio colaboraciones,
+    HdcDbContext context)
 {
     public async Task<List<DomicilioDto>> ListarAsync(long idUsuario, bool incluirBajas = false)
     {
@@ -18,6 +21,23 @@ public class DomicilioServicio(
         var conteos = await domicilios.ConteosAsync(lista.Select(d => d.IdDomicilio).ToList());
         return lista.Select(d => Mapeos.ToDto(d, conteos[d.IdDomicilio].Registros, conteos[d.IdDomicilio].Colaboradores)).ToList();
     }
+    public async Task<List<long>> ObtenerIdsPermitidosPorUsuarioAsync(long idUsuario)
+{
+    // 1. Domicilios donde el usuario es titular directo
+    var domiciliosPropios = await context.Domicilios
+        .Where(d => d.IdUsuario == idUsuario)
+        .Select(d => d.IdDomicilio)
+        .ToListAsync();
+
+    // 2. Domicilios donde el usuario participa como colaborador
+    var domiciliosColaborador = await context.Colaboraciones
+        .Where(c => c. IdUsuarioColaborador  == idUsuario)
+        .Select(c => c.IdDomicilio)
+        .ToListAsync();
+
+    // Unimos ambos conjuntos eliminando duplicados
+    return domiciliosPropios.Union(domiciliosColaborador).Distinct().ToList();
+}
 
     public async Task<DomicilioDto> ObtenerAsync(long idUsuario, long idDomicilio)
     {

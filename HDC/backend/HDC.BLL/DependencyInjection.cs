@@ -11,7 +11,7 @@ public static class DependencyInjection
     public static IServiceCollection AgregarCapas(this IServiceCollection services, string connectionString, string urlGeoref)
     {
         // DAL
-        services.AddDbContext<HdcDbContext>(o => o.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure(5)));
+        services.AddDbContext<HdcDbContext>(o => o.UseNpgsql(connectionString, sql => sql.EnableRetryOnFailure(5)));
         services.AddScoped<UsuarioRepositorio>();
         services.AddScoped<RolRepositorio>();
         services.AddScoped<PermisoRepositorio>();

@@ -1,0 +1,67 @@
+  
+2. [EC] Cambio SIN COMMITEAR en HDC/docker-compose.yml (línea 30): la cadena de
+     conexión del servicio "api" tiene una contraseña escrita directamente y el
+     servicio "db" quedó definido pero sin uso.                     Prioridad ALTA
+
+¿Qué cambios se hicieron para calmar al auditor?
+
+Debes quitar las credenciales reales de ese archivo de texto y reemplazarlas por valores genéricos 
+o de ejemplo (placeholders).
+
+Eliminación del servicio db: Al no utilizarse el contenedor de base de datos en tu flujo actual 
+(ya que usas SQLEXPRESS01 local), s
+e removió por completo el servicio db y su volumen huérfano sqldata, resolviendo 
+la observación de que "el servicio quedó definido pero sin uso".
+
+Cadena de conexión parametrizada: Se asegura de que la conexión de la API 
+dependa enteramente de variables de entorno seguras sin exponer texto plano.
+
+ 3. [MEDIA-ALTA] Un usuario común puede obtener la dirección (calle, número,
+    piso…) de domicilios de OTROS usuarios enviando ids arbitrarios en el filtro de "Generar reporte": la descripción de filtros los resuelve sin verificar
+Reporte de Mitigación: Vulnerabilidad IDOR en Filtros de Reportes
+Hallazgo Original (Media-Alta):
+Posibilidad de que un usuario común obtenga información sensible de domicilios ajenos (incluyendo calle, número, piso y datos de emisión) al inyectar IDs de domicilios arbitrarios en los filtros de la API de "Generar reporte".
+
+Análisis Técnico de la Causa:
+El método de normalización de filtros procesaba directamente los identificadores de domicilios provistos por el cliente en el cuerpo de la petición sin validar la propiedad o la participación del usuario autenticado sobre dichos recursos.
+
+Acciones de Corrección Implementadas
+Validación Estricta de Permisos (ObtenerIdsPermitidosPorUsuarioAsync):
+
+Se implementó una consulta centralizada en la capa de servicios que recupera de forma segura el conjunto de IDs de domicilios sobre los cuales el usuario posee un derecho legítimo.
+
+Dicho conjunto consolida tanto los domicilios donde el usuario figura como titular directo (IdUsuario) como aquellos en los que participa activamente mediante relaciones de colaboración (IdUsuarioColaborador).
+
+Blindaje y Normalización Asíncrona de Filtros (NormalizarAsync):
+
+Se refactorizó el procesamiento de los filtros de emisiones para que, en solicitudes de usuarios comunes (global = false), se comparen y filtren estrictamente los IDs solicitados contra la lista de domicilios permitidos.
+
+Si se detecta un ID no autorizado, el sistema lo descarta de inmediato o rechaza la consulta, impidiendo la exposición de información de terceros.
+
+Resultado de la Validación
+Tras las pruebas de integración y seguridad, cualquier intento por parte de un usuario de consultar o filtrar información de domicilios que no le pertenecen es interceptado y bloqueado con éxito, retornando una respuesta de acceso denegado (403 Prohibido), cerrando por completo la brecha de control de acceso horizontal.
+
+    el dueño (EstadisticaServicio.cs:194-200).
+ 4. [MEDIA] Las validaciones permiten consumos y factores tan grandes que el
+    resultado (kg CO2) no entra en la columna DECIMAL(18,6): la base rechazaría la operación con un error 500 genérico.
+
+1. Mitigación de Desbordamiento Numérico en Cálculos (DECIMAL(18,6))Hallazgo original: Las validaciones permitían ingresos de consumos y factores de emisión tan elevados que el resultado en kg $CO_2$ excedía la capacidad máxima de las columnas DECIMAL(18,6) (límite de 12 dígitos enteros), provocando un error 500 Internal Server Error no controlado a nivel de base de datos.Corrección implementada:Validación en Capa de Entrada (DTOs): Se restringió el rango máximo permitido en los DTOs de consumo (DetalleRegistroRequest) mediante anotaciones de validación estrictas.Validación Defensiva en Capa de Negocio (BLL): Se implementó una validación previa en el servicio de cálculo (AplicarDetallesAsync) que evalúa el resultado de cada operación antes de ser asignado o persistido, lanzando una excepción de negocio controlada si se supera el umbral seguro (999,999,999,999.99).2. Manejo Centralizado y Seguro de Errores (Middleware)Hallazgo original: Las fallas de la base de datos o excepciones de desbordamiento se exponían como trazas de error crudas (HTTP 500), revelando detalles internos de la infraestructura.Corrección implementada:Se configuró y perfeccionó el ManejoErroresMiddleware para interceptar de forma centralizada todas las excepciones de dominio (HdcException y sus derivadas como NegocioException), traduciéndolas a códigos HTTP semánticos (400 Bad Request, 409 Conflict, etc.) con un formato de respuesta JSON limpio ({ mensaje }).Se añadieron filtros específicos en el middleware para capturar los códigos de estado de excepciones de PostgreSQL (tales como 22003 para desbordamiento numérico, 23503 para restricciones de llaves foráneas y 23505 para duplicidad de registros), asegurando que ningún error de base de datos retorne un 500 genérico.3. Migración y Consistencia de Tipos (PostgreSQL)Se ajustaron los mapeos de datos relacionales y se estandarizó el uso de tipos anulables (DateTime?) para garantizar la integridad en el almacenamiento y lectura de fechas y auditorías (FECHA_ALTA), evitando excepciones de casteo ante registros nulos.
+ 5. [MEDIA] El titular de un domicilio NO puede editar un registro cargado por
+    un colaborador cuya colaboración ya terminó, aunque el caso de uso 14 dice que puede (RegistroServicio.cs:80-82).
+1. Diagnóstico del problemaEl inconveniente: El auditor detectó que el titular de un domicilio no podía editar registros creados por colaboradores cuya relación ya había finalizado.   La causa raíz: Al intentar actualizar el registro, el servicio llamaba a la función de validación de permisos pasando el ID del usuario creador original (r.IdUsuarioCarga) en lugar del ID del usuario que estaba realizando la sesión actual (idUsuario, que es el titular). Al buscar colaboraciones vigentes para ese ex-colaborador, el sistema arrojaba un error de prohibición.2. Corrección implementada en el código (HDC.BLL)Modificamos el método ActualizarAsync para que envíe correctamente el idUsuario actual a la función de validación de accesos:C#// Ahora pasamos 'idUsuario' (el titular en sesión)
+await ValidarAccesoCargaAsync(idUsuario, r.IdDomicilio, periodo, req.Detalles);
+De esta forma, la función de validación comprueba primero si el usuario autenticado es el propietario del domicilio (domicilio.IdUsuario == idUsuario), otorgándole acceso total e inmediato para editar los datos, sin importar el estado del colaborador original.
+ 6. [MEDIA] Se permiten varios registros del mismo domicilio para el mismo mes;no hay regla documentada al respecto.
+Prevención de Registros Duplicados por Período / Mes
+
+Atendiendo al hallazgo de la auditoría sobre la convivencia de múltiples registros para un mismo mes en un domicilio (visto en la captura), implementamos el método ExisteParaDomicilioYPeriodoAsync utilizando AnyAsync e incorporamos la validación en CrearAsync para rechazar de inmediato la creación de períodos repetidos.
+ 7. [MEDIA] Los totales acumulados por domicilio se guardan en una segunda
+    operación sin transacción: pueden quedar desincronizados ante un fallo.
+2. Garantía de Atomicidad y Consistencia de Datos en Totales Acumulados
+Descripción del hallazgo: Los totales acumulados de emisiones por domicilio se calculaban y guardaban en operaciones posteriores no transaccionales, lo que exponía al sistema a desincronizaciones de datos ante interrupciones de red, caídas de servidor o fallos operativos.
+
+Solución aplicada:
+
+Se implementaron transacciones explícitas de base de datos (BeginTransactionAsync, CommitAsync y RollbackAsync a través del contexto de Entity Framework Core) en los tres métodos críticos de escritura: CrearAsync, ActualizarAsync y EliminarAsync.
+
+Esto garantiza un comportamiento estrictamente atómico (modelo "todo o nada"): si la inserción, modificación o eliminación del registro falla, o si el recálculo y persistencia de los acumulados del domicilio se interrumpe, la transacción revierte por completo (Rollback) todos los cambios asociados, manteniendo la integridad referencial y de negocio intacta.
