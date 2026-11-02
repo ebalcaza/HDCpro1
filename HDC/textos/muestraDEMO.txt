@@ -1,0 +1,18 @@
+para la demo:
++un integrante muestra la pantalla administrador, es la primera en mostrarse.
++un integrante muestra la pantalla organizacion.
++un integrante muestra la pantalla individuo.
+
++cada usuario mostrara sus pantallas, y explicara el flow de trabajo,y explicara
+que datos son visualizados, y que datos habra que ingresar para trabajar con la aplicacion.
+
+*funcionalidad de como el usuario puede crear una convocatoria, para recibir aportesa las emisiones.
++mostrar como el usuario organizacion crea un evento convocatoria con un codigo, que es
+suministrado por otra via al usuario.
+
++mostrar como el usuario individuo responde ante la situacion de obtener un codigo,
+como usarlo, y que datos debo llenar.
++mostrar como reaccionan las pantallas al evento.
++mostrar como el usuario organizacion administra(acepta, da de baja, visualiza)los aportes de los usuarios.
+
+saber donde se cargan los registros de colaboradores.

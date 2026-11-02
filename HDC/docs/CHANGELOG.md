@@ -9,6 +9,37 @@ cambió, por qué y qué archivos se tocaron.
 
 ---
 
+## [2.4] — 02/11/2026 — Script para limpiar los datos antes de pasar a producción
+
+**Por qué:** se pidió un script para poner en producción que borre todo menos la cuenta de administrador.
+
+**Decisiones tomadas:**
+- **Qué se conserva:** además de los administradores, los roles, permisos, catálogos y la geografía, porque el sistema
+  los necesita para funcionar. Las fuentes de emisión actuales también quedan: si la tabla quedara vacía, el script de
+  inicio volvería a cargar las de ejemplo.
+- **Se borra también lo cargado por el administrador**, no solo lo de los demás usuarios.
+- **El script va en `scripts/` y no en `backend/HDC.DAL/Scripts/`**, porque todo lo de esa carpeta se embebe en la DLL de la API.
+- **Exige confirmar con el nombre de la base** y corre en una transacción: sin confirmación no borra nada, aunque el
+  cliente de SQL siga ejecutando después del error. Tampoco borra si no hay un administrador activo.
+
+| Archivo | Cambio |
+|---|---|
+| `scripts/limpiar_datos_produccion.sql` | **Nuevo.** Limpieza de los datos de uso, con las protecciones anteriores |
+| `docs/GUIA_DESARROLLADOR.md` | § 9: pasos para ejecutarlo con respaldo previo |
+
+**Verificación** (en la base de desarrollo, sin confirmar ningún borrado):
+
+| Prueba | Resultado |
+|---|---|
+| Sin confirmación | Error; no borra nada |
+| Confirmación con otro nombre de base | Error; no borra nada |
+| Sin administrador activo | Error; no borra nada |
+| Con confirmación, cambiando `COMMIT` por `ROLLBACK` | Queda 1 usuario (`admin@hdc.com`) y 0 filas en las tablas de uso; se conservan 3 roles, 12 permisos, 15 fuentes y 4.037 ciudades. Tras revertir siguen los 34 usuarios |
+
+Falta probar el recorrido completo con `COMMIT`, el respaldo y su restauración.
+
+---
+
 ## [2.3] — 02/11/2026 — Carga de consumos más clara y ajustes en colaboraciones
 
 Pedido original: `textos/fix6.txt`.

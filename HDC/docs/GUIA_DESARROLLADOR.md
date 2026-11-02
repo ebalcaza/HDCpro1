@@ -1,6 +1,6 @@
 # Guía del desarrollador — Huella de Carbono (HDC)
 
-> **Última actualización:** 02/11/2026 · Versión del sistema: 2.3 (ver [CHANGELOG](CHANGELOG.md))
+> **Última actualización:** 02/11/2026 · Versión del sistema: 2.4 (ver [CHANGELOG](CHANGELOG.md))
 
 Cómo levantar el proyecto, trabajarlo como desarrollador y ponerlo en producción.
 La arquitectura y las decisiones técnicas están en la [Documentación técnica](DOCUMENTACION_TECNICA.md).
@@ -284,6 +284,38 @@ Lista de control antes de publicar:
 - [ ] Copias de seguridad de la base:
       `docker compose exec db pg_dump -U hdc huellacarbono > respaldo_$(date +%F).sql`
 - [ ] Revisar los factores de emisión iniciales con la fuente oficial que se vaya a usar.
+
+### Dejar la base limpia antes de publicar
+`scripts/limpiar_datos_produccion.sql` borra **todos los datos de uso** y deja las cuentas con rol Administrador,
+los roles y permisos, los catálogos (incluidas las fuentes de emisión) y la geografía. **No se puede deshacer.**
+
+Ejecutar desde la carpeta `HDC`, en una terminal Linux o Git Bash (en PowerShell 5.1, `>` cambia la codificación y
+arruina el respaldo). Si cambiaste `DB_USUARIO` o `DB_NAME`, reemplazá `hdc` y `huellacarbono`:
+
+```bash
+# 1. En el .env tiene que estar DATOS_PRUEBA=false: con true, los datos de prueba vuelven a crearse al arrancar la API
+grep DATOS_PRUEBA .env
+
+# 2. Detener la API para que nadie cargue datos durante la limpieza
+docker compose stop api
+
+# 3. Respaldar la base y comprobar que el archivo no quedó vacío
+docker compose exec -T db pg_dump -U hdc huellacarbono > respaldo_antes_de_limpiar.sql
+ls -lh respaldo_antes_de_limpiar.sql
+
+# 4. Limpiar. La confirmación tiene que ser el nombre de la base; sin ella, el script no borra nada
+{ echo "SET hdc.confirmar_borrado = 'huellacarbono';"; cat scripts/limpiar_datos_produccion.sql; } \
+  | docker compose exec -T db psql -U hdc -d huellacarbono
+
+# 5. Volver a levantar la API
+docker compose up -d api
+```
+
+El resultado correcto termina en `COMMIT` y lista las cuentas conservadas. Si aparece `ERROR` y `ROLLBACK`, no se
+borró nada. El script se cancela también si no hay un administrador activo.
+
+> El administrador **conserva su contraseña actual**: `ADMIN_CONTRASENA` solo se usa cuando se crea la cuenta, así
+> que cambiar el `.env` no la modifica. Si se usó una contraseña de desarrollo, cambiala desde la aplicación.
 
 ### Proveedor de email (SMTP)
 Recomendación: un **servicio de email transaccional** con un remitente de un **dominio propio o institucional**
