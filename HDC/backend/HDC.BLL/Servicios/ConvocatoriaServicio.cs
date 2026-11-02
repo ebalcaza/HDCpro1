@@ -105,17 +105,6 @@ public class ConvocatoriaServicio(
         return await ObtenerAsync(idTitular, id);
     }
 
-    /// <summary>Genera un código nuevo (por ejemplo, si el anterior se difundió donde no debía). El viejo deja de funcionar.</summary>
-    public async Task<ConvocatoriaDto> RegenerarCodigoAsync(long idTitular, long id)
-    {
-        var c = await ObtenerPropiaAsync(idTitular, id);
-        if (c.Estado == EstadoConvocatoria.Finalizada) throw new NegocioException("La convocatoria está finalizada");
-        c.Codigo = await GenerarCodigoUnicoAsync();
-        c.FechaModificacion = DateTime.Now;
-        await convocatorias.GuardarAsync();
-        return await ObtenerAsync(idTitular, id);
-    }
-
     /// <summary>Solo se puede eliminar si nadie se sumó todavía; si no, hay que finalizarla (se conserva el historial).</summary>
     public async Task EliminarAsync(long idTitular, long id)
     {

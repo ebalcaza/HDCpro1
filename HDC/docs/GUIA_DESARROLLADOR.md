@@ -1,6 +1,6 @@
 # Guía del desarrollador — Huella de Carbono (HDC)
 
-> **Última actualización:** 31/10/2026 · Versión del sistema: 2.2 (ver [CHANGELOG](CHANGELOG.md))
+> **Última actualización:** 02/11/2026 · Versión del sistema: 2.3 (ver [CHANGELOG](CHANGELOG.md))
 
 Cómo levantar el proyecto, trabajarlo como desarrollador y ponerlo en producción.
 La arquitectura y las decisiones técnicas están en la [Documentación técnica](DOCUMENTACION_TECNICA.md).

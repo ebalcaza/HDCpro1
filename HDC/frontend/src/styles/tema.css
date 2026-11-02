@@ -435,21 +435,30 @@ h1, h2, h3, h4, h5, h6 { color: var(--texto); font-weight: 800; letter-spacing: 
 /* Edge agrega su propio botón para ver la clave: se oculta porque ya usamos el nuestro */
 input[type='password']::-ms-reveal, input[type='password']::-ms-clear { display: none; }
 
-/* Sugerencias del buscador de fuentes de emisión */
-.sugerencias {
-  position: absolute; z-index: 20; top: 100%; left: 0; right: 0;
-  margin: 4px 0 0; padding: 0.3rem; list-style: none;
+/* Lista de fuentes de emisión siempre visible (si son muchas, se desplaza por dentro) */
+.lista-fuentes {
+  position: relative; /* necesario para ubicar la fuente elegida al desplazar la lista */
+  padding: 0.3rem;
   max-height: 260px; overflow-y: auto;
   background: var(--superficie-solida);
   border: 1px solid var(--borde); border-radius: 10px;
-  box-shadow: var(--sombra-hover);
 }
-.sugerencia {
-  display: flex; flex-direction: column;
-  padding: 0.4rem 0.6rem; border-radius: 7px; cursor: pointer;
+.lista-fuentes.invalida, .lista-fuentes-vacia.invalida { border-color: var(--bs-form-invalid-border-color, #dc3545); }
+.opcion-fuente {
+  display: flex; align-items: center; gap: 0.6rem;
+  margin: 0; padding: 0.4rem 0.6rem; border-radius: 7px; cursor: pointer;
 }
-.sugerencia.activa { background: color-mix(in srgb, var(--verde) 12%, transparent); }
-.sugerencia-vacia { padding: 0.4rem 0.6rem; color: var(--texto-3); font-size: 0.875rem; }
+.opcion-fuente .form-check-input { flex-shrink: 0; margin: 0; }
+.opcion-fuente:hover { background: color-mix(in srgb, var(--verde) 6%, transparent); }
+.opcion-fuente.activa { background: color-mix(in srgb, var(--verde) 12%, transparent); font-weight: 600; }
+.opcion-fuente.deshabilitada { opacity: 0.55; cursor: not-allowed; }
+.opcion-fuente.deshabilitada:hover { background: none; }
+/* Aviso que ocupa el lugar de la lista cuando todavía no hay fuentes para elegir */
+.lista-fuentes-vacia {
+  padding: 0.75rem; color: var(--texto-3); font-size: 0.875rem; text-align: center;
+  background: var(--superficie-solida);
+  border: 1px dashed var(--borde); border-radius: 10px;
+}
 .form-control:focus, .form-select:focus {
   background-color: var(--superficie-solida);
   color: var(--texto);

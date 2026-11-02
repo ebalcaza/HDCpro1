@@ -220,10 +220,6 @@ export function PestanaConvocatorias({ consulta, onEditar, onNueva }) {
     if (!(await ui.confirmar(cfg))) return
     try { await convocatoriasApi.cambiarEstado(c.idConvocatoria, estado); ui.exito(`La convocatoria quedó ${ESTADOS_CONVOCATORIA[estado].texto.toLowerCase()}`); recargar() } catch (err) { ui.error(err) }
   }
-  const regenerar = async (c) => {
-    if (!(await ui.confirmar({ titulo: '¿Generar un código nuevo?', mensaje: `El código ${c.codigo} dejará de funcionar. Quienes ya se sumaron siguen en la convocatoria.`, tipo: 'aviso', textoConfirmar: 'Generar' }))) return
-    try { const r = await convocatoriasApi.regenerarCodigo(c.idConvocatoria); ui.exito(`Nuevo código: ${r.codigo}`); recargar() } catch (err) { ui.error(err) }
-  }
   const eliminar = async (c) => {
     if (!(await ui.confirmar({ titulo: `¿Eliminar "${c.nombre}"?`, mensaje: 'Solo se puede eliminar si nadie se sumó todavía.', tipo: 'peligro', textoConfirmar: 'Eliminar' }))) return
     try { await convocatoriasApi.eliminar(c.idConvocatoria); ui.exito('Convocatoria eliminada'); recargar() } catch (err) { ui.error(err) }
@@ -275,7 +271,7 @@ export function PestanaConvocatorias({ consulta, onEditar, onNueva }) {
 
               <div className="d-flex flex-wrap gap-2 mt-auto">
                 <button type="button" className="btn btn-sm btn-primary" onClick={() => navigate(`/colaboraciones/convocatorias/${c.idConvocatoria}`)}>
-                  <i className="bi bi-people me-1" />Colaboradores{c.solicitudes > 0 && <span className="badge rounded-pill bg-light text-dark ms-1">{c.solicitudes}</span>}
+                  <i className="bi bi-people me-1" />Detalles{c.solicitudes > 0 && <span className="badge rounded-pill bg-light text-dark ms-1">{c.solicitudes}</span>}
                 </button>
                 {!finalizada && <>
                   <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => onEditar(c)}><i className="bi bi-pencil me-1" />Editar</button>
@@ -285,7 +281,6 @@ export function PestanaConvocatorias({ consulta, onEditar, onNueva }) {
                   <div className="dropdown">
                     <button type="button" className="btn btn-sm btn-icono" data-bs-toggle="dropdown" aria-label="Más acciones"><i className="bi bi-three-dots-vertical" /></button>
                     <ul className="dropdown-menu dropdown-menu-end">
-                      <li><button type="button" className="dropdown-item" onClick={() => regenerar(c)}><i className="bi bi-arrow-repeat me-2" />Generar código nuevo</button></li>
                       <li><button type="button" className="dropdown-item text-danger" onClick={() => cambiarEstado(c, 'FINALIZADA')}><i className="bi bi-flag me-2" />Finalizar</button></li>
                       {c.aceptados + c.solicitudes + c.bajas === 0 && (
                         <li><button type="button" className="dropdown-item text-danger" onClick={() => eliminar(c)}><i className="bi bi-trash3 me-2" />Eliminar</button></li>

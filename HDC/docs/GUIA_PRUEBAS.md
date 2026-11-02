@@ -1,4 +1,4 @@
-# Guía de pruebas — Huella de Carbono (HDC) v2.2
+# Guía de pruebas — Huella de Carbono (HDC) v2.3
 
 Resumen de lo que se hizo en las últimas versiones y **cómo probarlo paso a paso** en el navegador.
 El detalle de cada cambio (archivos, motivos) está en el [CHANGELOG](CHANGELOG.md).
@@ -9,15 +9,24 @@ El detalle de cada cambio (archivos, motivos) está en el [CHANGELOG](CHANGELOG.
 
 1. [Qué se hizo](#1-qué-se-hizo)
 2. [Antes de empezar](#2-antes-de-empezar)
-3. [Pruebas de la v2.2 — Convocatorias](#3-pruebas-de-la-v22--convocatorias)
-4. [Pruebas de la v2.1 — Fuentes de emisión y administrador](#4-pruebas-de-la-v21--fuentes-de-emisión-y-administrador)
-5. [Pruebas de la v2.0 — Recuperar contraseña](#5-pruebas-de-la-v20--recuperar-contraseña)
-6. [Volver los datos de prueba al estado inicial](#6-volver-los-datos-de-prueba-al-estado-inicial)
-7. [Limitaciones conocidas](#7-limitaciones-conocidas)
+3. [Pruebas de la v2.3 — Carga de consumos](#3-pruebas-de-la-v23--carga-de-consumos)
+4. [Pruebas de la v2.2 — Convocatorias](#4-pruebas-de-la-v22--convocatorias)
+5. [Pruebas de la v2.1 — Fuentes de emisión y administrador](#5-pruebas-de-la-v21--fuentes-de-emisión-y-administrador)
+6. [Pruebas de la v2.0 — Recuperar contraseña](#6-pruebas-de-la-v20--recuperar-contraseña)
+7. [Volver los datos de prueba al estado inicial](#7-volver-los-datos-de-prueba-al-estado-inicial)
+8. [Limitaciones conocidas](#8-limitaciones-conocidas)
 
 ---
 
 ## 1. Qué se hizo
+
+### v2.3 — Carga de consumos más clara y ajustes en colaboraciones
+
+- Al cargar un consumo, las fuentes disponibles se ven directamente en una lista, sin buscador ni filtros.
+- El colaborador no ve los kg de CO₂ en la pantalla de carga y no puede agregar otra fila si hay una vacía o incompleta.
+- La pestaña **Donde colaboro** ya no muestra la columna "Puede cargar".
+- Se quitó la opción de generar un código nuevo en las convocatorias.
+- El botón **Colaboradores** de cada convocatoria ahora se llama **Detalles**.
 
 ### v2.2 — Convocatorias: colaboración masiva por código
 
@@ -98,11 +107,52 @@ transporte de todo el personal. Invitar a miles de personas una por una por emai
 
 ---
 
-## 3. Pruebas de la v2.2 — Convocatorias
+## 3. Pruebas de la v2.3 — Carga de consumos
+
+### 3.1 Cargar como colaborador
+
+Como `empleado01@ecosur.prueba.com` → **Colaboraciones → Donde colaboro**.
+
+| ✔ | Paso | Esperado |
+|---|---|---|
+| ☐ | Mirar la tabla | No aparece la columna **Puede cargar** |
+| ☐ | Tocar **Cargar** | Se abre el formulario con el domicilio ya elegido y la lista de fuentes a la vista, sin filtros ni buscador |
+| ☐ | Mirar la lista | Solo aparecen las fuentes de los tipos habilitados |
+| ☐ | Mirar toda la pantalla | No se ven el factor, los kg de CO₂ ni el total estimado |
+| ☐ | Sin completar nada, mirar **Agregar consumo** | Está deshabilitado y un texto explica por qué |
+| ☐ | Elegir solo una fuente | Sigue deshabilitado |
+| ☐ | Escribir el consumo | Se habilita |
+| ☐ | Tocar **Agregar consumo** | Aparece otra fila, se vuelve a deshabilitar y la fuente elegida figura como "Ya está en otro consumo" |
+| ☐ | Quitar la fila vacía y **Guardar registro** | Se guarda y el aviso no menciona los kg de CO₂ |
+
+### 3.2 Cargar como titular
+
+Como `contacto@ecosur.prueba.com` → **Mis emisiones → Nuevo registro**.
+
+| ✔ | Paso | Esperado |
+|---|---|---|
+| ☐ | Entrar sin elegir domicilio | Se pide elegir primero el domicilio; **Agregar consumo** está deshabilitado |
+| ☐ | Elegir un domicilio propio | Aparecen todas las fuentes activas, sin filtros |
+| ☐ | Elegir una fuente y escribir un consumo | Se ven el factor, los kg de la fila y el **Total estimado** |
+| ☐ | Tocar **Agregar consumo** con una fila vacía | Se permite: la restricción es solo para colaboradores |
+| ☐ | Editar un registro ya guardado | Sus fuentes aparecen elegidas en la lista |
+
+### 3.3 Convocatorias
+
+Como `contacto@ecosur.prueba.com` → **Colaboraciones → Convocatorias**.
+
+| ✔ | Paso | Esperado |
+|---|---|---|
+| ☐ | Mirar la tarjeta | El botón se llama **Detalles** y abre la pantalla de los miembros |
+| ☐ | Abrir el menú ⋮ | No aparece **Generar código nuevo**; siguen **Finalizar** y, si corresponde, **Eliminar** |
+
+---
+
+## 4. Pruebas de la v2.2 — Convocatorias
 
 Marcá cada prueba a medida que la hacés. La columna **Esperado** dice lo que tiene que pasar.
 
-### 3.1 Ver la convocatoria (titular)
+### 4.1 Ver la convocatoria (titular)
 
 Entrá como **EcoSur** → **Colaboraciones** → pestaña **Convocatorias**.
 
@@ -112,9 +162,9 @@ Entrá como **EcoSur** → **Colaboraciones** → pestaña **Convocatorias**.
 | ☐ | Tocar el botón de copiar al lado del código | Aviso "Código copiado"; al pegarlo aparece `ECSR-2K26` |
 | ☐ | Mirar la pestaña **Convocatorias** | Tiene un número (7) con las solicitudes por aprobar |
 
-### 3.2 Gestionar a los miembros (titular)
+### 4.2 Gestionar a los miembros (titular)
 
-En la tarjeta, tocá **Colaboradores**.
+En la tarjeta, tocá **Detalles**.
 
 | ✔ | Paso | Esperado |
 |---|---|---|
@@ -129,7 +179,7 @@ En la tarjeta, tocá **Colaboradores**.
 | ☐ | En **Dados de baja**, **Reactivar** a esa persona | Vuelve a **Activos** |
 | ☐ | Marcar a un activo y elegir **Aceptar** | Aviso de que no se modificó a nadie (ya estaba aceptado) |
 
-### 3.3 Sumarse con el código (colaborador)
+### 4.3 Sumarse con el código (colaborador)
 
 Entrá como **María** → **Colaboraciones** → **Sumarme con un código**.
 
@@ -143,7 +193,7 @@ Entrá como **María** → **Colaboraciones** → **Sumarme con un código**.
 | ☐ | Como **EcoSur**, aceptar a María en **Por aprobar** | — |
 | ☐ | Como **María**, ir a **Mis emisiones → Nuevo registro** | Puede elegir el domicilio de EcoSur y **solo** el tipo "Transporte de colaboradores" |
 
-### 3.4 Reglas para volver a entrar
+### 4.4 Reglas para volver a entrar
 
 | ✔ | Paso | Esperado |
 |---|---|---|
@@ -154,7 +204,7 @@ Entrá como **María** → **Colaboraciones** → **Sumarme con un código**.
 | ☐ | Como **María**, sumarse de nuevo con el código | **Sí** puede: se había ido por su cuenta. Vuelve a "Esperando aprobación" |
 | ☐ | Como **María**, tocar **Cancelar solicitud** | La solicitud se cancela |
 
-### 3.5 Crear y editar una convocatoria
+### 4.5 Crear y editar una convocatoria
 
 Como **EcoSur** → **Nueva convocatoria**.
 
@@ -165,12 +215,11 @@ Como **EcoSur** → **Nueva convocatoria**.
 | ☐ | Como **EcoSur**, **Editar** la convocatoria y agregar otro tipo de emisión | Juan ahora también puede cargar ese tipo |
 | ☐ | **Cerrar** la convocatoria | Juan sigue pudiendo cargar; otra persona no puede sumarse con el código |
 | ☐ | **Abrir** de nuevo | El código vuelve a funcionar |
-| ☐ | **Regenerar código** | El código cambia; el anterior deja de funcionar |
 | ☐ | **Finalizar** | Juan ya no puede cargar; la convocatoria no se puede reabrir |
 | ☐ | **Eliminar** una convocatoria que tiene miembros | No se permite (para no perder el historial) |
 | ☐ | Crear otra sin que nadie se sume y **Eliminarla** | Se elimina |
 
-### 3.6 Lo que no tiene que haber cambiado
+### 4.6 Lo que no tiene que haber cambiado
 
 | ✔ | Paso | Esperado |
 |---|---|---|
@@ -180,18 +229,18 @@ Como **EcoSur** → **Nueva convocatoria**.
 
 ---
 
-## 4. Pruebas de la v2.1 — Fuentes de emisión y administrador
+## 5. Pruebas de la v2.1 — Fuentes de emisión y administrador
 
 | ✔ | Paso | Esperado |
 |---|---|---|
 | ☐ | Como **María**, menú **Fuentes de emisión** | Lista de todas las fuentes, agrupadas, con su descripción |
-| ☐ | Desde una fuente, ir a cargar un registro | El formulario se abre con esa fuente ya elegida |
+| ☐ | Desde una fuente, ir a cargar un registro | El formulario se abre y, al elegir el domicilio, esa fuente aparece ya elegida |
 | ☐ | Como **admin**, ir a **Alcances** → **Unidades de medida** → **Tipos de emisión** | Cada lista muestra solo lo suyo, sin mezclar |
 | ☐ | Como **admin**, editar una fuente y cambiar su descripción | El usuario ve la descripción nueva en **Fuentes de emisión** |
 
 ---
 
-## 5. Pruebas de la v2.0 — Recuperar contraseña
+## 6. Pruebas de la v2.0 — Recuperar contraseña
 
 | ✔ | Paso | Esperado |
 |---|---|---|
@@ -206,7 +255,7 @@ Como **EcoSur** → **Nueva convocatoria**.
 
 ---
 
-## 6. Volver los datos de prueba al estado inicial
+## 7. Volver los datos de prueba al estado inicial
 
 Las pruebas modifican los datos (aceptar, dar de baja, etc.). Para empezar de cero, desde la carpeta `HDC`:
 
@@ -222,7 +271,7 @@ Al arrancar, la API vuelve a crear las tablas, los datos iniciales, el administr
 
 ---
 
-## 7. Limitaciones conocidas
+## 8. Limitaciones conocidas
 
 - El buscador de miembros **no ignora los acentos**: "lucia" no encuentra "Lucía". Se puede resolver más
   adelante con la extensión `unaccent` de PostgreSQL.

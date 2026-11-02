@@ -8,15 +8,16 @@ import { EsqueletoTarjeta } from '../../components/comunes/Esqueleto.jsx'
 import { SelectorMes } from '../../components/comunes/Selectores.jsx'
 import { ValorAnimado } from '../../components/comunes/Destello.jsx'
 import InputMiles from '../../components/comunes/InputMiles.jsx'
-import BuscadorFuente from '../../components/formularios/BuscadorFuente.jsx'
+import SelectorFuente from '../../components/formularios/SelectorFuente.jsx'
 import { aMes, desdeMes, mesActual, numero, periodo, toneladas } from '../../utils/formato'
 
 let siguienteClave = 1
-const filaVacia = (idFuenteEmision = '') => ({ clave: siguienteClave++, idAlcance: '', idTipoEmision: '', idFuenteEmision, consumo: '' })
+const filaVacia = (idFuenteEmision = '') => ({ clave: siguienteClave++, idFuenteEmision, consumo: '' })
 
 /**
  * RFR01 / RFR03: alta y edición de un registro de emisiones.
- * Cada fila permite filtrar por alcance y tipo de emisión para acortar la lista de fuentes.
+ * Cada fila muestra a la vista las fuentes disponibles en el domicilio elegido, sin filtros.
+ * Quien carga como colaborador no ve los kg de CO₂ y debe completar una fila antes de agregar otra.
  */
 export default function RegistroForm() {
   const { id } = useParams()
@@ -41,13 +42,11 @@ export default function RegistroForm() {
   useEffect(() => {
     Promise.all([
       catalogoApi('fuentes').listar(),
-      catalogoApi('alcances').listar(),
-      catalogoApi('tipos-emision').listar(),
       tienePermiso(P.GESTIONAR_DOMICILIOS) ? domiciliosApi.listar() : Promise.resolve([]),
       tienePermiso(P.COLABORAR) ? colaboracionesApi.recibidas() : Promise.resolve([]),
       editando ? registrosApi.obtener(id) : Promise.resolve(null),
-    ]).then(([fuentes, alcances, tipos, domicilios, colaboraciones, registro]) => {
-      setCat({ fuentes, alcances, tipos, domicilios, colaboraciones: colaboraciones.filter((c) => c.estado === 'ACEPTADA') })
+    ]).then(([fuentes, domicilios, colaboraciones, registro]) => {
+      setCat({ fuentes, domicilios, colaboraciones: colaboraciones.filter((c) => c.estado === 'ACEPTADA') })
       // Si la fuente precargada por la URL no existe (o está dada de baja), se empieza con la fila vacía
       if (!registro && fuenteInicial && !fuentes.some((f) => f.idFuenteEmision === fuenteInicial)) setFilas([filaVacia()])
       if (registro) {
@@ -70,10 +69,23 @@ export default function RegistroForm() {
     return colabs.length ? { tipos: new Set(colabs.flatMap((c) => c.tiposEmision.map((t) => t.idTipoEmision))), colabs } : null
   }, [cat, idDomicilio])
 
+  // Colaborador: domicilio elegido de una colaboración, o usuario sin domicilios propios (aún sin elegir)
+  const comoColaborador = !!colaboracion || cat?.domicilios.length === 0
+
+  // Las fuentes dependen del domicilio: sin domicilio elegido no se sabe cuáles están disponibles
   const fuentesPermitidas = useMemo(() => {
-    if (!cat) return []
+    if (!cat || !idDomicilio) return []
     return cat.fuentes.filter((f) => !colaboracion || colaboracion.tipos.has(f.idTipoEmision))
-  }, [cat, colaboracion])
+  }, [cat, idDomicilio, colaboracion])
+
+  // Al cambiar de domicilio se quitan las fuentes elegidas que ya no están disponibles en el nuevo
+  useEffect(() => {
+    if (!cat || !idDomicilio || editando) return
+    setFilas((fs) => fs.map((f) => (
+      f.idFuenteEmision && !fuentesPermitidas.some((x) => x.idFuenteEmision === f.idFuenteEmision) ? { ...f, idFuenteEmision: '' } : f
+    )))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fuentesPermitidas])
 
   const mapaFuentes = useMemo(() => new Map((cat?.fuentes || []).map((f) => [f.idFuenteEmision, f])), [cat])
 
@@ -100,14 +112,18 @@ export default function RegistroForm() {
    * Agregá acá tus propias reglas por fila, ej: consumo: ... || (Number(f.consumo) > TOPE ? 'Revisá el valor' : null)
    */
   const errorFila = (f) => ({
-    fuente: !f.idFuenteEmision ? 'Elegí una fuente de la lista de sugerencias' : repetidas.has(f.idFuenteEmision) ? 'Fuente repetida' : null,
+    fuente: !f.idFuenteEmision ? 'Elegí una fuente de la lista' : repetidas.has(f.idFuenteEmision) ? 'Fuente repetida' : null,
     consumo: !f.consumo || Number(f.consumo) <= 0 ? 'Debe ser mayor a 0' : null,
   })
   const erroresGenerales = {
     domicilio: !idDomicilio ? 'Elegí el domicilio' : null,
     periodo: !mes ? 'Elegí el período' : mes > mesActual() ? 'No puede ser futuro' : null,
   }
-  const hayErrores = Object.values(erroresGenerales).some(Boolean) || filas.length === 0 || filas.some((f) => Object.values(errorFila(f)).some(Boolean))
+  // Una fila está incompleta si le falta la fuente o el consumo (o si tiene algún dato inválido)
+  const hayFilaIncompleta = filas.some((f) => Object.values(errorFila(f)).some(Boolean))
+  const hayErrores = Object.values(erroresGenerales).some(Boolean) || filas.length === 0 || hayFilaIncompleta
+  // El colaborador no puede sumar otra fila mientras haya una vacía o incompleta
+  const colaboradorDebeCompletar = comoColaborador && hayFilaIncompleta
 
   const clase = (base, err) => (intentoEnvio ? `${base} ${err ? 'is-invalid' : 'is-valid'}` : base)
 
@@ -124,7 +140,9 @@ export default function RegistroForm() {
     setEnviando(true)
     try {
       const r = editando ? await registrosApi.actualizar(id, datos) : await registrosApi.crear(datos)
-      ui.exito(`${editando ? 'Se actualizó' : 'Se guardó'} el registro de ${periodo(r.periodo, true)}: ${numero(r.totalKgCo2)} kg CO₂`, editando ? 'Registro actualizado' : 'Registro guardado')
+      // Al colaborador no se le informa la cantidad de kg de CO₂
+      const detalleKg = comoColaborador ? '' : `: ${numero(r.totalKgCo2)} kg CO₂`
+      ui.exito(`${editando ? 'Se actualizó' : 'Se guardó'} el registro de ${periodo(r.periodo, true)}${detalleKg}`, editando ? 'Registro actualizado' : 'Registro guardado')
       navigate(`/emisiones/${r.idRegistro}`)
     } catch (err) {
       ui.error(err)
@@ -142,7 +160,7 @@ export default function RegistroForm() {
     <form noValidate onSubmit={enviar}>
       <EncabezadoPagina
         titulo={editando ? 'Editar registro de emisiones' : 'Nuevo registro de emisiones'}
-        descripcion="Cargá los consumos del mes. Las emisiones se calculan como consumo × factor de emisión."
+        descripcion={comoColaborador ? 'Cargá los consumos del mes.' : 'Cargá los consumos del mes. Las emisiones se calculan como consumo × factor de emisión.'}
         icono="bi-cloud-plus">
         <Link to="/emisiones" className="btn btn-outline-secondary"><i className="bi bi-arrow-left me-1" />Volver</Link>
       </EncabezadoPagina>
@@ -199,9 +217,8 @@ export default function RegistroForm() {
               <div className="p-3 d-flex flex-column gap-3">
                 {filas.map((f, i) => {
                   const err = errorFila(f)
-                  const tiposVisibles = cat.tipos.filter((t) => (!f.idAlcance || t.idAlcance === Number(f.idAlcance)) && (!colaboracion || colaboracion.tipos.has(t.idTipoEmision)))
-                  const opciones = fuentesPermitidas.filter((x) =>
-                    (!f.idAlcance || x.idAlcance === Number(f.idAlcance)) && (!f.idTipoEmision || x.idTipoEmision === Number(f.idTipoEmision)))
+                  // Fuentes elegidas en las otras filas: no se pueden volver a elegir en esta
+                  const usadas = new Set(filas.filter((x) => x.clave !== f.clave && x.idFuenteEmision).map((x) => x.idFuenteEmision))
                   const fuente = mapaFuentes.get(Number(f.idFuenteEmision))
                   return (
                     <div key={f.clave} className="p-3 rounded-3 aparecer" style={{ border: '1px solid var(--borde)', background: 'var(--superficie-2)' }}>
@@ -214,32 +231,14 @@ export default function RegistroForm() {
                         </button>
                       </div>
                       <div className="row g-2">
-                        <div className="col-6 col-md-3">
-                          <label className="form-label small">Alcance</label>
-                          <select className="form-select form-select-sm" value={f.idAlcance}
-                            onChange={(e) => actualizarFila(f.clave, { idAlcance: e.target.value, idTipoEmision: '' })}>
-                            <option value="">Todos</option>
-                            {cat.alcances.map((a) => <option key={a.idAlcance} value={a.idAlcance}>{a.nombre}</option>)}
-                          </select>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <label className="form-label small">Tipo de emisión</label>
-                          <select className="form-select form-select-sm" value={f.idTipoEmision}
-                            onChange={(e) => actualizarFila(f.clave, { idTipoEmision: e.target.value })}>
-                            <option value="">Todos</option>
-                            {tiposVisibles.map((t) => <option key={t.idTipoEmision} value={t.idTipoEmision}>{t.nombre}</option>)}
-                          </select>
-                        </div>
-                        <div className="col-md-6">
+                        <div className="col-12">
                           {/* Si la fuente guardada fue dada de baja, se sigue mostrando su nombre para no perderla al editar */}
-                          <BuscadorFuente id={`fuente-${f.clave}`} etiqueta="Fuente de emisión" requerido
-                            className={clase('', err.fuente)} opciones={opciones} valor={f.idFuenteEmision} nombreActual={f.nombreFuente}
-                            onChange={(idFuenteEmision) => {
-                              if (idFuenteEmision !== f.idFuenteEmision) actualizarFila(f.clave, { idFuenteEmision, factorGuardado: undefined })
-                            }} />
-                          {intentoEnvio && err.fuente
-                            ? <div className="invalid-feedback d-block">{err.fuente}</div>
-                            : <div className="form-text">Escribí parte del nombre y elegí una de las {opciones.length} fuentes sugeridas.</div>}
+                          <SelectorFuente id={`fuente-${f.clave}`} etiqueta="Fuente de emisión" requerido
+                            opciones={fuentesPermitidas} valor={f.idFuenteEmision} nombreActual={f.nombreFuente} usadas={usadas}
+                            invalido={intentoEnvio && err.fuente}
+                            mensajeVacio={idDomicilio ? 'No hay fuentes disponibles para este domicilio' : 'Elegí primero el domicilio para ver las fuentes disponibles'}
+                            onChange={(idFuenteEmision) => actualizarFila(f.clave, { idFuenteEmision, factorGuardado: undefined })} />
+                          {intentoEnvio && err.fuente && <div className="invalid-feedback d-block">{err.fuente}</div>}
                         </div>
                         <div className="col-md-6">
                           <label className="form-label small">Consumo<span className="req">*</span></label>
@@ -253,28 +252,39 @@ export default function RegistroForm() {
                             ? <div className="invalid-feedback d-block">{err.consumo}</div>
                             : <div className="form-text">Los puntos de miles se agregan solos. Decimales con coma (,).</div>}
                         </div>
-                        <div className="col-md-6 d-flex align-items-end justify-content-md-end">
-                          <div className="text-md-end small">
-                            <span className="text-muted">Factor {numero(f.factorGuardado ?? fuente?.valorFactorEmision ?? 0, 6)} kg/{fuente?.unidadMedida || 'u'} → </span>
-                            <b className="fs-6"><ValorAnimado valor={kgFila(f)}>{numero(kgFila(f))}</ValorAnimado> kg CO₂</b>
+                        {/* El factor y los kg de CO₂ de la fila no se le muestran al colaborador */}
+                        {!comoColaborador && (
+                          <div className="col-md-6 d-flex align-items-end justify-content-md-end">
+                            <div className="text-md-end small">
+                              <span className="text-muted">Factor {numero(f.factorGuardado ?? fuente?.valorFactorEmision ?? 0, 6)} kg/{fuente?.unidadMedida || 'u'} → </span>
+                              <b className="fs-6"><ValorAnimado valor={kgFila(f)}>{numero(kgFila(f))}</ValorAnimado> kg CO₂</b>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   )
                 })}
-                <button type="button" className="btn btn-suave align-self-start" onClick={() => setFilas((fs) => [...fs, filaVacia()])}>
+                {/* Sin domicilio no hay fuentes para elegir, así que tampoco tiene sentido sumar otra fila */}
+                <button type="button" className="btn btn-suave align-self-start" disabled={!idDomicilio || colaboradorDebeCompletar}
+                  onClick={() => setFilas((fs) => [...fs, filaVacia()])}>
                   <i className="bi bi-plus-lg me-1" />Agregar consumo
                 </button>
+                {idDomicilio && colaboradorDebeCompletar && (
+                  <div className="form-text mt-0">Para agregar otro consumo, primero completá la fuente y el consumo de los que ya están en la lista.</div>
+                )}
               </div>
             </div>
           </div>
 
           <div className="col-lg-4">
             <div className="tarjeta tarjeta-cuerpo position-sticky" style={{ top: 80 }}>
-              <div className="dato-etiqueta">Total estimado</div>
-              <div className="kpi-valor fs-2 fw-bold"><ValorAnimado valor={Math.round(total)}>{toneladas(total)}</ValorAnimado> <small className="fs-6 text-muted">t CO₂</small></div>
-              <div className="text-muted mb-3">{numero(total)} kg CO₂ · {periodo(mes, true)}</div>
+              {/* El total estimado no se le muestra al colaborador */}
+              {!comoColaborador && <>
+                <div className="dato-etiqueta">Total estimado</div>
+                <div className="kpi-valor fs-2 fw-bold"><ValorAnimado valor={Math.round(total)}>{toneladas(total)}</ValorAnimado> <small className="fs-6 text-muted">t CO₂</small></div>
+                <div className="text-muted mb-3">{numero(total)} kg CO₂ · {periodo(mes, true)}</div>
+              </>}
               <label className="form-label">Observaciones</label>
               <textarea className="form-control mb-3" rows={3} maxLength={500} value={observaciones} onChange={(e) => setObservaciones(e.target.value)}
                 placeholder="Ej: factura de gas bimestral dividida en dos meses" />

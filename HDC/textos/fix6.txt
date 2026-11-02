@@ -1,0 +1,23 @@
++cuando cargo un consumo, las opciones a cargar deben estar visibiles para
+seleccionar, solo mostrar la fuente de emision disponible, sin la capacidad de filtrar,
+para mostrar claramente la información.
+
++al agregar un nuevo registro de consumos como colaborador, no podra agregar otro formulario consumo, si ya hay uno vacio, o incompleto.
+
++cuando voy a cargar un nuegvo registro desde la lista donde colaboro en funcion cargar, que no me muestre 
+la columna "puede cargar".
+
++cuando voy a cargar un nuegvo registro desde la lista donde colaboro cuando entro en la pantalla
+de cargar nuevo registro las opciones a cargar deben estar visibiles para
+seleccionar, solo mostrar la fuente de emision disponible, sin la capacidad de filtrar,
+para mostrar claramente la información. tampoco es necesario mostrarle la cantidad final de kg de CO2.
+
++en colaboraciones, quitar la opcion de "re-generar" el codigo de la invitacion.
++lougeado como organizacion, cuando veo las convocatorias abiertas, cambia solo
+el titulo del boton "Colaboradores" y ponle "Detalles".
+
+
+empleado01@ecosur.prueba.com
+Prueba2026
+
+https://github.com/UPE-Desarrollo-de-Software/carbon-footprint.git

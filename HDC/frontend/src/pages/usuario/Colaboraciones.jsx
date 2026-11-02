@@ -154,7 +154,7 @@ export default function Colaboraciones() {
     ) },
     { clave: 'domicilio', titulo: 'Domicilio', ordenable: true, render: (c) => <div>{c.domicilio}{c.mensaje && <div className="small text-muted fst-italic">“{c.mensaje}”</div>}</div> },
     { clave: 'periodoDesde', titulo: 'Período', ordenable: true, render: rango },
-    tiposCol,
+    // Acá no va la columna "Puede cargar": al entrar a cargar, el formulario ya muestra las fuentes disponibles
     { clave: 'estado', titulo: 'Estado', ordenable: true, render: (c) => <Estado c={c} /> },
     { clave: 'totalKgCo2Aportado', titulo: 'Tu aporte kg CO₂', numerico: true, ordenable: true, render: (c) => numero(c.totalKgCo2Aportado) },
   ]

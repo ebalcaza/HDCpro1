@@ -1,6 +1,6 @@
 # Documentación técnica — Huella de Carbono (HDC)
 
-> **Última actualización:** 31/10/2026 · Versión del sistema: 2.2 (ver [CHANGELOG](CHANGELOG.md))
+> **Última actualización:** 02/11/2026 · Versión del sistema: 2.3 (ver [CHANGELOG](CHANGELOG.md))
 
 Descripción técnica del sistema para el equipo de desarrollo: arquitectura, tecnologías, modelo de datos,
 API, seguridad y decisiones de diseño. Para instalarlo y trabajarlo, ver la
@@ -162,7 +162,7 @@ La documentación interactiva completa está en **`/swagger`**.
 | Domicilios    | `GET/POST domicilios`, `GET/PUT/DELETE domicilios/{id}` | `GESTIONAR_DOMICILIOS` |
 | Registros     | `GET/POST registros` (paginado), `GET registros/domicilios`, `GET/PUT/DELETE registros/{id}` | `GESTIONAR_EMISIONES` o `COLABORAR` |
 | Colaboraciones| `GET enviadas/recibidas`, `POST`, `PUT {id}`, `POST {id}/aceptar · rechazar · revocar` | `GESTIONAR_COLABORACIONES` / `COLABORAR` |
-| Convocatorias (titular) | `GET/POST convocatorias`, `GET/PUT/DELETE convocatorias/{id}`, `PUT {id}/estado`, `POST {id}/codigo`, `GET {id}/miembros` (paginado), `POST {id}/miembros/accion` | `GESTIONAR_COLABORACIONES` |
+| Convocatorias (titular) | `GET/POST convocatorias`, `GET/PUT/DELETE convocatorias/{id}`, `PUT {id}/estado`, `GET {id}/miembros` (paginado), `POST {id}/miembros/accion` | `GESTIONAR_COLABORACIONES` |
 | Convocatorias (colaborador) | `POST convocatorias/codigo/vista-previa`, `POST convocatorias/unirse` | `COLABORAR`, límite 20 intentos / 15 min por usuario |
 | Dashboard     | `GET dashboard` | `VER_DASHBOARD` |
 | Reportes      | `POST reportes/generar`, `POST reportes/global/generar`, `GET/POST/DELETE reportes/guardados` | `GENERAR_REPORTES` / `REPORTES_GLOBALES` |
@@ -318,7 +318,8 @@ miembros cuyo estado lo permite (por ejemplo, "aceptar" ignora a los ya aceptado
 
 **Código:** 8 caracteres de un alfabeto sin `0/O` ni `1/I` (32^8 ≈ 1,1 billón de combinaciones), generado con
 `RandomNumberGenerator`. Se guarda sin guion y se muestra como `XXXX-XXXX`; al ingresarlo se ignoran guiones,
-espacios y minúsculas. El titular puede regenerarlo; un código inexistente y uno finalizado dan el mismo mensaje.
+espacios y minúsculas. El código no cambia durante la vida de la convocatoria (para frenar los ingresos, el titular
+la cierra); un código inexistente y uno finalizado dan el mismo mensaje.
 Antes de sumarse, el usuario ve una vista previa (titular, domicilio, períodos, tipos) para no sumarse por error.
 
 **Escala:** el listado de miembros se pagina, ordena y filtra en SQL (el aporte de cada uno se calcula con

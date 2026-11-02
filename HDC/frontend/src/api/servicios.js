@@ -109,7 +109,6 @@ export const convocatoriasApi = {
   crear: (d) => api.post('/convocatorias', d),
   actualizar: (id, d) => api.put(`/convocatorias/${id}`, d),
   cambiarEstado: (id, estado) => api.put(`/convocatorias/${id}/estado`, { estado }),
-  regenerarCodigo: (id) => api.post(`/convocatorias/${id}/codigo`),
   eliminar: (id) => api.delete(`/convocatorias/${id}`),
   miembros: (id, params) => api.get(`/convocatorias/${id}/miembros`, { params }),
   accion: (id, d) => api.post(`/convocatorias/${id}/miembros/accion`, d),

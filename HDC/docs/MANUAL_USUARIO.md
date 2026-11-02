@@ -1,6 +1,6 @@
 # Manual de usuario — Huella de Carbono (HDC)
 
-> **Última actualización:** 31/10/2026 · Versión del sistema: 2.2 (ver [CHANGELOG](CHANGELOG.md))
+> **Última actualización:** 02/11/2026 · Versión del sistema: 2.3 (ver [CHANGELOG](CHANGELOG.md))
 
 Este manual explica cómo usar la aplicación **Huella de Carbono** para medir cuánto CO₂ generan tus
 consumos de todos los meses, ver cómo evoluciona tu huella y descargar reportes.
@@ -187,18 +187,22 @@ qué elegir y dónde buscar cada dato:
 1. Andá a **Mis emisiones → Nuevo registro** (o el botón **Nuevo registro** del Dashboard).
 2. Elegí el **Domicilio** y el **Período** (mes y año). No se pueden cargar meses futuros.
 3. En **Consumos**, completá una fila por cada fuente:
-   1. *(Opcional)* Elegí **Alcance** y/o **Tipo de emisión** para achicar la lista de fuentes.
-   2. En **Fuente de emisión**, escribí parte del nombre (por ejemplo "gas", "luz", "colectivo") y
-      **elegí una de las sugerencias**.
-   3. Escribí el **Consumo**. La unidad (m³, kWh, L, km, kg) aparece a la derecha.
+   1. En **Fuente de emisión**, hacé click en una de las fuentes de la lista. Solo aparecen las disponibles para
+      ese domicilio, por eso primero hay que elegir el domicilio. Si son muchas, la lista se desplaza por dentro.
+   2. Escribí el **Consumo**. La unidad (m³, kWh, L, km, kg) aparece a la derecha.
       - Los puntos de miles se ponen solos: escribís `20000` y ves `20.000`.
       - Los decimales van con **coma**: `150,5`.
-   4. Debajo ves el factor usado y los **kg de CO₂** de esa fila, calculados al instante.
+   3. Debajo ves el factor usado y los **kg de CO₂** de esa fila, calculados al instante.
 4. **Agregar consumo** suma otra fila. La ✕ de cada fila la quita.
-   No repitas la misma fuente en dos filas: si tenés dos facturas de luz del mismo mes, sumalas en una sola.
+   Una fuente ya elegida aparece deshabilitada en las otras filas: si tenés dos facturas de luz del mismo mes,
+   sumalas en una sola.
 5. A la derecha ves el **Total estimado** del mes en toneladas y kg de CO₂.
    Podés escribir **Observaciones** (por ejemplo, "factura bimestral dividida en dos meses").
 6. Click en **Guardar registro**. Se abre el detalle del registro recién guardado.
+
+> **Si cargás como colaborador:** ves solo las fuentes que te habilitaron y no se muestran el factor, los kg de CO₂
+> ni el total estimado. Además, para **Agregar consumo** primero tenés que completar la fuente y el consumo de las
+> filas que ya están.
 
 ### Ejemplo de un mes en un hogar
 | Fuente                     | Consumo  | Factor          | kg CO₂ |
@@ -311,11 +315,10 @@ En la pestaña **Convocatorias** ves cada una con su código y cuántas personas
 de baja. Desde ahí podés:
 - **Editar**: los cambios de períodos y tipos se aplican **a todos** sus colaboradores a la vez.
 - **Cerrar**: nadie más puede sumarse, pero los activos siguen cargando. Se puede volver a **Abrir**.
-- **Generar código nuevo** (menú ⋮): el código anterior deja de funcionar, por ejemplo si se difundió donde no debía.
 - **Finalizar** (menú ⋮): nadie carga más y el código deja de funcionar. No se puede deshacer; lo cargado se conserva.
 - **Eliminar** (menú ⋮): solo si todavía no se sumó nadie.
 
-**Gestionar los colaboradores de una convocatoria:** botón **Colaboradores**.
+**Gestionar los colaboradores de una convocatoria:** botón **Detalles**.
 - Filtrá por estado (*Por aprobar*, *Activos*, *Dados de baja*, *Rechazados*) y buscá por nombre, DNI o email.
 - Cada fila tiene sus botones: **Aceptar** o **Rechazar** (solicitudes), **Dar de baja** (activos) y **Reactivar**.
 - **De a varios:** marcá las casillas (la del título marca toda la página) y usá la barra que aparece arriba.
@@ -347,8 +350,8 @@ o **Finalizar** la colaboración. Al finalizar, los registros ya cargados se con
    Lo ves en la pestaña **Donde colaboro**; mientras esperás, podés **Cancelar solicitud**.
 5. Una vez aceptado, cargás consumos igual que con una invitación (ver abajo).
 
-Si el código "no existe", revisá que esté bien escrito o pedile uno nuevo al titular (puede haberlo cambiado o
-haber finalizado la convocatoria). Por seguridad, después de 20 intentos en 15 minutos hay que esperar.
+Si el código "no existe", revisá que esté bien escrito o consultá al titular (puede haber finalizado la
+convocatoria). Por seguridad, después de 20 intentos en 15 minutos hay que esperar.
 
 ### Responder una invitación por email (colaborador)
 1. Cuando te invitan, aparece un número junto a **Colaboraciones** en el menú.
@@ -384,11 +387,11 @@ Elegí primero la provincia y después el distrito: la lista de ciudades depende
 vacías, avisale al administrador (tiene que cargar la geografía).
 
 **La fuente que quiero no aparece en la lista.**
-Revisá que el filtro de *Alcance* o *Tipo de emisión* de esa fila esté en "Todos". Si cargás como colaborador,
-solo ves las fuentes de los tipos que te habilitaron. Si la fuente no existe, pedile al administrador que la agregue.
+Primero elegí el domicilio: la lista depende de él. Si cargás como colaborador, solo ves las fuentes de los tipos
+que te habilitaron. Si la fuente no existe, pedile al administrador que la agregue.
 
 **Me dice "Fuente repetida".**
-Usaste la misma fuente en dos filas. Sumá los consumos en una sola.
+La misma fuente quedó en dos filas. Sumá los consumos en una sola.
 
 **Me dice "No puede ser futuro".**
 Solo se pueden cargar meses que ya empezaron (hasta el mes actual).

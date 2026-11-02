@@ -9,6 +9,52 @@ cambió, por qué y qué archivos se tocaron.
 
 ---
 
+## [2.3] — 02/11/2026 — Carga de consumos más clara y ajustes en colaboraciones
+
+Pedido original: `textos/fix6.txt`.
+
+**Por qué:** al cargar consumos, las fuentes quedaban ocultas detrás de un buscador y dos filtros. Se pidió verlas
+directamente, simplificar lo que ve el colaborador, evitar que acumule filas vacías, quitar la opción de regenerar
+el código y renombrar el botón "Colaboradores" de las convocatorias.
+
+**Decisiones tomadas:**
+- La lista visible y sin filtros vale para **todos** los usuarios. Lo que se le oculta al colaborador son los kg de
+  CO₂ y el factor; el límite de una fila incompleta también se aplica solo al colaborador.
+- Las fuentes aparecen **después de elegir el domicilio**, porque de él depende cuáles están disponibles.
+- Se considera colaborador a quien eligió un domicilio de una colaboración, o a quien no tiene domicilios propios.
+- Regenerar el código se quitó también de la API, para no dejar un endpoint sin uso. **Consecuencia:** si un código
+  se difunde donde no debía, el titular puede cerrar la convocatoria, pero no cambiarle el código.
+- El botón "Detalles" lleva ese nombre en todas las convocatorias y para todos los titulares, porque es el mismo botón.
+- El colaborador sigue viendo los kg en otras pantallas (detalle del registro, "Mis emisiones", columna "Tu aporte"):
+  el pedido se refería a la pantalla de carga.
+
+**Qué se hizo:**
+
+| Archivo | Cambio |
+|---|---|
+| `frontend/src/components/formularios/SelectorFuente.jsx` | **Nuevo.** Lista de fuentes siempre visible, se elige con un click. Deshabilita las fuentes usadas en otras filas y conserva, al editar, una fuente dada de baja |
+| `frontend/src/components/formularios/BuscadorFuente.jsx` | **Eliminado:** su único uso era este formulario |
+| `frontend/src/pages/usuario/RegistroForm.jsx` | Usa `SelectorFuente`; quita los filtros de alcance y tipo. Al colaborador le oculta factor, kg y total (también en el aviso de guardado) y le bloquea "Agregar consumo" si hay una fila incompleta. Al cambiar de domicilio se quitan las fuentes que dejan de estar disponibles |
+| `frontend/src/styles/tema.css` | Estilos de la lista (`.lista-fuentes`, `.opcion-fuente`); se quitan los de las sugerencias |
+| `frontend/src/pages/usuario/Colaboraciones.jsx` | "Donde colaboro" ya no muestra la columna "Puede cargar" (la pestaña del titular la conserva) |
+| `frontend/src/pages/usuario/Convocatorias.jsx` | Botón "Colaboradores" → "Detalles"; se quita "Generar código nuevo" |
+| `frontend/src/api/servicios.js` | Se quita `regenerarCodigo` |
+| `backend/HDC.API/Controllers/ConvocatoriasController.cs`, `backend/HDC.BLL/Servicios/ConvocatoriaServicio.cs` | Se quitan el endpoint `POST convocatorias/{id}/codigo` y `RegenerarCodigoAsync` |
+
+Documentos actualizados: MANUAL_USUARIO (§ cómo cargar un registro, § Colaboraciones, § 11), DOCUMENTACION_TECNICA
+(§ API y § Convocatorias), GUIA_PRUEBAS (nueva § 3) y README (versión).
+
+**Verificación realizada:**
+- `vite build` y `dotnet build` de la API: sin errores.
+- Navegador (Edge sin ventana) con las **respuestas de la API simuladas**: 28 comprobaciones correctas sobre las
+  pantallas de colaborador y titular.
+- Imágenes de Docker reconstruidas, con los datos de prueba reales: 21 comprobaciones de solo lectura correctas en el
+  navegador, y `POST convocatorias/{id}/codigo` responde 404.
+- **Pendiente:** guardar un registro real como colaborador y como titular (ver la
+  [§ 3 de la Guía de pruebas](GUIA_PRUEBAS.md#3-pruebas-de-la-v23--carga-de-consumos)). En Docker no se guardó nada, para no modificar los datos.
+
+---
+
 ## [2.2] — 31/10/2026 — Convocatorias: colaboración masiva por código
 
 Pedido original: `textos/fix5.txt`.

@@ -35,9 +35,6 @@ public class ConvocatoriasController(ConvocatoriaServicio convocatorias) : Contr
     public async Task<ConvocatoriaDto> CambiarEstado(long id, CambiarEstadoConvocatoriaRequest req) =>
         await convocatorias.CambiarEstadoAsync(IdUsuario, id, req.Estado);
 
-    [HttpPost("{id:long}/codigo"), Authorize(Policy = Permisos.GestionarColaboraciones)]
-    public async Task<ConvocatoriaDto> RegenerarCodigo(long id) => await convocatorias.RegenerarCodigoAsync(IdUsuario, id);
-
     [HttpDelete("{id:long}"), Authorize(Policy = Permisos.GestionarColaboraciones)]
     public async Task<MensajeDto> Eliminar(long id)
     {
