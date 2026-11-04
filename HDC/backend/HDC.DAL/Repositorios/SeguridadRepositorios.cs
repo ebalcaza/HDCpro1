@@ -17,6 +17,10 @@ public class UsuarioRepositorio(HdcDbContext ctx) : Repositorio<Usuario>(ctx)
     public Task<Usuario?> ObtenerCompletoAsync(long idUsuario) =>
         ConPerfil().FirstOrDefaultAsync(u => u.IdUsuario == idUsuario);
 
+    /// <summary>Consulta liviana por clave primaria: se ejecuta en cada pedido autenticado (ver Program.cs).</summary>
+    public Task<bool> EstaActivoAsync(long idUsuario) =>
+        Ctx.Usuarios.AnyAsync(u => u.IdUsuario == idUsuario && u.FechaBaja == null);
+
     /// <summary>
     /// Listado de usuarios del admin, paginado en SQL.
     /// En lugar de traer cada usuario con TODOS sus domicilios (Include) para contarlos y sumarlos en memoria,

@@ -40,6 +40,8 @@ public class FiltroRegistros : ConsultaPagina
     public long? IdDomicilio { get; set; }
     public DateOnly? Desde { get; set; }
     public DateOnly? Hasta { get; set; }
+    /// <summary>PROPIAS (las cargó el titular del domicilio), COLABORACIONES (las cargó otra persona) o vacío para todas (v2.11).</summary>
+    public string? Origen { get; set; }
 }
 
 /// <summary>Página de registros + suma de kg CO₂ de TODOS los registros filtrados (no solo de la página visible).</summary>

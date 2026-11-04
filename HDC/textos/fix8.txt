@@ -1,0 +1,11 @@
++en el usuario individuo, cuando esta colaborando en una convocatoria,
+y va a cargar el transporte utilizado, el sistema deberia requerir, el medio
+de transporte utilizado, la distancia promedio de viaje, y la frecuencia de asistencia
+por semana, para ser exacto con la medicion. Los periodos podran ser anuales, semestrales y
+mensuales.
+
++el que crea la convocatoria podra agregar "roles", que elegiran los colaboradores al momento
+de llenar la carga del transporte utilizado para ir al lugar, en el formulario correspondiente.
+por ejemplo, si una facultad abre una convocatoria, esa convocatoria estara colaborada
+por estudiantes, personal docente, y personal no docente.
+

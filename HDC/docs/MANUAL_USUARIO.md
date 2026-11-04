@@ -1,6 +1,6 @@
 # Manual de usuario — Huella de Carbono (HDC)
 
-> **Última actualización:** 02/11/2026 · Versión del sistema: 2.3 (ver [CHANGELOG](CHANGELOG.md))
+> **Última actualización:** 03/11/2026 · Versión del sistema: 2.12 (ver [CHANGELOG](CHANGELOG.md))
 
 Este manual explica cómo usar la aplicación **Huella de Carbono** para medir cuánto CO₂ generan tus
 consumos de todos los meses, ver cómo evoluciona tu huella y descargar reportes.
@@ -58,14 +58,18 @@ Las emisiones se agrupan en tres **alcances**, según un estándar internacional
 ### ¿Qué datos necesito tener a mano?
 | Consumo                         | Dónde lo encontrás                              | Unidad |
 |---------------------------------|-------------------------------------------------|--------|
-| Gas natural de red              | Factura de gas                                  | m³     |
-| Garrafa (GLP)                   | Kilos de la garrafa (10, 15 o 45 kg)            | kg     |
-| Electricidad                    | Factura de luz                                  | kWh    |
-| Nafta / gasoil del vehículo     | Tickets de carga de combustible                 | L      |
-| GNC del vehículo                | Tickets de carga                                | m³     |
-| Auto, moto, colectivo, tren, avión | Kilómetros recorridos en el mes (estimados)  | km     |
-| Residuos                        | Estimación de kilos de basura                   | kg     |
-| Agua de red                     | Factura de agua                                 | m³     |
+| Gas natural de red              | Factura del proveedor                           | m³     |
+| Gas envasado (GLP), si corresponde | Facturas o registros de compra               | kg o L |
+| Gasoil de grupos electrógenos   | Registro de mantenimiento o compras             | L      |
+| Nafta / gasoil de vehículos     | Tarjeta de combustible o comprobantes; los km son opcionales | L |
+| Refrigerantes de aires y heladeras | Empresa de mantenimiento, cuando hay una recarga | kg   |
+| Electricidad (de la red o renovable) | Factura del proveedor eléctrico            | kWh    |
+| Traslado de personas            | Medio de transporte, distancia de ida y vuelta y días por semana | km |
+| Viajes institucionales          | Rendiciones: distancia, medio y fecha | km |
+| Residuos y reciclables          | Empresa recolectora, registros internos o manifiestos | kg o L |
+| Agua potable                    | Factura del proveedor                           | m³     |
+| Papel, tóner y cartuchos        | Compras                                         | resma o unidad |
+| Insumos de oficina (opcional)   | Compras                                         | kg     |
 
 > Si la factura es **bimestral**, dividí el consumo en los dos meses y aclaralo en *Observaciones*.
 
@@ -87,8 +91,11 @@ Las emisiones se agrupan en tres **alcances**, según un estándar internacional
 - *Individuo:* nombres, apellidos, DNI y, si querés, fecha de nacimiento y género.
 - *Organización:* razón social, CUIT, área, y opcionalmente cantidad de miembros y descripción.
 
-**Paso 3 – Domicilio**
-- El primer lugar donde vas a medir tus emisiones (tu casa, tu oficina...). Después podés agregar más.
+**Paso 3 – Domicilio (opcional)**
+- Si solo vas a colaborar con otra persona u organización, no lo necesitás: tocá **Crear cuenta** directamente.
+  Podés agregarlo después desde **Domicilios**.
+- Para medir tus propias emisiones, activá **Agregar un domicilio ahora**. Es el primer lugar donde vas a medir
+  (tu casa, tu oficina...).
 - Elegí **provincia, distrito y ciudad** de las listas, y completá calle, altura y código postal.
   Piso, departamento, block, manzana y teléfono son opcionales.
 
@@ -170,9 +177,9 @@ qué elegir y dónde buscar cada dato:
 
 - Arriba se explica **cómo se calcula** la huella (`consumo × factor`) y qué incluye cada **alcance**.
 - Las fuentes están agrupadas por **alcance** y por **tipo de emisión**. Cada tarjeta muestra:
-  - la **unidad** en la que se carga (m³, kWh, L, km, kg);
-  - el **factor**: cuántos kg de CO₂ genera cada unidad (por ejemplo, 1 kWh = 0,400 kg CO₂);
-  - una **descripción**: qué es esa fuente y dónde encontrar el dato (factura, ticket, estimación).
+  - la **unidad** en la que se carga (m³, kWh, L, km, kg, resma, unidad);
+  - el **factor**: cuántos kg de CO₂ genera cada unidad (por ejemplo, 1 kWh = 0,286 kg CO₂);
+  - una **descripción**: qué es esa fuente, dónde encontrar el dato y de dónde sale el factor.
 - **Buscador:** escribí una palabra ("luz", "garrafa", "colectivo", "kWh"). No hace falta poner tildes.
   También podés filtrar por alcance.
 - **Calculadora rápida:** escribí un consumo en una tarjeta y ves al instante cuántos kg de CO₂ representa.
@@ -185,13 +192,20 @@ qué elegir y dónde buscar cada dato:
 ### Cómo cargar un registro
 
 1. Andá a **Mis emisiones → Nuevo registro** (o el botón **Nuevo registro** del Dashboard).
-2. Elegí el **Domicilio** y el **Período** (mes y año). No se pueden cargar meses futuros.
+2. Elegí el **Domicilio** y el **Período** (mes y año). Se puede cargar hasta el mes en curso, sin meses futuros.
 3. En **Consumos**, completá una fila por cada fuente:
    1. En **Fuente de emisión**, hacé click en una de las fuentes de la lista. Solo aparecen las disponibles para
       ese domicilio, por eso primero hay que elegir el domicilio. Si son muchas, la lista se desplaza por dentro.
-   2. Escribí el **Consumo**. La unidad (m³, kWh, L, km, kg) aparece a la derecha.
+   2. Escribí el **Consumo**. La unidad aparece a la derecha.
       - Los puntos de miles se ponen solos: escribís `20000` y ves `20.000`.
       - Los decimales van con **coma**: `150,5`.
+      - Ningún campo acepta 0: un consumo tiene que ser mayor a 0.
+      - En **vehículos** cargás los litros y, si querés, los **kilómetros recorridos**. Los km no cambian el cálculo.
+        Si no los sabés, dejalos vacíos.
+      - En **viajes institucionales** cargás la distancia en km y la **fecha**. Las emisiones se calculan con el
+        combustible o la electricidad de cada medio. El avión se guarda como dato y no suma emisiones.
+        Para varios viajes con el mismo medio en un mes, usá otro registro. Si colaborás, tenés un solo registro de consumos por mes:
+        sumá las distancias en esa fila y editá el registro si ya lo guardaste.
    3. Debajo ves el factor usado y los **kg de CO₂** de esa fila, calculados al instante.
 4. **Agregar consumo** suma otra fila. La ✕ de cada fila la quita.
    Una fuente ya elegida aparece deshabilitada en las otras filas: si tenés dos facturas de luz del mismo mes,
@@ -204,14 +218,48 @@ qué elegir y dónde buscar cada dato:
 > ni el total estimado. Además, para **Agregar consumo** primero tenés que completar la fuente y el consumo de las
 > filas que ya están.
 
+### Cómo cargar un traslado
+El traslado indica cómo viaja una persona hasta el domicilio. Tiene su propio formulario: se llega con el botón
+**Cargar** de **Colaboraciones → Donde colaboro** si solo te habilitaron traslados, o con **Cargar traslado** en
+**Nuevo registro**.
+
+1. Con **Cargar**, desde **Colaboraciones → Donde colaboro**, el domicilio, la convocatoria y **tu rol** ya vienen definidos:
+   el rol lo indicás una vez, al sumarte con el código. Si cambió, tocá **Cambiar** y queda guardado para las próximas cargas.
+   Si entrás desde otro lugar, elegí el **Domicilio** y, si participás en varias, la **convocatoria**.
+   También podés cargar una convocatoria cuyo período ya terminó: suelen abrirse al final, para declarar el año transcurrido.
+2. Revisá el **Período**:
+   - **En una convocatoria** lo define el organizador, y el formulario te muestra sus meses y semanas. Vos elegís si
+     cargás **todo el período de una vez** o **un mes por vez**, si tus viajes cambiaron. Si cargás por mes, el
+     formulario te indica cuáles te faltan.
+   - **Si sos titular o te invitaron por email**, elegí mensual, semestral o anual, su primer mes y las semanas con
+     asistencia. El sistema propone 4, 26 o 52; restá las de receso o vacaciones.
+3. En **Medios de transporte**, completá una fila por cada uno: **medio**, **distancia por día, ida y vuelta**, y
+   **días por semana**. Con **Agregar otro medio** sumás más. Por ejemplo:
+   - Si venís 3 días en colectivo y 2 en bicicleta, cargá dos filas.
+   - Si en un mismo viaje combinás colectivo y tren, cargá cada uno con los mismos días.
+   - Si tomás 3 colectivos para llegar, cargá una sola fila con el total de km de los tres: cada medio va una vez.
+   - Los días por semana van de 1 a 7.
+4. **Guardar traslado**.
+
+El cálculo es: `distancia × días por semana × semanas × factor del medio`. El total se reparte en partes iguales
+entre los meses del período, para que los gráficos muestren una evolución pareja. Los meses que todavía no empezaron no
+se cargan: si el período sigue en curso, podés editar la carga cuando pasen.
+
+Por ejemplo, con 32 semanas en un período de 12 meses, 20 km por día y 3 días por semana en colectivo son
+`20 × 3 × 32 = 1.920 km`: 160 km por mes.
+
+Los meses de una carga se **editan y eliminan juntos**. Como colaborador, declarás un solo traslado por mes en cada convocatoria: si ya cargaste
+todo, el formulario se bloquea y te ofrece **Editar**; si cargaste algunos meses, solo podés elegir los que faltan. Para cambiar un mes o sumar un medio, editá esa carga.
+El titular no puede repetir el mismo medio en un mes, pero sí declarar otros grupos con medios distintos.
+El titular del domicilio también puede cargar un grupo con los mismos hábitos, indicando la **cantidad de personas**.
+
 ### Ejemplo de un mes en un hogar
-| Fuente                     | Consumo  | Factor          | kg CO₂ |
-|----------------------------|----------|-----------------|--------|
-| Gas natural de red         | 120 m³   | 1,95 kg/m³      | 234,0  |
-| Energía eléctrica de red   | 250 kWh  | 0,40 kg/kWh     | 100,0  |
-| Nafta - vehículo propio    | 60 L     | 2,27 kg/L       | 136,2  |
-| Colectivo urbano           | 200 km   | 0,09 kg/km      | 18,0   |
-| **Total**                  |          |                 | **488,2 kg ≈ 0,49 t** |
+| Fuente                     | Consumo  | Factor           | kg CO₂ |
+|----------------------------|----------|------------------|--------|
+| Gas natural de red         | 120 m³   | 1,9568 kg/m³     | 234,8  |
+| Electricidad de la red     | 250 kWh  | 0,2860 kg/kWh    | 71,5   |
+| Nafta para vehículos       | 60 L     | 2,0209 kg/L      | 121,3  |
+| **Total**                  |          |                  | **427,6 kg ≈ 0,43 t** |
 
 > Los factores son valores de referencia que define el administrador y pueden cambiar con el tiempo.
 > Cada registro **guarda el factor con el que se cargó**, así que los cambios posteriores no modifican tus meses anteriores.
@@ -223,7 +271,8 @@ qué elegir y dónde buscar cada dato:
 En **Mis emisiones** está la lista de todos tus registros mensuales (de tus domicilios y de los que cargaste
 como colaborador).
 
-- **Filtros:** domicilio, mes **Desde** y **Hasta**, y buscador (calle, ciudad, quién cargó, alcance o fuente).
+- **Filtros:** domicilio, **Origen** (*Emisiones propias*, cargadas por el titular del domicilio, o *Colaboraciones*, cargadas por otra persona),
+  mes **Desde** y **Hasta**, y buscador (calle, ciudad, quién cargó, alcance o fuente).
   Arriba se muestra el **Total filtrado** en t CO₂.
 - Ordená haciendo click en el título de una columna y elegí cuántas filas ver por página.
 - Acciones de cada registro:
@@ -304,8 +353,16 @@ Hay dos formas de sumar colaboradores:
 2. Completá:
    - **Domicilio** donde van a cargar y un **Nombre** (por ejemplo, "Transporte del personal 2026").
    - **Instrucciones** (opcional): qué tienen que cargar.
-   - **Desde** y **Hasta (opcional)**: los meses en que pueden cargar.
    - **Información que pueden cargar:** los tipos de emisión habilitados.
+   - **Período que se va a cargar:** lo definís vos y los colaboradores no lo pueden cambiar. Lo recomendado es **un año
+     completo**; **otro período** queda como última opción. Abrí la convocatoria al final del período, por ejemplo en
+     diciembre, para que puedan cargar todo el año, porque los meses que no empezaron no se cargan.
+   - **Semanas de actividad del período:** aparece si habilitás *Traslado de colaboradores*. Restá recesos y vacaciones;
+     por ejemplo, 32 en una facultad. Los traslados necesitan período con principio y fin.
+   - **Roles de los colaboradores (opcional):** aparece si habilitás *Traslado de colaboradores*. Por ejemplo, en una
+     facultad: estudiantes, personal docente y personal no docente. Cada colaborador elige el suyo al cargar su
+     traslado, y en **Detalles** ves cuántas personas y cuántos kg de CO₂ corresponden a cada rol. Un rol ya elegido
+     en un traslado no se puede quitar.
    - **Aprobación automática:** si está activada, quien escribe el código queda aceptado al instante. Si no,
      queda *esperando aprobación* hasta que lo aceptes.
 3. **Crear y obtener código**. El sistema genera un código como **`ECSR-2K26`**. Usá **Copiar** y compartilo
@@ -316,7 +373,11 @@ de baja. Desde ahí podés:
 - **Editar**: los cambios de períodos y tipos se aplican **a todos** sus colaboradores a la vez.
 - **Cerrar**: nadie más puede sumarse, pero los activos siguen cargando. Se puede volver a **Abrir**.
 - **Finalizar** (menú ⋮): nadie carga más y el código deja de funcionar. No se puede deshacer; lo cargado se conserva.
-- **Eliminar** (menú ⋮): solo si todavía no se sumó nadie.
+- **Eliminar**: borra la convocatoria **por completo**, en cualquier estado, con sus colaboradores y todo lo que cargaron en ella. Esos kg dejan de
+  sumar a la huella del domicilio y los registros desaparecen de **Mis emisiones** de cada persona. No se puede deshacer; para conservar lo cargado, usá **Finalizar**.
+
+**Ver lo que cargó cada colaborador:** en **Detalles**, elegí **Detalle de aportes** para ver una fila por persona, fuente y mes,
+con su rol, los datos declarados y los kg de CO₂. Cada convocatoria muestra solo lo cargado en ella, aunque la persona participe en otras del mismo domicilio. Podés buscar y ordenar. El botón **Ver aportes** de un colaborador muestra solo lo suyo.
 
 **Gestionar los colaboradores de una convocatoria:** botón **Detalles**.
 - Filtrá por estado (*Por aprobar*, *Activos*, *Dados de baja*, *Rechazados*) y buscá por nombre, DNI o email.
@@ -335,8 +396,8 @@ de baja. Desde ahí podés:
    - **Domicilio** donde va a colaborar.
    - **Email del colaborador** (tiene que tener una cuenta en la aplicación).
    - **Desde** y **Hasta (opcional)**: los meses en que puede cargar.
-   - **Información que puede cargar:** los tipos de emisión habilitados (por ejemplo, solo *Transporte de colaboradores*).
-   - **Mensaje (opcional)**, por ejemplo: "Cargá los km que hacés para venir a la oficina cada mes".
+   - **Información que puede cargar:** los tipos de emisión habilitados (por ejemplo, solo *Traslado de colaboradores*).
+   - **Mensaje (opcional)**, por ejemplo: "Cargá cómo venís a la oficina".
 3. **Enviar invitación**. Queda *pendiente* hasta que la otra persona responda.
 
 En **Invitaciones por email** ves cada colaboración, su estado y cuánto CO₂ aportó. Podés **Editar** (períodos y tipos)
@@ -348,10 +409,14 @@ o **Finalizar** la colaboración. Al finalizar, los registros ya cargados se con
 3. Revisá a quién pertenece, los períodos y qué vas a poder cargar. Si es correcto, **Sumarme**.
 4. Según cómo esté configurada, quedás **aceptado** al instante o **esperando aprobación** del titular.
    Lo ves en la pestaña **Donde colaboro**; mientras esperás, podés **Cancelar solicitud**.
-5. Una vez aceptado, cargás consumos igual que con una invitación (ver abajo).
+5. Una vez aceptado, cargás los datos habilitados. Para el transporte, seguí [Cómo cargar un traslado](#cómo-cargar-un-traslado).
 
 Si el código "no existe", revisá que esté bien escrito o consultá al titular (puede haber finalizado la
 convocatoria). Por seguridad, después de 20 intentos en 15 minutos hay que esperar.
+
+### Ver el detalle de donde colaborás (colaborador)
+En **Donde colaboro**, tocá una fila o el ícono 👁. Se abre una ventana con todos los datos de la convocatoria o invitación, los **meses que te faltan**,
+los que todavía no empezaron y los **registros que ya guardaste**, con botones para verlos o editarlos. Un mes cuenta como cargado si guardaste al menos un registro en él.
 
 ### Responder una invitación por email (colaborador)
 1. Cuando te invitan, aparece un número junto a **Colaboraciones** en el menú.
@@ -407,6 +472,7 @@ Si elegís *Dar de baja y conservar el historial*, sus emisiones siguen en tus e
 
 **La aplicación me sacó de la sesión.**
 La sesión vence a las 2 horas (o lo que haya configurado el administrador). Volvé a ingresar.
+Si el aviso dice que tu cuenta fue deshabilitada, el administrador le quitó el acceso: contactalo.
 
 **Pedí recuperar la contraseña y no me llega el email.**
 Revisá la carpeta de spam y que el email sea el de tu cuenta. Esperá unos minutos y pedilo de nuevo. Si tu

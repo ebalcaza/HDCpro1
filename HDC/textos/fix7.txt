@@ -1,0 +1,217 @@
++la idea es borrar todos los datos que teniamos hasta ahora que eran de prueba y utilizar los que necesito:
+
+ALCANCE 1
+		-combustion fija.
+		-combustion movil.
+		-fugas.
+		Datos requeridos:
+		-gas natural, consumo de la red en metros cubicos. se obtiene de la factura del proveedor, se carga mensual.
+		-Gas envasado (GLP), opcional, kg o Litro. solo si corresponde se cargara con la unidad elegida de kilogramo o litros.
+		-combustible para grupos electrogenos
+			+gasoil, se requiere la cantidad de litros, de forma mensual.
+		-vehiculo,tipo de combustible, consumo en litros, y opcionalmente kilometros recorridos
+			+nafta
+			+gasoil
+			
+		-gases de refrigerantes de equipos de aire y climatizacion central. Tipo de refrigerante utilizado(tipo de gas, el sistema debe
+			dar opciones de refrigerantes usados.) y cantidad de refrigerante recargado en kilogramos.
+
+			+ R-410A
+			+ R-32	
+			+R-22
+			+R-290
+		-heladeras frezeer:R-134a y el R-600a (isobutano)
+		
+Para estructurar el módulo de Alcance 1 (Emisiones Directas) de tu sistema de gestión, la lógica de cálculo cambia según la naturaleza de la fuente: para los combustibles se multiplica el consumo por un Factor de Emisión (FE), mientras que para las fugas de refrigerantes se multiplica la carga neta por el Potencial de Calentamiento Global (GWP) de ese gas específico.
+A continuación, encontrás la lista con los factores de emisión estandarizados (alineados internacionalmente con UK DEFRA / GHG Protocol y adaptados para presentar resultados directamente en kg de CO₂e):
+
+
+1. Combustión Fija (Calefacción, Calderas y Procesos)
+
+
+Ítem / Combustible	Unidad de Carga		Factor de Emisión	Ecuación de Cálculo
+Gas Natural		Metros cúbicos 			2,0225		m^3 * 2,0225 = kg CO_2e
+Gas Envasado (GLP)	Kilogramos 			2,9394		kg * 2,9394 = kg CO_2e
+Gas Envasado (GLP)	Litros 				1,5542		L * 1,5542 = kg CO_2e
+
+		
+
+
+2. Combustión Móvil (Grupos Electrógenos y Vehículos)
+
+
+Ítem / Aplicación	Tipo de Combustible	Unidad		Factor de Emisión	Ecuación de Cálculo
+Grupos Electrógenos	Gasoil / Diésel		Litros 			2,6764		L * 2,6764 = kg CO_2e
+Vehículo		Nafta / Gasolina	Litros 			2,1564		L * 2,1564 = kg CO_2e
+Vehículo		Gasoil / Diésel		Litros 			2,6764		L * 2,6764 = kg CO_2e
+
+
+
+3. Fugas de Gases Refrigerantes (Emisiones Fugitivas)
+
+Para los gases de climatización y heladeras no se usa un "factor de combustión", sino su GWP (Global Warming Potential a 100 años). Esto significa cuántas veces es más nocivo ese gas que el propio CO₂. La ecuación en el sistema debe ser:
+\(\text{kg\ de\ Gas\ Recargado}\times \text{GWP}=\text{kg\ CO}_{2}\text{e}\)
+
+Equipo				Tipo de Refrigerante	Factor de Impacto (GWP)	Impacto por cada 1 kg fugado
+Aire / Climatización Central	R-410A			2.088			1 kg = 2.088 kg CO_2e
+Aire / Climatización Central	R-30 (Diclorometano)	9			1 kg = 9 kg CO_2e
+Aire / Climatización Central	R-22 (HCFC-22)		1.810			1 kg = 1.810 kg CO_2e
+Aire / Climatización Central	R-290 (Propano)		3			1 kg = 3  kg CO_2e
+Heladeras / Freezers		R-134a			1.430			1 kg = 1.430 kg CO_2e
+Heladeras / Freezers		R-600a (Isobutano)	3			1 kg = 3 kg CO_2e
+
+
+
+ALCANCE 2:
+		-EMISIONES INDIRECTAS POR CONSUMO DE ELECTRICIDAD Y ENERGIAS ADQUIRIDAS
+
+			-electricidad de la red
+			-electricidad proveniente de energias renovables
+		
+			DATOS REQUERIDOS:
+					-Electricidad consumida en kWh.
+					
+					
+Para el Alcance 2 (Emisiones Indirectas por Energía Adquirida), la metodología estándar internacional (GHG Protocol Scope 2 Guidance) exige reportar bajo dos enfoques: el enfoque basado en la ubicación (calculado con el factor de emisión de la red eléctrica nacional) y el enfoque basado en el mercado (donde las energías renovables verificadas computan de forma diferenciada).
+A continuación, tenés la estructura de cálculo con los factores correspondientes para tu sistema, adaptados a la realidad de la red eléctrica de Argentina:
+					
+
+Factores de Emisión y Lógica de Cálculo
+
+
+Ítem / Fuente de Energía	Unidad de Carga		Factor de Emisión	Ecuación de Cálculo
+Electricidad de la Red		Kilovatios hora (kWh)	0,270			kWh * 0,270 = kg CO_2e
+
+
+ALCANCE 3:
+		-OTRAS EMISIONES INDIRECTAS.
+		-movilidad: desplazamiento de los integrantes, con diferentes roles, desde y hacia el lugar.
+		-residuos solidos urbanos y reciclables	
+		-papel e insumos: resmas de papel y toneres de impresion
+
+
+		DATOS REQUERIDOS:
+			Residuos solidos urbanos. cantidad generada en kilos. factor:0,497 kg de CO2e por cada 1kg de residuo.
+			papel y carton reciclado. cantidad en kilos.
+			plasticos reciclados. cantidad en kilos.
+			vidrio reciclado. cantidad en kilos.
+			residuos electronicos. cantidad en kilos
+			residuos peligrosos de laboratorio.cantidad en kilos.
+			aceites usados. cantidad en litros.
+
+
+			para los colaboradores:
+			cantidad.
+			medio de transporte utilizado por estudiante(automovil, motocicleta,colectivo, tren, subte, bicicleta y caminata),
+			el automovil podra consumir nafta o gasoil, los colectivos solo gasoil, el tren y el subte son electricos,y la bicicleta
+			y caminata obviamente son 0.
+			distancia promedio de viaje(ida y vuelta) en kilometros. debera hacer una cuenta mas compleja para calcular las cantidades
+			de kilogramos de dioxido de carbono enviados, donde utilizara la distancia y la frecuencia de asistencia, dias/semana.
+
+Para integrar el módulo de Traslado de Colaboradores / Estudiantes (Commuting) dentro del Alcance 3, el sistema necesita procesar una lógica de cálculo que combine variables de asistencia, distancias y factores basados en la intensidad energética de cada medio de transporte.
+La ecuación base que debés programar en el sistema para cada persona o grupo homogéneo es:
+Emisiones Anuales (kg CO_2e) = Distancia (km/viaje) * (Días de asistencia/Semana) * (Semanas activas/Año) * Factor de Emisión (kg CO_2e/km)
+
+1. Matriz de Factores de Emisión por Medio de Transporte
+
+Para vehículos particulares (automóviles y motos) se calculan emisiones directas por kilómetro. Para el transporte público (colectivo, tren, subte), el factor representa la porción de emisiones que le corresponde a un único pasajero por cada kilómetro recorrido (factores de ocupación promedio bajo metodologías internacionales adaptadas a redes de transporte masivo).
+
+Medio de Transporte	Tipo de Energía		Factor de Emisión (kg CO₂e / pasajero-km)	Lógica / Origen del Factor
+Automóvil		Nafta			0,1643						Promedio auto naftero mediano (DEFRA).
+Automóvil		Gasoil			0,1612						Promedio auto diésel mediano (DEFRA).
+Motocicleta		Nafta			0,1114						Promedio cilindrada mixta.
+Colectivo		Gasoil			0,0942						Factor de pasajero-kilómetro en transporte urbano pesado.
+Tren			Eléctrico		0,0378						Red ferroviaria nacional (SADI Alcance 2 indirecto).
+Subte			Eléctrico		0,0265					Tracción eléctrica subterránea metropolitana de alta densidad.
+Bicicleta		Humana			0,0000						Emisión cero.
+Caminata		Humana			0,0000						Emisión cero.
+
+
++viajes institucionales.
+			distancia recorrida solo para guardar como dato, tipo de transporte, tipo de combustible, fecha, etc.
+
+
+
+Tipo de Residuo			Factor de Emisión Recomendado	Unidad		Ecuación de Cálculo
+Residuos Sólidos Urbanos (RSU)	0,4970				kg CO₂e / kg	kg de RSU * 0,497
+Papel y Cartón Reciclado	0,0047				kg CO₂e / kg	kg de Papel * 0,0047
+Plásticos Reciclados		0,0047				kg CO₂e / kg	kg de Plástico * 0,0047
+Vidrio Reciclado		0,0047				kg CO₂e / kg	kg de Vidrio * 0,0047
+Residuos Electrónicos (RAEE)	0,0047				kg CO₂e / kg	kg de RAEE * 0,0047
+Peligrosos de Laboratorio	0,0213				kg CO₂e / kg	kg de Peligrosos * 0,0213
+Aceites Usados			0,0192				kg CO₂e / litro	litros de Aceite * 0,0192
+
+
+fuentes:
+Materiales Reciclables (Papel, Plástico, Vidrio, Electrónicos): Se les aplica el factor de disposición por reciclaje general de DEFRA (\(4,65 \text{ kg CO₂e}\) por tonelada métrica). Al pasarlo a kilos, resulta en 0,0047 kg CO₂e/kg.
+
+Residuos Peligrosos de Laboratorio: Se contempla el factor para Hazardous waste - specialist treatment (\(21,28 \text{ kg CO₂e}\) por tonelada), destinado a tratamientos físico-químicos complejos o incineración controlada de sustancias químicas peligrosas. Pasado a kilos es 0,0213 kg CO₂e/kg.
+
+• Aceites Usados: Los aceites minerales o industriales destinados a tratamiento especializado tienen un factor de transporte y gestión específico. Al realizar la conversión por densidad promedio estándar (\(0,9 \text{ kg/L}\)), el factor resulta en 0,0192 kg CO₂e por cada litro.
+
+
+1. Resmas de Papel
+
+El sistema debe solicitar la cantidad de resmas adquiridas y, preferentemente, el tamaño y gramaje. La conversión estándar para una resma típica de papel de oficina (A4, 80 gramos, 500 hojas) equivale a 2,49 kg de papel neto.
+Para incluir los consumos de papel e insumos de oficina dentro de la categoría de compras de bienes y servicios del Alcance 3, el sistema debe procesar datos basados en el peso del papel (gramaje) y en unidades físicas para los cartuchos de impresión.
+Al igual que en las secciones anteriores, para mantener consistencia con los lineamientos del GHG Protocol y los factores base internacionales de UK DEFRA, las emisiones se cuantifican contemplando el ciclo de vida del producto antes de llegar a la organización (huella cradle-to-gate).
+
+
+Variable de Entrada	Tipo de Dato	Unidad base del factor	Factor de conversión
+peso_papel_virgen	Float (kg)	kg CO₂e / kg	0,919
+peso_papel_reciclado	Float (kg)	kg CO₂e / kg	0,592
+toner_nuevo_cant	Integer (unidades)	kg CO₂e / unidad	4,800
+toner_remanuf_cant	Integer (unidades)	kg CO₂e / unidad	1,250
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+		
+Fuente  		Dato requerido 		Unidad 			Fuente del dato 	Periodicidad Mensual/anual 
+Agua potable 		Consumo de agua 	m³			Factura del proveedor 		Mensual 
+Papel A4 		Cantidad adquirida 	Resmas			Compras 			Mensual 
+Papel A3 		Cantidad adquirida	Resmas			Compras 			Mensual 
+Tóner para impresoras 	Cantidad adquirida	Unidades 		Compras 			Mensual 
+Cartuchos de tinta 	Cantidad adquirida	Unidades 		Compras 			Mensual 
+Insumos de oficina 	Cantidad adquirida	Unidades o kg 		Compras				Mensual 
+(opcional) 
+
+
+Para integrar esta lista específica en la base de datos y la lógica de backend de tu sistema, combinaremos los datos operativos que proporcionás con sus respectivos Factores de Emisión (FE) estandarizados y los multiplicadores de peso correspondientes.
+Siguiendo la metodología del GHG Protocol (Alcance 3, Categoría 1: Bienes y servicios adquiridos) y los datos actualizados de agencias internacionales como UK DEFRA, el sistema procesará la información mediante la siguiente estructura técnica:
+
+📊 Matriz de Configuración para el Sistema (Alcance 3) (.csv)
+
+Fuente,Dato_Requerido,Unidad_Entrada,Factor_Emision_Fijo,Unidad_Base_FE,Multiplicador_Peso_Interno,Ecuacion_Backend,Periodicidad,Fuente_Dato
+Agua potable,Consumo de agua,m3,0.1913,kg CO2e / m3,1.0,m3 * 0.1913,Mensual,Factura del proveedor
+Papel A4,Cantidad adquirida,Resmas,0.919,kg CO2e / kg,2.49,Resmas * 2.49 * 0.919,Mensual,Compras
+Papel A3,Cantidad adquirida,Resmas,0.919,kg CO2e / kg,4.99,Resmas * 4.99 * 0.919,Mensual,Compras
+Toner para impresoras,Cantidad adquirida,Unidades,4.8,kg CO2e / unidad,1.0,Unidades * 4.8,Mensual,Compras
+Cartuchos de tinta,Cantidad adquirida,Unidades,3.2,kg CO2e / unidad,1.0,Unidades * 3.2,Mensual,Compras
+Insumos de oficina (opcional),Cantidad adquirida,kg,1.21,kg CO2e / kg,1.0,kg * 1.21,Mensual,Compras
+
+
+Reglas de Negocio y Lógica de Desarrollo
+
+
+1. Módulo Agua Potable
+
+• Detalle técnico: Corresponde a la huella de carbono asociada al tratamiento y bombeo del agua de red antes de llegar a la sede. El valor neto es de 0,1913 kg CO₂e/\(m^{3}\).
+
+2. Módulo Papel (Diferenciación A4 vs A3)
+
+Para mantener el estándar por kilogramo de papel virgen (0,919 kg CO₂e/kg), tu backend debe realizar una conversión automática de unidades según el tamaño físico de la resma (calculado para papel estándar de oficina de 80 gramos y 500 hojas):
+• Resma A4: Pesa exactamente 2,49 kg. El sistema calcula: \(\text{Resmas} \times 2,2883 \text{ kg CO}_2\text{e}\).
+• Resma A3: Al ser el doble de superficie, pesa exactamente 4,99 kg. El sistema calcula: \(\text{Resmas} \times 4,5858 \text{ kg CO}_2\text{e}\).
+
+3. Impresión: Tóner Láser vs Cartucho de Tinta Inkjet
+
+• Tóner Láser: Se mantiene en 4,8 kg CO₂e por unidad debido al peso de sus plásticos rígidos y mecanismos.
+• Cartucho de Tinta (Inkjet): Al ser físicamente más pequeños y ligeros, las evaluaciones de ciclo de vida (LCA) promedian su impacto en 3,2 kg CO₂e por unidad.
+
+4. Insumos de Oficina Mixtos (Carpetas, abrochadoras, lapiceras, etc.)
+
+• Estrategia de carga: Al ser una bolsa plástica/metálica mixta muy variada, el estándar de compras del GHG Protocol asigna un factor ponderado por peso para "artículos de papelería y productos plásticos/metálicos ligeros de oficina" de 1,21 kg CO₂e por cada kilogramo de material adquirido. Si el usuario selecciona "Unidades" en la interfaz para este ítem genérico, se sugiere asignar un peso por defecto configurable (ej. 0,1 kg por unidad) o forzar la carga únicamente en kg para evitar desvíos en la huella.
+
+
+			

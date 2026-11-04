@@ -45,8 +45,9 @@ END $$;
 /* El orden importa: estas tablas apuntan a usuario o a domicilio sin borrado en
    cascada, así que se vacían antes que ellos. */
 DELETE FROM registros;                 -- en cascada: detalle_registro
+DELETE FROM carga_traslado;            -- apunta a usuario; en cascada: carga_traslado_medio
 DELETE FROM colaboracion;              -- en cascada: colaboracion_tipo_emision
-DELETE FROM convocatoria;              -- en cascada: convocatoria_tipo_emision
+DELETE FROM convocatoria;              -- en cascada: convocatoria_tipo_emision y convocatoria_rol
 DELETE FROM domicilio;
 DELETE FROM reporte;
 DELETE FROM recuperacion_contrasena;   -- incluye los links pendientes del administrador

@@ -25,6 +25,39 @@ public class ColaboracionServicio(
     public async Task<List<ColaboracionDto>> ListarRecibidasAsync(long idColaborador) =>
         await ADtosAsync(await colaboraciones.ListarPorColaboradorAsync(idColaborador));
 
+    /// <summary>
+    /// Detalle para la ventana de "Donde colaboro" (v2.11). Solo lo ve quien colabora.
+    /// Un mes cuenta como cargado si tiene al menos un registro de esta colaboración.
+    /// </summary>
+    public async Task<ColaboracionDetalleDto> ObtenerDetalleAsync(long idColaborador, long id)
+    {
+        var c = await colaboraciones.ObtenerDetalleAsync(id) ?? throw new NoEncontradoException("Colaboración no encontrada");
+        if (c.IdUsuarioColaborador != idColaborador) throw new ProhibidoException();
+
+        var registros = await colaboraciones.RegistrosDeColaboracionAsync(c.IdDomicilio, idColaborador, c.IdConvocatoria);
+        var cargados = registros.Select(r => r.Periodo).ToHashSet();
+        var mesActual = Mapeos.MesActual();
+        var pendientes = new List<DateOnly>();
+        var futuros = 0;
+        // Sin fecha de fin, el período llega hasta el mes en curso
+        for (var mes = c.PeriodoDesde; mes <= (c.PeriodoHasta ?? mesActual); mes = mes.AddMonths(1))
+        {
+            if (mes > mesActual) futuros++;
+            else if (!cargados.Contains(mes)) pendientes.Add(mes);
+        }
+
+        var cv = c.Convocatoria;
+        return new ColaboracionDetalleDto(
+            (await ADtosAsync([c]))[0],
+            cv?.Descripcion,
+            cv?.Estado,
+            cv is null ? null : ConvocatoriaServicio.FormatearCodigo(cv.Codigo),
+            cv?.AprobacionAutomatica,
+            cv?.SemanasTraslado,
+            cv?.Roles.FirstOrDefault(r => r.IdConvocatoriaRol == c.IdConvocatoriaRol)?.Nombre,
+            registros, pendientes, futuros);
+    }
+
     public async Task<ColaboracionDto> InvitarAsync(long idTitular, InvitarColaboradorRequest req)
     {
         var domicilio = await domicilios.ObtenerPorIdAsync(req.IdDomicilio) ?? throw new NoEncontradoException("Domicilio no encontrado");
@@ -131,8 +164,10 @@ public class ColaboracionServicio(
         var mes = Mapeos.MesActual();
         return lista.Select(c =>
         {
-            var aporte = aportes.GetValueOrDefault((c.IdDomicilio, c.IdUsuarioColaborador));
-            var vigente = c.Estado == EstadoColaboracion.Aceptada && c.PeriodoDesde <= mes && (c.PeriodoHasta == null || c.PeriodoHasta >= mes);
+            var aporte = aportes.GetValueOrDefault((c.IdDomicilio, c.IdUsuarioColaborador, c.IdConvocatoria));
+            // Una convocatoria suele abrirse al terminar el período (v2.8): se puede cargar aunque ese período ya haya pasado
+            var vigente = c.Estado == EstadoColaboracion.Aceptada && c.PeriodoDesde <= mes
+                && (c.IdConvocatoria != null || c.PeriodoHasta == null || c.PeriodoHasta >= mes);
             return new ColaboracionDto(
                 c.IdColaboracion, c.IdDomicilio, Mapeos.DescripcionCorta(c.Domicilio),
                 c.Domicilio.IdUsuario, Mapeos.NombreMostrar(c.Domicilio.Usuario), c.Domicilio.Usuario.Email,

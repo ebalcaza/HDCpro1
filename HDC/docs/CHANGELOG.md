@@ -9,6 +9,308 @@ cambió, por qué y qué archivos se tocaron.
 
 ---
 
+## [2.12] — 03/11/2026 — Km totales por medio y un registro por mes en la colaboración
+
+**Por qué:** `textos/fix13.txt` pide cargar más de una forma de traslado en un mes, con km y días por semana entre 1 y 7, contemplar varios
+colectivos para llegar e impedir más de un registro del mismo mes en una colaboración.
+
+**Decisiones tomadas:**
+- **Km totales por medio:** quien toma 3 colectivos carga una sola fila con el total de km de los tres. Se eligió frente a repetir el medio en varias filas porque es más simple de completar y no cambia la base de datos. Si cada línea se usa distintos días, hay que promediar.
+- **Días por semana entre 1 y 7:** antes el mínimo era 0,5. Lo ya cargado no cambia, pero una carga con menos de 1 día se tiene que corregir al editarla.
+- **Un registro de consumos por mes en la colaboración:** quien colabora ya no puede crear un segundo registro de consumos de ese mes, ni mover otro a un mes ocupado; edita el existente. Los traslados ya tenían esta regla desde la v2.11. Corregir un registro sin cambiarlo de mes sigue permitido, por los datos anteriores.
+- **Consumos y traslados se controlan por separado:** en una colaboración que habilita ambos, un mes puede tener un registro de cada clase, porque un traslado no se puede agregar a un registro de consumos.
+- **El titular conserva su forma de cargar.**
+
+| Archivo | Cambio |
+|---|---|
+| `backend/HDC.Entity/Dtos/EmisionDtos.cs`, `frontend/src/pages/usuario/TrasladoForm.jsx` | Días entre 1 y 7; textos de ayuda sobre el total de km por medio |
+| `backend/HDC.BLL/Servicios/TrasladoServicio.cs` | Mensaje al repetir un medio y explicación de la regla |
+| `backend/HDC.BLL/Servicios/RegistroServicio.cs`, `backend/HDC.DAL/Repositorios/EmisionRepositorios.cs` | Un registro de consumos por mes para quien colabora |
+
+Sin cambios en la base de datos. Documentos actualizados: MANUAL_USUARIO (§ 5), DOCUMENTACION_TECNICA (traslados), GUIA_PRUEBAS (§ 3.1) y README.
+
+---
+
+## [2.11] — 03/11/2026 — Eliminar convocatorias, un traslado por mes y detalle de "Donde colaboro"
+
+**Por qué:** `textos/fix12.txt` pide eliminar una convocatoria por completo, impedir que se vuelva a grabar un traslado ya cargado, filtrar
+**Mis emisiones** por origen, ver todo el detalle en **Donde colaboro** y que **Colaboraciones** abra en **Convocatorias**.
+
+**Decisiones tomadas:**
+- **Eliminar borra todo lo que nació de la convocatoria,** en cualquier estado: miembros, roles, cargas de traslado y registros. Esos kg dejan de sumar a la huella del domicilio. Reemplaza la regla anterior, que solo permitía eliminarla sin miembros. La confirmación indica cuántas personas y kg se borran. **Finalizar** sigue siendo la opción para conservar lo cargado.
+- **Quien colabora declara un solo traslado por mes en cada convocatoria,** con cualquier medio. Reemplaza el criterio anterior, que solo rechazaba repetir el mismo medio. Para cambiar un mes o sumar un medio, edita la carga. El servidor también lo valida.
+- **El formulario se adapta a lo cargado:** sin meses disponibles se bloquea y ofrece **Editar**. Con algunos cargados, no permite **todo el período** y solo lista los meses que faltan.
+- **El titular conserva la regla anterior** (no repetir el mismo medio en un mes), porque puede declarar varios grupos con medios distintos en un mismo mes.
+- **Excepción para datos existentes:** una edición que no suma meses no se rechaza, para no trabar a quien ya tenía dos cargas con distinto medio en un mismo mes.
+- **Origen en Mis emisiones:** usa el mismo criterio que la etiqueta "Colaboración": cargó alguien que no es titular del domicilio.
+- **Meses que faltan:** un mes cuenta como cargado si tiene al menos un registro de esa colaboración.
+- **Al enviar una invitación se pasa a su pestaña,** porque la sección ahora abre en **Convocatorias** y no se vería.
+
+**Corrección relacionada:** `BotonCarga` dejaba el botón activo mientras guardaba si recibía `disabled={false}`, lo que permitía enviar dos veces.
+
+| Archivo | Cambio |
+|---|---|
+| `backend/HDC.DAL/Repositorios/ConvocatoriaRepositorio.cs`, `backend/HDC.BLL/Servicios/ConvocatoriaServicio.cs` | Eliminación completa en una transacción y recálculo del total del domicilio |
+| `backend/HDC.DAL/Repositorios/CargaTrasladoRepositorio.cs`, `backend/HDC.BLL/Servicios/TrasladoServicio.cs` | Un traslado por mes para quien colabora; `opciones` devuelve sus cargas |
+| `backend/HDC.DAL/Repositorios/EmisionRepositorios.cs`, `backend/HDC.BLL/Servicios/ColaboracionServicio.cs`, `backend/HDC.API/Controllers/EmisionControllers.cs` | Filtro `origen` y `GET colaboraciones/{id}/detalle` |
+| `backend/HDC.Entity/Dtos/` | `ColaboracionDetalleDto`, `RegistroColaboracionDto`, `CargaPropiaDto` y `FiltroRegistros.Origen` |
+| `frontend/src/pages/usuario/Colaboraciones.jsx` | Pestaña inicial, tabla breve y ventana de detalle |
+| `frontend/src/pages/usuario/Convocatorias.jsx` | Botón **Eliminar** en todas las convocatorias y confirmación con lo que se borra |
+| `frontend/src/pages/usuario/TrasladoForm.jsx` | Bloqueo de lo ya cargado y enlaces para editar |
+| `frontend/src/pages/usuario/MisEmisiones.jsx`, `frontend/src/api/servicios.js` | Filtro **Origen** y llamada al detalle |
+| `frontend/src/components/comunes/Basicos.jsx` | Corrección de `BotonCarga` |
+
+Sin cambios en la base de datos. Documentos actualizados: MANUAL_USUARIO (§ 5, 6 y 9), DOCUMENTACION_TECNICA (API, traslados y § 11), GUIA_PRUEBAS (§ 3.1) y README.
+
+---
+
+## [2.10] — 03/11/2026 — Botón Cargar por convocatoria y aportes separados
+
+**Por qué:** `textos/fix11.txt` pide tres cosas: que **Cargar** no vuelva a pedir la convocatoria ni el rol, que sumarse a otra convocatoria del
+mismo titular no muestre aportes que la persona no cargó y que **Traslados por rol** se actualice.
+
+**Causas encontradas:**
+- **El botón no enviaba la convocatoria,** solo el domicilio.
+- **No se creaban registros de más.** Los aportes se buscaban por persona y domicilio, así que lo cargado en una convocatoria aparecía en todas
+  las del mismo titular.
+- **La tabla por rol contaba solo a quien ya había cargado,** y una carga hecha en otra convocatoria sumaba allí. Además, no se recargaba con la pantalla abierta.
+
+**Decisiones tomadas:**
+- **Cada registro guarda su convocatoria** (`registros.id_convocatoria`). Los ya existentes se completan una sola vez, al migrar.
+- **Si llega por Cargar, el rol se muestra fijo** con la opción **Cambiar**. Los miembros que nunca eligieron rol lo eligen en su primera carga.
+- **Colaboradores por rol:** quienes lo eligieron al sumarse y están activos, más quienes cargaron con él. Reemplaza el criterio de la v2.7.
+- **Se puede cargar una convocatoria cuyo período ya terminó,** como se definió en la v2.8. Antes el botón desaparecía.
+- **Cada convocatoria es independiente:** el dueño decide sus períodos, también de años ya terminados, y una persona declara su traslado en cada una. El mismo medio y mes solo se rechaza dentro de la misma convocatoria. Si dos convocatorias de un domicilio se superponen, el total del domicilio suma ambas.
+- **El dashboard no cambia:** "Aportes de colaboradores" sigue sumando todo lo cargado en el domicilio.
+
+| Archivo | Cambio |
+|---|---|
+| `backend/HDC.DAL/Scripts/HDC_base_datos.sql` | Columna `registros.id_convocatoria`, migración e índice |
+| `backend/HDC.DAL/Repositorios/ConvocatoriaRepositorio.cs`, `EmisionRepositorios.cs` | Aportes por convocatoria y resultados por rol |
+| `backend/HDC.BLL/Servicios/RegistroServicio.cs`, `TrasladoServicio.cs`, `ColaboracionServicio.cs`, `DatosPruebaServicio.cs` | Convocatoria de cada aporte y carga de períodos terminados |
+| `backend/HDC.Entity/`, `backend/HDC.DAL/HdcDbContext.cs` | Entidad, DTO y mapeo |
+| `frontend/src/pages/usuario/Colaboraciones.jsx`, `RegistroForm.jsx`, `TrasladoForm.jsx` | **Cargar** lleva la convocatoria; domicilio, convocatoria y rol quedan definidos |
+| `frontend/src/pages/usuario/ConvocatoriaDetalle.jsx` | Actualización al volver a la pestaña y explicación de la tabla por rol |
+
+Documentos actualizados: MANUAL_USUARIO (§ 5 y 9), DOCUMENTACION_TECNICA (convocatorias), GUIA_PRUEBAS (§ 3.1) y README.
+
+**Verificación:**
+
+| Prueba | Resultado |
+|---|---|
+| Compilación de la API y del frontend | Correctas |
+| Migración en una copia de la base local, ejecutada dos veces | 465 registros y kg sin cambios; el caso reportado queda con 13 registros en su convocatoria y 0 en las otras dos |
+| 25 comprobaciones de fix11, en esa copia y en una base nueva | Todas correctas |
+| 58 comprobaciones de fix10, en la base nueva | Todas correctas |
+| 9 comprobaciones de convocatorias independientes, en la copia | Todas correctas: mismo medio y mes permitido entre convocatorias y rechazado dentro de una, y convocatoria de un año terminado |
+| Datos de prueba generados en la base nueva | Sin errores; totales de domicilios correctos y aportes asociados a su convocatoria |
+
+**Falta probar:** las pantallas en el navegador (ver [Guía de pruebas § 3.1](GUIA_PRUEBAS.md)).
+
+---
+
+## [2.9] — 03/11/2026 — Rol al sumarse, factores de viajes, domicilio opcional y baja inmediata
+
+**Por qué:** `textos/fix10.txt` pide seis cambios: elegir el rol al sumarse a una convocatoria, deducir los factores de viajes de las
+fuentes existentes, ordenar el formulario de medios de transporte, no exigir domicilio al registrarse, no aceptar 0 en los consumos y
+quitar el acceso al instante cuando el administrador da de baja una cuenta.
+
+**Decisiones tomadas:**
+- **Los viajes dejan de tener factor 0.** Esto reemplaza la decisión de la v2.6, tomada por `fix7`.
+- **Hace falta un consumo por km.** `fix10` pide usar el factor del combustible y la distancia, pero ese factor está en kg CO₂e por litro:
+  multiplicarlo directamente por km daría 2,38 kg por km en colectivo, unas 25 veces más que el factor de traslados del catálogo.
+  Por eso `factor por km = factor del combustible o la electricidad × consumo por km`.
+- **Los consumos por km no son datos nuevos:** se calcularon a partir de los factores de traslados del catálogo, así que un km en colectivo
+  emite lo mismo como traslado que como viaje. Falta que los valide un especialista. Se editan desde el panel.
+- **El avión sigue en 0:** el catálogo no tiene un combustible de aviación del que partir.
+- **Los traslados de colaboradores no cambian:** siguen con sus propios factores por km.
+- **Lo ya cargado conserva su factor:** los viajes existentes siguen en 0 kg. Cambian solo las cargas nuevas.
+- **El rol se elige al sumarse si la convocatoria tiene roles.** Se propone en cada traslado y el último usado queda guardado. Quien ya
+  había cargado un traslado toma el rol de su última carga. Quien ya era miembro y nunca cargó lo elige en su primera carga.
+- **Baja inmediata:** se consulta la base en cada pedido autenticado, por clave primaria. Se prefirió a un caché, que dejaría una demora.
+  Una pantalla abierta muestra el aviso en su siguiente pedido al servidor.
+
+| Archivo | Cambio |
+|---|---|
+| `backend/HDC.DAL/Scripts/HDC_base_datos.sql`, `scripts/cargar_catalogo_definitivo.sql` | Columnas `id_fuente_base`, `consumo_por_km` e `id_convocatoria_rol`, factores calculados y rol tomado de la última carga |
+| `backend/HDC.API/Program.cs`, `backend/HDC.BLL/Servicios/AuthServicio.cs`, `backend/HDC.DAL/Repositorios/SeguridadRepositorios.cs` | Comprobación de cuenta activa en cada pedido y domicilio opcional |
+| `backend/HDC.BLL/Servicios/CatalogoServicios.cs`, `backend/HDC.DAL/Repositorios/CatalogoRepositorios.cs`, `backend/HDC.API/Controllers/AdminControllers.cs` | Cálculo y validación del factor, y baja de una fuente usada como base |
+| `backend/HDC.BLL/Servicios/ConvocatoriaServicio.cs`, `TrasladoServicio.cs`, `backend/HDC.DAL/Repositorios/CargaTrasladoRepositorio.cs`, `backend/HDC.API/Controllers/ConvocatoriasController.cs` | Rol al sumarse, propuesto y recordado |
+| `backend/HDC.Entity/`, `backend/HDC.DAL/HdcDbContext.cs`, `backend/HDC.BLL/Comun/Mapeos.cs`, `DatosPruebaServicio.cs` | Entidades, DTO, mapeos, km mayores a 0 y comentario de los datos de prueba |
+| `frontend/src/pages/publicas/Registro.jsx` | Domicilio opcional |
+| `frontend/src/pages/usuario/Convocatorias.jsx`, `Colaboraciones.jsx`, `frontend/src/api/servicios.js` | Rol al sumarse y aviso si no hay domicilios |
+| `frontend/src/pages/usuario/TrasladoForm.jsx` | Rol propuesto y formulario del medio reordenado |
+| `frontend/src/pages/usuario/RegistroForm.jsx` | Km en 0 rechazados y ayuda de viajes |
+| `frontend/src/pages/admin/Fuentes.jsx` | Fuente base y consumo por km en los viajes |
+| `frontend/src/api/cliente.js`, `frontend/src/context/AuthContext.jsx` | Aviso de cuenta deshabilitada |
+
+Documentos actualizados: MANUAL_USUARIO (§ 1, 3, 5 y problemas frecuentes), DOCUMENTACION_TECNICA (§ 4, 6 y 9), GUIA_PRUEBAS (§ 3.1) y README.
+
+**Verificación:**
+
+| Prueba | Resultado |
+|---|---|
+| Compilación de la API y del frontend | Correctas |
+| Script de inicio en una base nueva, ejecutado dos veces | Sin errores; 6 viajes calculados y avión en 0 |
+| Script de inicio en una copia del respaldo previo a la v2.8, ejecutado dos veces | Registros y kg sin cambios; viajes ya cargados en factor 0; 50 de 62 miembros con rol tomado de su carga |
+| Catálogo definitivo en esa copia | Mismos factores calculados |
+| 58 comprobaciones de la API en una base temporal | Todas correctas: registro, rol, factores, ceros y baja inmediata. La del dashboard usó una ruta incorrecta y se repitió aparte: responde 200 sin domicilio |
+
+**Falta probar:** las pantallas en el navegador, incluido el formulario reordenado (ver [Guía de pruebas § 3.1](GUIA_PRUEBAS.md)), y validar los consumos por km con un especialista.
+
+---
+
+## [2.8] — 03/11/2026 — Período definido por el organizador, varios medios y detalle de aportes
+
+**Por qué:** `textos/fix9.txt` pide que en una convocatoria el período lo configure el organizador, que sea anual por defecto y
+que el colaborador pueda cargar todo o por mes, con más ayuda. También pide varias formas de transportarse y que el organizador
+vea el detalle completo de lo que cargaron los colaboradores.
+
+**Decisiones tomadas:**
+- **Las convocatorias se abren al final del período**, por ejemplo en diciembre para todo el año. Por eso los meses futuros no se
+  generan ni se completan solos. Si el período sigue en curso, se carga hasta el mes actual y se puede editar después.
+- **Las semanas de actividad las define el organizador**, porque conoce el calendario real, y así los resultados son comparables.
+- **El titular y las invitaciones por email conservan la elección** de período mensual, semestral o anual. También pueden usar varios medios.
+- **Una carga tiene varios medios:** cada mes genera un registro con un detalle por medio. No se limita la suma de días a 7, porque
+  se pueden combinar medios en un mismo viaje.
+- **Sin período de fin no hay traslados:** una convocatoria que habilita traslados necesita principio, fin y semanas. Si una convocatoria
+  anterior no los tiene, sus colaboradores usan el formulario libre hasta que el organizador la edite.
+
+| Archivo | Cambio |
+|---|---|
+| `backend/HDC.DAL/Scripts/HDC_base_datos.sql` | Tabla `carga_traslado_medio`, columnas nuevas y migración de las cargas de la v2.6 |
+| `scripts/cargar_catalogo_definitivo.sql`, `scripts/limpiar_datos_produccion.sql` | Adaptados a la tabla nueva |
+| `backend/HDC.BLL/Servicios/TrasladoServicio.cs`, `backend/HDC.DAL/Repositorios/CargaTrasladoRepositorio.cs` | Período de la convocatoria, varios medios y meses cargados |
+| `backend/HDC.BLL/Servicios/ConvocatoriaServicio.cs`, `backend/HDC.DAL/Repositorios/ConvocatoriaRepositorio.cs`, `backend/HDC.API/Controllers/ConvocatoriasController.cs` | Validación del período y las semanas, y `GET convocatorias/{id}/aportes` |
+| `backend/HDC.BLL/Servicios/RegistroServicio.cs`, `backend/HDC.DAL/Repositorios/EmisionRepositorios.cs`, `backend/HDC.DAL/HdcDbContext.cs`, `backend/HDC.Entity/` | Entidades, DTO y mapeos |
+| `backend/HDC.BLL/Servicios/DatosPruebaServicio.cs` | Datos de prueba con el período del organizador, carga total y mensual, y varios medios |
+| `frontend/src/pages/usuario/TrasladoForm.jsx` | Período del organizador, opción de cargar todo o un mes, meses faltantes, varios medios y textos de ayuda |
+| `frontend/src/pages/usuario/Convocatorias.jsx` | Año completo por defecto, otro período como última opción y semanas de actividad |
+| `frontend/src/pages/usuario/ConvocatoriaDetalle.jsx` | Vista **Detalle de aportes** y botón **Ver aportes** |
+| `frontend/src/pages/usuario/RegistroDetalle.jsx`, `frontend/src/utils/formato.js`, `frontend/src/api/servicios.js` | Datos de los medios y nueva llamada a la API |
+
+Documentos actualizados: MANUAL_USUARIO (§ 5 y 9), GUIA_DESARROLLADOR (§ 3), DOCUMENTACION_TECNICA (§ 4, 5, 9 y 11), GUIA_PRUEBAS (§ 3.1) y README.
+
+**Verificación:**
+
+| Prueba | Resultado |
+|---|---|
+| Compilación de la API y del frontend | Correctas |
+| Migración en una copia de la base local, ejecutada dos veces | 128 cargas pasan a 128 medios, 124 quedan asociadas a su convocatoria y se borran las columnas viejas |
+| Catálogo y limpieza en esa copia | Sin errores; queda solo el administrador y 0 medios |
+| 37 comprobaciones de la API en una base temporal | Todas correctas: período del organizador, carga total y mensual, varios medios, cálculos, solapamiento, edición, eliminación, aportes y permisos |
+
+**Falta probar:** las pantallas nuevas en el navegador (ver [Guía de pruebas § 3.1](GUIA_PRUEBAS.md)).
+
+---
+
+## [2.7] — 03/11/2026 — Datos de prueba con el catálogo definitivo
+
+**Por qué:** se pidieron datos de prueba actualizados con las fuentes nuevas. Los anteriores usaban solo unas pocas.
+
+**Decisiones tomadas:**
+- **Se mantienen las cuentas existentes** y se agrega una facultad de prueba, el caso que describe `fix8`, con los roles
+  estudiantes, personal docente y personal no docente, cada uno con un período distinto.
+- **Entre todos los escenarios se usan las 45 fuentes**, los 8 medios de transporte y los 3 períodos.
+- **Los valores son inventados.** No representan a ninguna institución real.
+- **La carga de un grupo no tiene rol**, porque los resultados por rol cuentan personas que cargaron, no los integrantes de un grupo.
+
+| Archivo | Cambio |
+|---|---|
+| `backend/HDC.BLL/Servicios/DatosPruebaServicio.cs` | Facultad de prueba con la convocatoria FACU-2K26, más fuentes en los hogares y la planta, km de vehículos y viajes institucionales |
+| `.env` local (no se versiona) | `DATOS_PRUEBA=true` |
+
+Documentos actualizados: GUIA_DESARROLLADOR (§ 3), GUIA_PRUEBAS (§ 3.1) y README.
+
+**Verificación** (en una base temporal, con el script de inicio y la geografía copiada):
+
+| Prueba | Resultado |
+|---|---|
+| Generación | Sin errores: 67 usuarios y 354 registros |
+| Cobertura del catálogo | 0 fuentes sin usar |
+| Datos adicionales | 36 detalles con km y 7 viajes con fecha |
+| Traslados | 8 cargas anuales, 17 semestrales y 101 mensuales; ninguna pasa del mes actual |
+| Resultados por rol | Estudiantes: 16 personas; docentes: 8; no docentes: 6 |
+| Totales de los domicilios | Coinciden con la suma de sus registros |
+
+---
+
+## [2.6] — 03/11/2026 — Catálogo definitivo de fuentes, traslados y roles de convocatoria
+
+**Por qué:** `textos/fix7.txt` pide borrar los datos de prueba y cargar las fuentes definitivas, dejando la posibilidad de
+editarlas o ampliarlas. `textos/fix8.txt` pide calcular el transporte con medio, distancia y frecuencia, en períodos
+mensuales, semestrales o anuales, y que quien crea la convocatoria defina roles.
+
+**Decisiones tomadas:**
+- **Factores:** SNIGEI-AR 2025 donde existe, como pide el diseño metodológico de la UPE, y `fix7` para el resto. El detalle y
+  los orígenes están en [Documentación técnica § 9](DOCUMENTACION_TECNICA.md#9-conceptos-del-dominio).
+- **Diferencias con `fix7`:** los factores de combustibles, electricidad, refrigerantes, residuos sólidos y residuos
+  peligrosos se reemplazaron por los del SNIGEI. Los residuos sólidos usan relleno con captura de metano (CEAMSE) y los
+  peligrosos, incineración: si el destino real es otro, hay que ajustarlos desde el panel.
+- **Grupos electrógenos en combustión fija:** como indica el documento de alcance de la UPE. `fix7` los ubicaba en móvil.
+- **R-32 en lugar de R-30:** la lista de `fix7` pide R-32; su tabla de factores seguía con R-30.
+- **Electricidad renovable con factor 0:** enfoque basado en el mercado. No se reportan los dos enfoques del GHG Protocol por separado.
+- **Viajes institucionales con factor 0:** `fix7` pide guardarlos solo como dato.
+- **Una carga de traslado genera un registro por mes:** el total se reparte en partes iguales, para no mostrar un pico falso.
+  Solo se generan meses hasta el actual. Los meses de una carga se editan y eliminan juntos.
+- **Colaborador y titular:** el colaborador carga solo su propio viaje. El titular puede cargar un grupo indicando la cantidad de personas.
+- **Roles de convocatoria separados de los roles del sistema**, con resultados por rol en el detalle de la convocatoria.
+- **Quedan afuera por ahora:** teletrabajo, porque el documento de la UPE no trae datos ni factor, y los indicadores por
+  estudiante o por m². Una encuesta parcial tampoco se extrapola sola al total de la comunidad.
+
+| Archivo | Cambio |
+|---|---|
+| `backend/HDC.DAL/Scripts/HDC_base_datos.sql` | Tablas `carga_traslado` y `convocatoria_rol`, columnas nuevas, índices y catálogo definitivo para bases nuevas |
+| `scripts/cargar_catalogo_definitivo.sql` | **Nuevo.** Actualiza el catálogo de una base existente |
+| `scripts/limpiar_datos_produccion.sql` | Borra también las cargas de traslado y los roles |
+| `backend/HDC.BLL/Servicios/TrasladoServicio.cs`, `backend/HDC.DAL/Repositorios/CargaTrasladoRepositorio.cs` | **Nuevos.** Cálculo, validaciones y gestión de los traslados |
+| `backend/HDC.API/Controllers/EmisionControllers.cs` | Endpoints `api/traslados` |
+| `backend/HDC.BLL/Servicios/RegistroServicio.cs` | Km opcionales de vehículos, fecha de viajes y bloqueo de la edición suelta de un mes de traslado |
+| `backend/HDC.BLL/Servicios/ConvocatoriaServicio.cs`, `backend/HDC.DAL/Repositorios/ConvocatoriaRepositorio.cs` | Roles y resultados por rol |
+| `backend/HDC.BLL/Servicios/DatosPruebaServicio.cs` | Datos de prueba adaptados al catálogo definitivo, con traslados y roles |
+| `backend/HDC.Entity/`, `backend/HDC.DAL/HdcDbContext.cs`, `backend/HDC.BLL/Comun/Mapeos.cs`, `backend/HDC.BLL/Servicios/CatalogoServicios.cs`, `backend/HDC.BLL/DependencyInjection.cs` | Entidades, DTO, mapeos y registro de servicios |
+| `frontend/src/pages/usuario/TrasladoForm.jsx` | **Nuevo.** Formulario de traslados |
+| `frontend/src/pages/usuario/RegistroForm.jsx`, `RegistroDetalle.jsx`, `MisEmisiones.jsx` | Datos adicionales y derivación de los traslados a su formulario |
+| `frontend/src/pages/usuario/Convocatorias.jsx`, `ConvocatoriaDetalle.jsx` | Alta de roles y resultados por rol |
+| `frontend/src/App.jsx`, `frontend/src/api/servicios.js`, `frontend/src/utils/formato.js` | Rutas, llamadas a la API y períodos |
+| `.env` local (no se versiona) | `DATOS_PRUEBA=false` |
+
+Documentos actualizados: MANUAL_USUARIO (§ 1, 5 y 9), GUIA_DESARROLLADOR (§ 3 y 9), DOCUMENTACION_TECNICA (§ 4, 5, 9 y 11), GUIA_PRUEBAS (§ 3.1) y README.
+
+**Verificación:**
+
+| Prueba | Resultado |
+|---|---|
+| Compilación de la API y del frontend, y construcción de las imágenes Docker | Correctas. ESLint no corrió: el proyecto no tiene una configuración compatible |
+| Script de inicio en una base nueva, ejecutado dos veces | Sin errores; 45 fuentes en 9 tipos |
+| Catálogo en una copia de la base real, con datos viejos | 45 activas y 8 fuentes viejas de baja, sin perder historial |
+| Limpieza y catálogo en esa copia | 45 activas, 0 de baja y catálogo idéntico al de una base nueva |
+| 37 comprobaciones de la API en una base temporal con los datos de prueba | Todas correctas: cálculos, límite de meses, roles, solapamiento, permisos, edición, eliminación y totales |
+| Borrado de un domicilio con traslados, en SQL dentro de una transacción revertida | Sus cargas se eliminan en cascada |
+| Base local, tras respaldar | 1 usuario (administrador), 0 registros, 45 fuentes activas y 4.037 ciudades; login, catálogo y frontend responden |
+
+**Falta probar:** las pantallas nuevas en el navegador (ver [Guía de pruebas § 3.1](GUIA_PRUEBAS.md)), con un especialista la
+lista final de factores y el borrado de un domicilio con traslados desde la aplicación.
+
+---
+
+## [2.5] — 02/11/2026 — Guía para enviar emails reales desde el servidor
+
+**Por qué:** se pidieron instrucciones paso a paso para quitar Mailpit y que los emails lleguen a casillas reales con el
+proyecto alojado en un servidor. Es solo documentación: no cambia el código ni la configuración del proyecto.
+
+| Archivo | Cambio |
+|---|---|
+| `docs/GUIA_EMAIL_PRODUCCION.md` | **Nuevo.** Proveedor, DNS, cambios en `.env` y `docker-compose.yml`, prueba, problemas frecuentes y cómo volver atrás |
+| `docs/GUIA_DESARROLLADOR.md` | § 9: enlace a la guía nueva |
+| `README.md` | Índice de documentación: guía nueva |
+
+**Verificación:** los cambios indicados para `docker-compose.yml` se validaron con `docker compose config` en una copia.
+Quedan los servicios `db`, `api` y `frontend`, y sin `SMTP_HOST` el proyecto no arranca y muestra el error. Falta probar
+el recorrido en un servidor con un proveedor SMTP real.
+
+---
+
 ## [2.4] — 02/11/2026 — Script para limpiar los datos antes de pasar a producción
 
 **Por qué:** se pidió un script para poner en producción que borre todo menos la cuenta de administrador.

@@ -1,6 +1,6 @@
 # Documentación técnica — Huella de Carbono (HDC)
 
-> **Última actualización:** 02/11/2026 · Versión del sistema: 2.3 (ver [CHANGELOG](CHANGELOG.md))
+> **Última actualización:** 03/11/2026 · Versión del sistema: 2.8 (ver [CHANGELOG](CHANGELOG.md))
 
 Descripción técnica del sistema para el equipo de desarrollo: arquitectura, tecnologías, modelo de datos,
 API, seguridad y decisiones de diseño. Para instalarlo y trabajarlo, ver la
@@ -120,12 +120,14 @@ fuente de verdad (no se usan migraciones de EF). Tablas y columnas en minúscula
 | | `individuo` / `organizacion` | Perfil 1:1 del usuario según su tipo |
 | | `recuperacion_contrasena` | Pedidos de "olvidé mi contraseña": hash del token, vencimiento, uso |
 | Geografía | `provincia` → `distrito` → `ciudad` | Cargadas desde georef (usan el id de georef) |
-| Catálogos | `alcance`, `unidad_medida`, `tipo_emision`, `fuente_emision` | Fuentes con su **factor de emisión** y una **descripción** de ayuda para el usuario |
+| Catálogos | `alcance`, `unidad_medida`, `tipo_emision`, `fuente_emision` | Fuentes con su **factor de emisión** y una **descripción** de ayuda. `tipo_emision.modo_carga` define qué datos se piden |
 | Emisiones | `domicilio` | Lugar de medición de un usuario; guarda el total acumulado de kg CO₂ |
 | | `registros` | Cabecera: domicilio + período (día 1 del mes) + quién cargó |
-| | `detalle_registro` | Consumo de una fuente: consumo, factor congelado, kg CO₂ |
+| | `detalle_registro` | Consumo de una fuente: consumo, factor congelado, kg CO₂, km opcionales de vehículo y fecha de viaje |
+| | `carga_traslado`, `carga_traslado_medio` | Traslado declarado de una vez: período, semanas, personas y rol, con uno o más medios (distancia, días y factor congelado). Genera un registro por mes |
 | Colaboración | `colaboracion`, `colaboracion_tipo_emision` | Permiso de un usuario para cargar ciertos tipos de emisión en un domicilio ajeno (por invitación o por convocatoria) |
 | | `convocatoria`, `convocatoria_tipo_emision` | Colaboración masiva por **código**: períodos, tipos y aprobación definidos una vez para todos sus miembros |
+| | `convocatoria_rol` | Roles de una convocatoria. Cada colaborador elige uno al sumarse (`colaboracion.id_convocatoria_rol`) y se propone en cada traslado |
 | Reportes | `reporte` | Filtros guardados (JSON) para regenerar un reporte |
 
 Relaciones principales:
@@ -136,6 +138,7 @@ usuario 1─N domicilio 1─N registros 1─N detalle_registro N─1 fuente_emis
 domicilio N─1 ciudad N─1 distrito N─1 provincia
 domicilio 1─N colaboracion N─1 usuario (colaborador);  colaboracion 1─N colaboracion_tipo_emision
 domicilio 1─N convocatoria 1─N colaboracion (miembros);  convocatoria 1─N convocatoria_tipo_emision
+convocatoria 1─N convocatoria_rol 1─N carga_traslado 1─N registros;  carga_traslado 1─N carga_traslado_medio N─1 fuente_emision
 usuario 1─N recuperacion_contrasena
 ```
 
@@ -161,8 +164,9 @@ La documentación interactiva completa está en **`/swagger`**.
 | Geografía     | `GET geo/provincias`, `GET geo/provincias/{id}/distritos`, `GET geo/distritos/{id}/ciudades` | Público |
 | Domicilios    | `GET/POST domicilios`, `GET/PUT/DELETE domicilios/{id}` | `GESTIONAR_DOMICILIOS` |
 | Registros     | `GET/POST registros` (paginado), `GET registros/domicilios`, `GET/PUT/DELETE registros/{id}` | `GESTIONAR_EMISIONES` o `COLABORAR` |
-| Colaboraciones| `GET enviadas/recibidas`, `POST`, `PUT {id}`, `POST {id}/aceptar · rechazar · revocar` | `GESTIONAR_COLABORACIONES` / `COLABORAR` |
-| Convocatorias (titular) | `GET/POST convocatorias`, `GET/PUT/DELETE convocatorias/{id}`, `PUT {id}/estado`, `GET {id}/miembros` (paginado), `POST {id}/miembros/accion` | `GESTIONAR_COLABORACIONES` |
+| Traslados     | `GET traslados/opciones`, `POST traslados`, `GET/PUT/DELETE traslados/{id}` | `GESTIONAR_EMISIONES` o `COLABORAR` |
+| Colaboraciones| `GET enviadas/recibidas`, `GET {id}/detalle` (solo quien colabora), `POST`, `PUT {id}`, `POST {id}/aceptar · rechazar · revocar` | `GESTIONAR_COLABORACIONES` / `COLABORAR` |
+| Convocatorias (titular) | `GET/POST convocatorias`, `GET/PUT/DELETE convocatorias/{id}`, `PUT {id}/estado`, `GET {id}/miembros` (paginado), `GET {id}/aportes` (paginado), `POST {id}/miembros/accion` | `GESTIONAR_COLABORACIONES` |
 | Convocatorias (colaborador) | `POST convocatorias/codigo/vista-previa`, `POST convocatorias/unirse` | `COLABORAR`, límite 20 intentos / 15 min por usuario |
 | Dashboard     | `GET dashboard` | `VER_DASHBOARD` |
 | Reportes      | `POST reportes/generar`, `POST reportes/global/generar`, `GET/POST/DELETE reportes/guardados` | `GENERAR_REPORTES` / `REPORTES_GLOBALES` |
@@ -186,6 +190,9 @@ Listados paginados (`registros`, `usuarios`, `convocatorias/{id}/miembros`): dev
   (20 cada 15 min por usuario, para que no se puedan adivinar probando).
 - **Base de datos y Mailpit** publicados solo en `127.0.0.1` (no accesibles desde otra máquina).
 - **Secretos** solo en `.env` / variables de entorno (el `.env` está en `.gitignore`).
+
+**Baja inmediata (v2.9):** en cada pedido autenticado, `OnTokenValidated` (`Program.cs`) comprueba por clave primaria que la
+cuenta siga activa. Si fue dada de baja, responde 401 con el motivo y el frontend cierra la sesión.
 
 Limitación conocida: el JWT es *stateless*; al cambiar o restablecer la contraseña, una sesión ya abierta en
 otro dispositivo sigue válida hasta que vence su token (por defecto 2 horas).
@@ -248,8 +255,21 @@ emails pendientes, esos emails se pierden y el usuario debe volver a pedir el li
   administrador lo cambia, el histórico no se altera.
 - Totales en **toneladas de CO₂** y equivalente atmosférico: `1 ppm ≈ 7.800 millones de t CO₂`.
 - **Alcances (GHG Protocol):** 1 = emisiones directas (gas, combustibles propios); 2 = energía adquirida
-  (electricidad); 3 = otras indirectas (transporte de terceros, viajes, residuos, agua).
-- **Períodos:** siempre el día 1 del mes; no se pueden cargar meses futuros.
+  (electricidad); 3 = otras indirectas (traslados, viajes, residuos, agua, papel e insumos).
+- **Períodos:** siempre el día 1 del mes; se puede cargar hasta el mes en curso, sin meses futuros.
+- **Modos de carga (v2.6):** `CONSUMO` pide solo la cantidad; `VEHICULO` suma km opcionales; `TRASLADO` usa su propio
+  formulario; `VIAJE` pide km y fecha. Una fuente nueva hereda el modo de su tipo.
+- **Factores de viajes (v2.9):** `factor por km = factor de la fuente base × consumo por km` (`id_fuente_base`, `consumo_por_km`).
+  El consumo es necesario porque el factor del combustible está en kg CO₂e por litro y la distancia, en km. Al cambiar el
+  factor de la base se actualizan las fuentes calculadas; lo ya cargado conserva su factor. Admite un solo nivel de dependencia.
+- **Traslados (v2.6, v2.8):** `km del mes = distancia × días por semana × (semanas ÷ meses del período) × personas` y
+  `kg CO₂ = km × factor`, por cada medio de la carga. Hay un registro por mes, con un detalle por medio, para que los
+  gráficos no muestren picos falsos. Solo se generan meses hasta el actual. La carga se edita y elimina completa, y cada
+  medio que sigue conserva su factor. Quien colabora declara un solo traslado por mes en cada convocatoria, con cualquier medio, y lo cambia editando la carga (v2.11); entre convocatorias se puede repetir, porque cada una es independiente. Una edición que no suma meses queda exceptuada, por los datos anteriores. El titular solo no puede repetir el mismo medio en un mes, porque puede declarar varios grupos. Cada medio aparece una vez por carga, con el total de km de ese medio (por ejemplo, de 3 colectivos), y `dias_semana` se valida entre 1 y 7 (v2.12). Quien colabora tampoco puede tener dos registros de consumos del mismo mes en una colaboración (domicilio, persona y convocatoria); consumos y traslados se controlan por separado.
+- **Quién define el período:** en una convocatoria, el organizador, con `periodo_desde`, `periodo_hasta` y
+  `semanas_traslado`; quien colabora elige `PERIODO` (todo de una vez) o `MENSUAL` (un mes). Una carga mensual guarda las
+  semanas y los meses del período completo, por eso usa la misma fórmula. El titular y las invitaciones por email eligen
+  mensual, semestral o anual. Los meses futuros no se generan ni se completan solos: la convocatoria se abre al final del período.
 - **Colaboraciones:** el titular invita a un usuario registrado a un domicilio, por un rango de períodos y
   ciertos tipos de emisión. Aceptada y vigente, el colaborador carga solo esos tipos; los registros suman
   al domicilio del titular y quedan marcados con quién los cargó.
@@ -258,6 +278,42 @@ emails pendientes, esos emails se pierden y el usuario debe volver a pedir el li
 - **Roles iniciales:** Administrador (panel, fuentes, usuarios, roles/permisos, catálogos, reportes globales);
   Individuo y Organización (dashboard, domicilios, emisiones, colaboraciones, reportes). Los permisos del
   sistema y los 3 roles iniciales no se pueden borrar.
+
+### Catálogo de fuentes (v2.6)
+
+Criterio: los factores oficiales del **SNIGEI-AR 2025** donde existen, como pide el diseño metodológico de la UPE, y
+los de referencia de `textos/fix7.txt` para el resto. El CO₂e de combustibles y electricidad se calculó como
+`CO₂ fósil + CH₄ × 28 + N₂O × 265` (PCG AR5), sin CO₂ biogénico. Cada fuente indica su origen en la descripción.
+
+| Fuente | Factor | Origen |
+|---|---|---|
+| Gas natural (m³) | 1,9568 | SNIGEI, instalaciones fijas |
+| GLP (kg) / GLP (L) | 2,9087 / 1,6724 | SNIGEI, instalaciones fijas |
+| Gasoil de grupos electrógenos (L) | 2,5460 | SNIGEI, gasoil grado 2, instalaciones fijas |
+| Nafta de vehículos (L) | 2,0209 | SNIGEI, grado 2 con 12 % de bioetanol |
+| Gasoil de vehículos (L) | 2,3790 | SNIGEI, grado 2 con 7,5 % de biodiésel |
+| R-410A / R-32 / R-22 / R-134a (kg) | 1.923,5 / 677 / 1.760 / 1.300 | SNIGEI, PCG AR5 |
+| R-290 / R-600a (kg) | 0,02 / 0 | SNIGEI: AR6 (no figura en AR5) / HC-600 iso-butano |
+| Electricidad de la red (kWh) | 0,2860 | SNIGEI, año 2022 |
+| Electricidad renovable (kWh) | 0 | Enfoque basado en el mercado, GHG Protocol |
+| Residuos sólidos urbanos (kg) | 1,1760 | SNIGEI, relleno con captura de metano (CEAMSE) |
+| Residuos peligrosos (kg) | 0,8250 | SNIGEI, incineración |
+| Reciclables y RAEE (kg) / Aceites (L) | 0,0047 / 0,0192 | fix7 (DEFRA) |
+| Traslados (km) | Auto nafta 0,1643 · Auto gasoil 0,1612 · Moto 0,1114 · Colectivo 0,0942 · Tren 0,0378 · Subte 0,0265 · Bicicleta y caminata 0 | fix7 |
+| Viajes en auto a nafta / a gasoil (km) | 0,164299 / 0,161296 | Nafta × 0,0813 L/km · Gasoil × 0,0678 L/km |
+| Viaje en moto a nafta (km) | 0,111352 | Nafta × 0,0551 L/km |
+| Viaje en colectivo a gasoil (pasajero-km) | 0,094208 | Gasoil × 0,0396 L/pasajero-km |
+| Viaje en tren / subte eléctrico (pasajero-km) | 0,037809 / 0,026512 | Electricidad × 0,1322 / 0,0927 kWh/pasajero-km |
+| Viaje en avión (km) | 0 | Se guarda solo como dato: el catálogo no tiene combustible de aviación |
+| Agua potable (m³) | 0,1913 | fix7 |
+| Papel A4 / A3 virgen (resma) | 2,2883 / 4,5858 | fix7: 2,49 kg o 4,99 kg × 0,919 |
+| Papel A4 / A3 reciclado (resma) | 1,4741 / 2,9541 | fix7: 2,49 kg o 4,99 kg × 0,592 |
+| Tóner / remanufacturado / cartucho (unidad) | 4,8 / 1,25 / 3,2 | fix7 |
+| Insumos de oficina (kg) | 1,21 | fix7 |
+
+Si los residuos de un domicilio no van a un relleno con captura, o los peligrosos no se incineran, el administrador
+tiene que ajustar el factor. El SNIGEI aclara que cada usuario debe evaluar su aplicabilidad y que usarlos no valida la huella.
+Los factores de `fix7` no se pudieron contrastar con los documentos oficiales del proyecto.
 
 ## 10. Decisiones de diseño
 
@@ -321,6 +377,23 @@ miembros cuyo estado lo permite (por ejemplo, "aceptar" ignora a los ya aceptado
 espacios y minúsculas. El código no cambia durante la vida de la convocatoria (para frenar los ingresos, el titular
 la cierra); un código inexistente y uno finalizado dan el mismo mensaje.
 Antes de sumarse, el usuario ve una vista previa (titular, domicilio, períodos, tipos) para no sumarse por error.
+
+**Aportes por convocatoria (v2.10):** cada registro guarda `id_convocatoria`. Los aportes, los miembros y el detalle se filtran por esa
+columna, no por persona y domicilio, porque una persona puede estar en varias convocatorias del mismo domicilio. Los traslados toman la
+convocatoria de su carga. Un consumo común toma la del botón **Cargar**; si no viene, la más reciente que cubra ese mes y esos tipos.
+En **Traslados por rol**, los colaboradores son quienes eligieron el rol o cargaron con él, y los kg suman lo cargado.
+
+**Eliminación (v2.11):** `DELETE convocatorias/{id}` funciona en cualquier estado y borra, en una transacción, los registros con ese `id_convocatoria`, sus cargas de traslado,
+los miembros, los roles y los tipos; después recalcula `domicilio.total_kg_co2`. Una carga libre con solo algunos meses asignados a la convocatoria se borra únicamente si queda sin registros.
+
+**Detalle para quien colabora (v2.11):** `GET colaboraciones/{id}/detalle` devuelve los datos de la convocatoria, los registros de esa persona (mismo criterio que los aportes) y los meses pendientes y futuros.
+
+**Detalle de aportes (v2.8):** `GET convocatorias/{id}/aportes` devuelve una fila por detalle (persona, fuente y mes), paginada y
+ordenada en SQL, con filtro opcional por persona. Solo accede el titular de la convocatoria.
+
+**Roles (v2.6):** `convocatoria_rol` guarda los roles que define el titular, distintos de los roles del sistema. Si hay
+roles, el colaborador debe elegir uno al cargar su traslado; para el titular es opcional. El detalle de la convocatoria
+suma colaboradores y kg CO₂ por rol en SQL. Un rol ya elegido en un traslado no se puede quitar.
 
 **Escala:** el listado de miembros se pagina, ordena y filtra en SQL (el aporte de cada uno se calcula con
 subconsultas); los conteos por estado son un `GROUP BY`; hay índice `(id_convocatoria, estado)`. La lista de

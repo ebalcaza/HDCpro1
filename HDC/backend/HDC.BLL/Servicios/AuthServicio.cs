@@ -59,6 +59,12 @@ public class AuthServicio(UsuarioRepositorio usuarios, DomicilioServicio domicil
         return ASesion(u);
     }
 
+    /// <summary>
+    /// Se consulta en cada pedido autenticado: una cuenta dada de baja pierde el acceso al instante,
+    /// aunque su token siga vigente (v2.9).
+    /// </summary>
+    public Task<bool> CuentaActivaAsync(long idUsuario) => usuarios.EstaActivoAsync(idUsuario);
+
     public static string HashContrasena(string contrasena) => BCrypt.Net.BCrypt.HashPassword(contrasena, workFactor: 11);
 
     private async Task<Usuario> CrearUsuarioBaseAsync(RegistroBaseRequest req, long idRol)
@@ -75,11 +81,15 @@ public class AuthServicio(UsuarioRepositorio usuarios, DomicilioServicio domicil
         };
     }
 
-    private async Task<AuthResponse> GuardarYResponderAsync(Usuario u, DomicilioRequest domicilio)
+    private async Task<AuthResponse> GuardarYResponderAsync(Usuario u, DomicilioRequest? domicilio)
     {
-        var d = new Domicilio { FechaAlta = DateTime.Now, Usuario = u };
-        await domicilioServicio.AplicarAsync(d, domicilio);
-        u.Domicilios.Add(d);
+        // El domicilio es opcional: quien solo colabora puede crear la cuenta sin cargarlo (v2.9)
+        if (domicilio != null)
+        {
+            var d = new Domicilio { FechaAlta = DateTime.Now, Usuario = u };
+            await domicilioServicio.AplicarAsync(d, domicilio);
+            u.Domicilios.Add(d);
+        }
         usuarios.Agregar(u);
         await usuarios.GuardarAsync();
         return CrearRespuesta((await usuarios.ObtenerPorEmailAsync(u.Email))!);

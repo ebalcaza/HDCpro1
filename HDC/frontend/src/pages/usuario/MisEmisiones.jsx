@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { registrosApi } from '../../api/servicios'
+import { registrosApi, trasladosApi } from '../../api/servicios'
 import { useUI } from '../../context/UIContext.jsx'
 import { EncabezadoPagina, ErrorCarga, useCarga } from '../../components/comunes/Basicos.jsx'
 import TablaPaginada, { consultaAParams } from '../../components/comunes/TablaPaginada.jsx'
@@ -20,12 +20,14 @@ export default function MisEmisiones() {
   const idDomicilio = params.get('domicilio') || ''
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
+  // '' = todas, PROPIAS = cargadas por el titular del domicilio, COLABORACIONES = cargadas por otra persona
+  const [origen, setOrigen] = useState('')
   // Estado actual de la tabla ({ pagina, tamanio, orden, texto }); null hasta que la tabla se monta
   const [consulta, setConsulta] = useState(null)
 
   const { datos, cargando, error, recargar } = useCarga(
     () => (consulta
-      ? registrosApi.listar({ ...consultaAParams(consulta), idDomicilio: idDomicilio || undefined, desde: desdeMes(desde) || undefined, hasta: desdeMes(hasta) || undefined })
+      ? registrosApi.listar({ ...consultaAParams(consulta), idDomicilio: idDomicilio || undefined, desde: desdeMes(desde) || undefined, hasta: desdeMes(hasta) || undefined, origen: origen || undefined })
       : Promise.resolve(null)),
     // Los filtros externos no van acá: al cambiar, la tabla vuelve a la página 1 y eso cambia `consulta` (una sola llamada)
     [consulta],
@@ -38,14 +40,17 @@ export default function MisEmisiones() {
 
   const eliminar = async (r) => {
     const ok = await ui.confirmar({
-      titulo: '¿Eliminar este registro?',
-      mensaje: `Se eliminará el registro de ${periodo(r.periodo, true)} (${numero(r.totalKgCo2)} kg CO₂) de ${r.domicilio}. Esta acción no se puede deshacer.`,
+      titulo: r.idCargaTraslado ? '¿Eliminar este traslado?' : '¿Eliminar este registro?',
+      // Un registro generado por un traslado se elimina junto con los demás meses de su carga
+      mensaje: r.idCargaTraslado
+        ? `Este registro es parte de una carga de traslado en ${r.domicilio}. Se eliminan los registros de todos sus meses. Esta acción no se puede deshacer.`
+        : `Se eliminará el registro de ${periodo(r.periodo, true)} (${numero(r.totalKgCo2)} kg CO₂) de ${r.domicilio}. Esta acción no se puede deshacer.`,
       tipo: 'peligro',
-      textoConfirmar: 'Eliminar registro',
+      textoConfirmar: r.idCargaTraslado ? 'Eliminar traslado' : 'Eliminar registro',
     })
     if (!ok) return
     try {
-      await registrosApi.eliminar(r.idRegistro)
+      await (r.idCargaTraslado ? trasladosApi.eliminar(r.idCargaTraslado) : registrosApi.eliminar(r.idRegistro))
       ui.exito('El registro se eliminó y los totales se recalcularon')
       recargar()
     } catch (err) { ui.error(err) }
@@ -86,6 +91,14 @@ export default function MisEmisiones() {
             {(domicilios.datos || []).map((d) => <option key={d.idDomicilio} value={d.idDomicilio}>{d.descripcion}</option>)}
           </select>
         </div>
+        <div style={{ minWidth: 180 }}>
+          <label className="form-label" htmlFor="filtro-origen">Origen</label>
+          <select id="filtro-origen" className="form-select" value={origen} onChange={(e) => setOrigen(e.target.value)}>
+            <option value="">Todas</option>
+            <option value="PROPIAS">Emisiones propias</option>
+            <option value="COLABORACIONES">Colaboraciones</option>
+          </select>
+        </div>
         <div><label className="form-label">Desde</label><SelectorMes valor={desde} permitirVacio max={hasta || mesActual()} onChange={setDesde} /></div>
         <div><label className="form-label">Hasta</label><SelectorMes valor={hasta} permitirVacio max={mesActual()} onChange={setHasta} /></div>
         <div className="ms-auto text-end">
@@ -100,7 +113,7 @@ export default function MisEmisiones() {
           datos={datos?.items}
           total={datos?.total}
           onConsulta={setConsulta}
-          claveFiltros={`${idDomicilio}|${desde}|${hasta}`}
+          claveFiltros={`${idDomicilio}|${desde}|${hasta}|${origen}`}
           cargando={cargando}
           idFila={(r) => r.idRegistro}
           textoBusqueda="Buscar por domicilio, período, alcance..."

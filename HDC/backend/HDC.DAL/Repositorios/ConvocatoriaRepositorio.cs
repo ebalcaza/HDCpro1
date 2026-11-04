@@ -17,6 +17,7 @@ public class ConvocatoriaRepositorio(HdcDbContext ctx) : Repositorio<Convocatori
         .Include(c => c.Domicilio).ThenInclude(d => d.Usuario).ThenInclude(u => u.Individuo)
         .Include(c => c.Domicilio).ThenInclude(d => d.Usuario).ThenInclude(u => u.Organizacion)
         .Include(c => c.TiposEmision).ThenInclude(t => t.TipoEmision).ThenInclude(t => t.Alcance)
+        .Include(c => c.Roles)
         .AsSplitQuery();
 
     /// <summary>Convocatorias de los domicilios del titular, de la más nueva a la más vieja.</summary>
@@ -34,8 +35,39 @@ public class ConvocatoriaRepositorio(HdcDbContext ctx) : Repositorio<Convocatori
     /// <summary>Para no repetir códigos al generar uno nuevo.</summary>
     public Task<bool> ExisteCodigoAsync(string codigo) => Ctx.Convocatorias.AnyAsync(c => c.Codigo == codigo);
 
-    /// <summary>Una convocatoria con miembros (en cualquier estado) no se elimina: se finaliza.</summary>
-    public Task<bool> TieneMiembrosAsync(long id) => Ctx.Colaboraciones.AnyAsync(c => c.IdConvocatoria == id);
+    /// <summary>
+    /// Borra la convocatoria con todo lo que nació de ella (v2.11): registros, cargas de traslado, miembros, roles y tipos.
+    /// Va en una transacción, para no dejar el total del domicilio desactualizado si algo falla. EnableRetryOnFailure
+    /// exige envolverla en la estrategia de ejecución.
+    /// </summary>
+    public Task EliminarConAportesAsync(Convocatoria c)
+    {
+        var id = c.IdConvocatoria;
+        var idDomicilio = c.IdDomicilio;
+        return Ctx.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var tx = await Ctx.Database.BeginTransactionAsync();
+
+            // Una carga libre puede tener solo algunos meses asignados a esta convocatoria: se borra únicamente si queda vacía
+            var cargasAfectadas = await Ctx.Registros
+                .Where(r => r.IdConvocatoria == id && r.IdCargaTraslado != null)
+                .Select(r => r.IdCargaTraslado!.Value).Distinct().ToListAsync();
+            await Ctx.Registros.Where(r => r.IdConvocatoria == id).ExecuteDeleteAsync();
+            await Ctx.CargasTraslado
+                .Where(x => x.IdConvocatoria == id || (cargasAfectadas.Contains(x.IdCargaTraslado) && !x.Registros.Any()))
+                .ExecuteDeleteAsync();
+            await Ctx.Colaboraciones.Where(m => m.IdConvocatoria == id).ExecuteDeleteAsync();
+
+            Ctx.Convocatorias.Remove(c); // roles y tipos se borran en cascada
+            await Ctx.SaveChangesAsync();
+
+            // Lo borrado deja de sumar a la huella del domicilio
+            var total = await Ctx.Registros.Where(r => r.IdDomicilio == idDomicilio).SumAsync(r => (decimal?)r.TotalKgCo2) ?? 0m;
+            await Ctx.Domicilios.Where(d => d.IdDomicilio == idDomicilio).ExecuteUpdateAsync(s => s.SetProperty(d => d.TotalKgCo2, total));
+
+            await tx.CommitAsync();
+        });
+    }
 
     /// <summary>Cantidad de miembros de cada convocatoria por estado: { (idConvocatoria, estado) → cantidad }.</summary>
     public async Task<Dictionary<(long Convocatoria, string Estado), int>> ContarPorEstadoAsync(IReadOnlyCollection<long> ids)
@@ -48,18 +80,100 @@ public class ConvocatoriaRepositorio(HdcDbContext ctx) : Repositorio<Convocatori
         return datos.ToDictionary(d => (d.Id, d.Estado), d => d.n);
     }
 
-    /// <summary>kg CO2 que cargaron los miembros de cada convocatoria en su domicilio (SUM en la base).</summary>
+    /// <summary>kg CO2 cargados en cada convocatoria (SUM en la base). Solo cuenta lo cargado en esa convocatoria (v2.10).</summary>
     public async Task<Dictionary<long, decimal>> AportesAsync(IReadOnlyCollection<long> ids)
     {
-        var datos = await (
-            from c in Ctx.Colaboraciones
-            where c.IdConvocatoria != null && ids.Contains(c.IdConvocatoria.Value)
-            join r in Ctx.Registros
-                on new { c.IdDomicilio, Usuario = c.IdUsuarioColaborador } equals new { r.IdDomicilio, Usuario = r.IdUsuarioCarga }
-            group r by c.IdConvocatoria!.Value into g
-            select new { Id = g.Key, Kg = g.Sum(r => r.TotalKgCo2) }).ToListAsync();
+        var datos = await Ctx.Registros
+            .Where(r => r.IdConvocatoria != null && ids.Contains(r.IdConvocatoria.Value))
+            .GroupBy(r => r.IdConvocatoria!.Value)
+            .Select(g => new { Id = g.Key, Kg = g.Sum(r => r.TotalKgCo2) })
+            .ToListAsync();
         return datos.ToDictionary(d => d.Id, d => d.Kg);
     }
+
+    /// <summary>
+    /// Por cada rol: personas y kg CO2 de sus traslados (todo se resuelve en la base).
+    /// Cuentan quienes lo eligieron al sumarse, aunque todavía no hayan cargado, y quienes ya cargaron con ese rol (v2.10).
+    /// </summary>
+    public async Task<Dictionary<long, (int Colaboradores, decimal Kg)>> ResultadosPorRolAsync(IReadOnlyCollection<long> idsRoles)
+    {
+        var personas = await Ctx.Colaboraciones
+            .Where(c => c.Estado == EstadoColaboracion.Aceptada && c.IdConvocatoriaRol != null && idsRoles.Contains(c.IdConvocatoriaRol.Value))
+            .Select(c => new { Rol = c.IdConvocatoriaRol!.Value, Usuario = c.IdUsuarioColaborador })
+            .Union(Ctx.CargasTraslado
+                .Where(x => x.IdConvocatoriaRol != null && idsRoles.Contains(x.IdConvocatoriaRol.Value))
+                .Select(x => new { Rol = x.IdConvocatoriaRol!.Value, Usuario = x.IdUsuarioCarga }))
+            .GroupBy(x => x.Rol)
+            .Select(g => new { Id = g.Key, Cantidad = g.Count() })
+            .ToDictionaryAsync(x => x.Id, x => x.Cantidad);
+        var kilos = await Ctx.Registros
+            .Where(r => r.CargaTraslado != null && r.CargaTraslado.IdConvocatoriaRol != null && idsRoles.Contains(r.CargaTraslado.IdConvocatoriaRol.Value))
+            .GroupBy(r => r.CargaTraslado!.IdConvocatoriaRol!.Value)
+            .Select(g => new { Id = g.Key, Kg = g.Sum(r => r.TotalKgCo2) })
+            .ToDictionaryAsync(x => x.Id, x => x.Kg);
+        return idsRoles.ToDictionary(id => id, id => (personas.GetValueOrDefault(id), kilos.GetValueOrDefault(id)));
+    }
+
+    /// <summary>
+    /// Detalle de aportes (v2.8): una fila por fuente y por mes, de todas las personas de la convocatoria o de una sola.
+    /// Se ordena y pagina en SQL, porque con miles de colaboradores puede haber muchas filas.
+    /// </summary>
+    public async Task<PaginaDto<AporteConvocatoriaDto>> PaginarAportesAsync(Convocatoria c, FiltroAportes f)
+    {
+        var idConvocatoria = c.IdConvocatoria;
+        var q = Ctx.DetallesRegistro.AsNoTracking().Where(d => d.Registro.IdConvocatoria == idConvocatoria);
+        if (f.IdUsuario is long idUsuario) q = q.Where(d => d.Registro.IdUsuarioCarga == idUsuario);
+        if (!string.IsNullOrWhiteSpace(f.Busqueda))
+        {
+            var t = ExtensionesConsulta.PatronContiene(f.Busqueda.Trim());
+            q = q.Where(d => EF.Functions.ILike(d.Registro.UsuarioCarga.Email, t)
+                || EF.Functions.ILike(d.FuenteEmision.Nombre, t)
+                || (d.Registro.UsuarioCarga.Individuo != null && (EF.Functions.ILike(d.Registro.UsuarioCarga.Individuo.Nombres, t)
+                    || EF.Functions.ILike(d.Registro.UsuarioCarga.Individuo.Apellidos, t)))
+                || (d.Registro.UsuarioCarga.Organizacion != null && EF.Functions.ILike(d.Registro.UsuarioCarga.Organizacion.RazonSocial, t))
+                || (d.Registro.CargaTraslado != null && d.Registro.CargaTraslado.ConvocatoriaRol != null
+                    && EF.Functions.ILike(d.Registro.CargaTraslado.ConvocatoriaRol.Nombre, t)));
+        }
+        var total = await q.CountAsync();
+
+        var ordenada = (f.Orden?.ToLowerInvariant()) switch
+        {
+            "colaborador" => q.OrdenarPor(d => d.Registro.UsuarioCarga.Individuo != null ? d.Registro.UsuarioCarga.Individuo.Apellidos
+                : d.Registro.UsuarioCarga.Organizacion != null ? d.Registro.UsuarioCarga.Organizacion.RazonSocial : d.Registro.UsuarioCarga.Email, f.Asc),
+            "fuente" => q.OrdenarPor(d => d.FuenteEmision.Nombre, f.Asc),
+            "kgco2" => q.OrdenarPor(d => d.KgCo2, f.Asc),
+            "periodo" => q.OrdenarPor(d => d.Registro.Periodo, f.Asc),
+            _ => q.OrderByDescending(d => d.Registro.Periodo),
+        };
+
+        var items = await ordenada.ThenBy(d => d.IdDetalle)
+            .Paginar(f.Saltear, f.Tamanio)
+            .Select(d => new AporteConvocatoriaDto(
+                d.IdDetalle,
+                d.IdRegistro,
+                d.Registro.IdUsuarioCarga,
+                d.Registro.UsuarioCarga.Individuo != null ? d.Registro.UsuarioCarga.Individuo.Nombres + " " + d.Registro.UsuarioCarga.Individuo.Apellidos
+                    : d.Registro.UsuarioCarga.Organizacion != null ? d.Registro.UsuarioCarga.Organizacion.RazonSocial : d.Registro.UsuarioCarga.Email,
+                d.Registro.UsuarioCarga.Email,
+                d.Registro.CargaTraslado != null && d.Registro.CargaTraslado.ConvocatoriaRol != null ? d.Registro.CargaTraslado.ConvocatoriaRol.Nombre : null,
+                d.Registro.Periodo,
+                d.FuenteEmision.Nombre,
+                d.FuenteEmision.TipoEmision.Nombre,
+                d.Consumo,
+                d.FuenteEmision.UnidadMedida.Nombre,
+                Ctx.CargasTrasladoMedios.Where(m => m.IdCargaTraslado == d.Registro.IdCargaTraslado && m.IdFuenteEmision == d.IdFuenteEmision).Select(m => (decimal?)m.DistanciaKm).FirstOrDefault(),
+                Ctx.CargasTrasladoMedios.Where(m => m.IdCargaTraslado == d.Registro.IdCargaTraslado && m.IdFuenteEmision == d.IdFuenteEmision).Select(m => (decimal?)m.DiasSemana).FirstOrDefault(),
+                d.ValorFactorEmision,
+                d.KgCo2,
+                d.Registro.FechaCreacion))
+            .ToListAsync();
+        return new PaginaDto<AporteConvocatoriaDto>(items, total);
+    }
+
+    /// <summary>Un rol elegido en algún traslado no se puede quitar: se perdería el dato de esas cargas.</summary>
+    public Task<bool> RolEnUsoAsync(long idRol) => Ctx.CargasTraslado.AnyAsync(c => c.IdConvocatoriaRol == idRol);
+
+    public void QuitarRol(ConvocatoriaRol rol) => Ctx.ConvocatoriaRoles.Remove(rol);
 
     /// <summary>La colaboración de un usuario en una convocatoria (si alguna vez se sumó).</summary>
     public Task<Colaboracion?> ObtenerMiembroAsync(long idConvocatoria, long idUsuario) => Ctx.Colaboraciones
@@ -99,7 +213,7 @@ public class ConvocatoriaRepositorio(HdcDbContext ctx) : Repositorio<Convocatori
             "estado" => q.OrdenarPor(c => c.Estado, f.Asc),
             "fechasolicitud" => q.OrdenarPor(c => c.FechaInvitacion, f.Asc),
             "totalkgco2aportado" => q.OrdenarPor(c => Ctx.Registros
-                .Where(r => r.IdDomicilio == c.IdDomicilio && r.IdUsuarioCarga == c.IdUsuarioColaborador)
+                .Where(r => r.IdConvocatoria == idConvocatoria && r.IdUsuarioCarga == c.IdUsuarioColaborador)
                 .Sum(r => (decimal?)r.TotalKgCo2) ?? 0m, f.Asc),
             // Por defecto: las solicitudes más recientes primero
             _ => q.OrderByDescending(c => c.FechaInvitacion),
@@ -117,8 +231,8 @@ public class ConvocatoriaRepositorio(HdcDbContext ctx) : Repositorio<Convocatori
                 c.FechaInvitacion,
                 c.FechaRespuesta,
                 c.IdUsuarioBaja == idTitular,
-                Ctx.Registros.Count(r => r.IdDomicilio == c.IdDomicilio && r.IdUsuarioCarga == c.IdUsuarioColaborador),
-                Ctx.Registros.Where(r => r.IdDomicilio == c.IdDomicilio && r.IdUsuarioCarga == c.IdUsuarioColaborador)
+                Ctx.Registros.Count(r => r.IdConvocatoria == idConvocatoria && r.IdUsuarioCarga == c.IdUsuarioColaborador),
+                Ctx.Registros.Where(r => r.IdConvocatoria == idConvocatoria && r.IdUsuarioCarga == c.IdUsuarioColaborador)
                     .Sum(r => (decimal?)r.TotalKgCo2) ?? 0m))
             .ToListAsync();
 

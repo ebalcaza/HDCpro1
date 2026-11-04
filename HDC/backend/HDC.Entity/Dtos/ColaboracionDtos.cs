@@ -58,6 +58,33 @@ public record ColaboracionDto(
     long? IdConvocatoria,
     string? Convocatoria);
 
+/// <summary>Un registro guardado por quien colabora, para el detalle de "Donde colaboro" (v2.11).</summary>
+public record RegistroColaboracionDto(
+    long IdRegistro,
+    DateOnly Periodo,
+    IReadOnlyList<string> Fuentes,
+    decimal TotalKgCo2,
+    DateTime FechaCreacion,
+    bool EsTraslado);
+
+/// <summary>
+/// Detalle de una colaboración para quien colabora (v2.11): sus datos, los de la convocatoria si nació de una,
+/// lo que ya guardó y lo que le falta. Los campos de convocatoria quedan en null en una invitación por email.
+/// </summary>
+public record ColaboracionDetalleDto(
+    ColaboracionDto Colaboracion,
+    string? Descripcion,
+    string? EstadoConvocatoria,
+    string? Codigo,
+    bool? AprobacionAutomatica,
+    decimal? SemanasTraslado,
+    string? Rol,
+    IReadOnlyList<RegistroColaboracionDto> Registros,
+    // Meses ya empezados del período sin ningún registro
+    IReadOnlyList<DateOnly> MesesPendientes,
+    // Meses del período que todavía no empezaron: aún no se pueden cargar
+    int MesesFuturos);
+
 // ======================= Convocatorias (v2.2) =======================
 
 /// <summary>Edición de una convocatoria (el domicilio no se puede cambiar).</summary>
@@ -79,6 +106,15 @@ public class ConvocatoriaRequest
 
     /// <summary>true = quien se suma con el código queda aceptado sin aprobación del titular.</summary>
     public bool AprobacionAutomatica { get; set; }
+
+    /// <summary>Roles que eligen los colaboradores al cargar su traslado (opcional).</summary>
+    [MaxLength(20, ErrorMessage = "Máximo 20 roles")]
+    public List<string> Roles { get; set; } = new();
+
+    /// <summary>Semanas de actividad del período. Obligatorias si la convocatoria habilita traslados.</summary>
+    [Range(typeof(decimal), "1", "999", ErrorMessage = "Las semanas deben ser mayores a 0",
+        ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
+    public decimal? SemanasTraslado { get; set; }
 }
 
 /// <summary>Alta de una convocatoria: además de los datos editables, el domicilio al que pertenece.</summary>
@@ -111,7 +147,37 @@ public record ConvocatoriaDto(
     int Aceptados,
     int Solicitudes,
     int Bajas,
-    decimal TotalKgCo2Aportado);
+    decimal TotalKgCo2Aportado,
+    IReadOnlyList<RolConvocatoriaDto> Roles,
+    decimal? SemanasTraslado);
+
+/// <summary>Filtros del detalle de aportes de una convocatoria: todos o los de una persona.</summary>
+public class FiltroAportes : ConsultaPagina
+{
+    public long? IdUsuario { get; set; }
+}
+
+/// <summary>Una fila del detalle de aportes: lo que cargó una persona de una fuente en un mes.</summary>
+public record AporteConvocatoriaDto(
+    long IdDetalle,
+    long IdRegistro,
+    long IdUsuario,
+    string Colaborador,
+    string Email,
+    string? Rol,
+    DateOnly Periodo,
+    string Fuente,
+    string TipoEmision,
+    decimal Consumo,
+    string Unidad,
+    decimal? DistanciaKm,
+    decimal? DiasSemana,
+    decimal ValorFactorEmision,
+    decimal KgCo2,
+    DateTime FechaCarga);
+
+/// <summary>Rol de una convocatoria con sus resultados: colaboradores que lo eligieron y kg CO2 de sus traslados.</summary>
+public record RolConvocatoriaDto(long IdConvocatoriaRol, string Nombre, int Colaboradores, decimal KgCo2);
 
 /// <summary>Filtros del listado de miembros de una convocatoria (además de la paginación y la búsqueda).</summary>
 public class FiltroMiembros : ConsultaPagina
@@ -179,10 +245,19 @@ public record VistaPreviaConvocatoriaDto(
     bool AprobacionAutomatica,
     IReadOnlyList<TipoEmisionResumenDto> TiposEmision,
     // Estado del usuario en esta convocatoria si ya se había sumado (null = nunca)
-    string? EstadoActual);
+    string? EstadoActual,
+    // Roles que definió quien organiza; quien se suma elige uno (v2.9)
+    IReadOnlyList<RolOpcionDto> Roles,
+    long? IdRolActual);
 
 public class CodigoConvocatoriaRequest
 {
     [Required(ErrorMessage = "Ingresá el código"), MaxLength(20)]
     public string Codigo { get; set; } = string.Empty;
+}
+
+/// <summary>Sumarse a una convocatoria. El rol es obligatorio solo si la convocatoria tiene roles.</summary>
+public class UnirseConvocatoriaRequest : CodigoConvocatoriaRequest
+{
+    public long? IdConvocatoriaRol { get; set; }
 }

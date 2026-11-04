@@ -1,0 +1,16 @@
+
+
++desde el creador de la colaboracion, cuando estoy en la pestaña colaboraciones->convocatorias, tengo que poder eliminar una convocatoria completamente.
+
++cuando estoy cargando un "traslado", si ya lo cargue, vas a desactivar las opciones que consideres para que no pueda
+volver a grabar un registro. la unica manera de volver a grabar un registro seria editando un consumo ya existente.
+
++mis emisiones debo poder filtrarlas por colaboraciones, emisiones propias.
+
++en la pestaña colaboraciones -> donde colaboro. debo poder visualizar todos los detalles completos de la convocatoria,
+y mas detalles sobre los registros que ya guarde o los que me faltan cargar, con textos que informen al usuario lo que visualiza.
+las columnas de las tablas mostradas pueden no ser muchas, poca informacion, pero cuando visualizo todo el detalle de cada registro
+se muestra toda la informacion de la convocatoria, en una ventana modal.
+
++la pantalla inicial que debe mostrar la seccion "colaboraciones" debe ser "convocatorias".
+

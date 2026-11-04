@@ -1,12 +1,12 @@
 import { useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { registrosApi } from '../../api/servicios'
+import { registrosApi, trasladosApi } from '../../api/servicios'
 import { useUI } from '../../context/UIContext.jsx'
 import { Dato, EncabezadoPagina, ErrorCarga, useCarga } from '../../components/comunes/Basicos.jsx'
 import { EsqueletoTarjeta } from '../../components/comunes/Esqueleto.jsx'
 import { GraficoDona } from '../../components/graficos/Graficos.jsx'
 import TablaPaginada from '../../components/comunes/TablaPaginada.jsx'
-import { fechaHora, numero, periodo, porcentaje, toneladas } from '../../utils/formato'
+import { fecha, fechaHora, numero, periodo, porcentaje, textoPeriodicidad, toneladas } from '../../utils/formato'
 import { descargarPdfRegistro } from '../../utils/pdfDiferido'
 
 /** RFR06: detalle de un registro, con descarga en PDF (RFR07) */
@@ -28,9 +28,19 @@ export default function RegistroDetalle() {
   }, [r])
 
   const eliminar = async () => {
-    const ok = await ui.confirmar({ titulo: '¿Eliminar este registro?', mensaje: 'Esta acción no se puede deshacer.', tipo: 'peligro', textoConfirmar: 'Eliminar' })
+    // Un registro generado por un traslado se elimina junto con el resto de los meses de su carga
+    const traslado = r.traslado
+    const ok = await ui.confirmar({
+      titulo: traslado ? '¿Eliminar este traslado?' : '¿Eliminar este registro?',
+      mensaje: traslado ? 'Se eliminan los registros de todos los meses de esta carga. Esta acción no se puede deshacer.' : 'Esta acción no se puede deshacer.',
+      tipo: 'peligro', textoConfirmar: 'Eliminar',
+    })
     if (!ok) return
-    try { await registrosApi.eliminar(id); ui.exito('Registro eliminado'); navigate('/emisiones') } catch (err) { ui.error(err) }
+    try {
+      await (traslado ? trasladosApi.eliminar(traslado.idCargaTraslado) : registrosApi.eliminar(id))
+      ui.exito(traslado ? 'Traslado eliminado' : 'Registro eliminado')
+      navigate('/emisiones')
+    } catch (err) { ui.error(err) }
   }
 
   if (error) return <ErrorCarga error={error} onReintentar={recargar} />
@@ -47,7 +57,7 @@ export default function RegistroDetalle() {
           <i className="bi bi-file-earmark-pdf me-1" />Descargar PDF
         </button>
         {r.puedeEditar && <>
-          <Link to={`/emisiones/${r.idRegistro}/editar`} className="btn btn-primary"><i className="bi bi-pencil me-1" />Editar</Link>
+          <Link to={r.traslado ? `/traslados/${r.traslado.idCargaTraslado}/editar` : `/emisiones/${r.idRegistro}/editar`} className="btn btn-primary"><i className="bi bi-pencil me-1" />Editar</Link>
           <button type="button" className="btn btn-outline-secondary text-danger" onClick={eliminar} aria-label="Eliminar"><i className="bi bi-trash3" /></button>
         </>}
       </EncabezadoPagina>
@@ -67,6 +77,17 @@ export default function RegistroDetalle() {
             <Dato etiqueta="Creado">{fechaHora(r.fechaCreacion)}</Dato>
             <Dato etiqueta="Última modificación">{fechaHora(r.fechaUltimaModificacion)}</Dato>
             {r.observaciones && <Dato etiqueta="Observaciones">{r.observaciones}</Dato>}
+            {r.traslado && <>
+              <Dato etiqueta="Carga de traslado">
+                {textoPeriodicidad(r.traslado.periodicidad)}: {periodo(r.traslado.periodoDesde, true)}{r.traslado.periodoHasta !== r.traslado.periodoDesde ? ` a ${periodo(r.traslado.periodoHasta, true)}` : ''}
+              </Dato>
+              {r.traslado.convocatoria && <Dato etiqueta="Convocatoria">{r.traslado.convocatoria}</Dato>}
+              <Dato etiqueta="Datos declarados">
+                {r.traslado.medios.map((m) => <div key={m.fuente}>{m.fuente}: {numero(m.distanciaKm)} km por día, {numero(m.diasSemana, 1)} días por semana</div>)}
+                <div>{numero(r.traslado.semanas)} semanas en {r.traslado.mesesPeriodo === 1 ? '1 mes' : `${r.traslado.mesesPeriodo} meses`}{r.traslado.cantidadPersonas > 1 ? ` · ${r.traslado.cantidadPersonas} personas` : ''}</div>
+              </Dato>
+              {r.traslado.rol && <Dato etiqueta="Rol">{r.traslado.rol}</Dato>}
+            </>}
           </div>
         </div>
         <div className="col-lg-8 d-flex flex-column gap-4">
@@ -79,7 +100,13 @@ export default function RegistroDetalle() {
             <TablaPaginada plana busqueda={false} idFila={(d) => d.idDetalle} datos={r.detalles} columnas={[
               { clave: 'fuente', titulo: 'Fuente', ordenable: true, clase: 'fw-semibold' },
               { clave: 'tipoEmision', titulo: 'Tipo / Alcance', ordenable: true, render: (d) => <><div>{d.tipoEmision}</div><div className="small text-muted">{d.alcance}</div></> },
-              { clave: 'consumo', titulo: 'Consumo', ordenable: true, numerico: true, render: (d) => `${numero(d.consumo, 4)} ${d.unidadMedida}` },
+              { clave: 'consumo', titulo: 'Consumo', ordenable: true, numerico: true, render: (d) => (
+                <>
+                  <div>{numero(d.consumo, 4)} {d.unidadMedida}</div>
+                  {d.kilometros != null && <div className="small text-muted">{numero(d.kilometros)} km recorridos</div>}
+                  {d.fechaViaje && <div className="small text-muted">Viaje del {fecha(`${d.fechaViaje}T12:00:00`)}</div>}
+                </>
+              ) },
               { clave: 'valorFactorEmision', titulo: 'Factor', numerico: true, clase: 'text-muted', render: (d) => numero(d.valorFactorEmision, 6) },
               { clave: 'kgCo2', titulo: 'kg CO₂', ordenable: true, numerico: true, clase: 'fw-bold', render: (d) => numero(d.kgCo2) },
               { clave: 'porcentaje', titulo: '%', numerico: true, render: (d) => porcentaje(r.totalKgCo2 ? (d.kgCo2 / r.totalKgCo2) * 100 : 0) },

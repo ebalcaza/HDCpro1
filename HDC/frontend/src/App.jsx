@@ -13,6 +13,7 @@ const Domicilios = lazy(() => import('./pages/usuario/Domicilios.jsx'))
 const MisEmisiones = lazy(() => import('./pages/usuario/MisEmisiones.jsx'))
 const RegistroForm = lazy(() => import('./pages/usuario/RegistroForm.jsx'))
 const RegistroDetalle = lazy(() => import('./pages/usuario/RegistroDetalle.jsx'))
+const TrasladoForm = lazy(() => import('./pages/usuario/TrasladoForm.jsx'))
 const FuentesEmision = lazy(() => import('./pages/usuario/FuentesEmision.jsx'))
 const ConvocatoriaDetalle = lazy(() => import('./pages/usuario/ConvocatoriaDetalle.jsx'))
 const Colaboraciones = lazy(() => import('./pages/usuario/Colaboraciones.jsx'))
@@ -71,6 +72,8 @@ export default function App() {
           <Route path="/emisiones/:id" element={<Protegida permisos={emisiones}><RegistroDetalle /></Protegida>} />
           <Route path="/emisiones/:id/editar" element={<Protegida permisos={emisiones}><RegistroForm /></Protegida>} />
           {/* Sección informativa: qué fuentes se pueden cargar y cómo se calculan */}
+          <Route path="/traslados/nuevo" element={<Protegida permisos={emisiones}><TrasladoForm /></Protegida>} />
+          <Route path="/traslados/:id/editar" element={<Protegida permisos={emisiones}><TrasladoForm /></Protegida>} />
           <Route path="/fuentes" element={<Protegida permisos={emisiones}><FuentesEmision /></Protegida>} />
           <Route path="/colaboraciones" element={<Protegida permisos={[P.GESTIONAR_COLABORACIONES, P.COLABORAR]}><Colaboraciones /></Protegida>} />
           {/* Gestión de los miembros de una convocatoria (titular) */}

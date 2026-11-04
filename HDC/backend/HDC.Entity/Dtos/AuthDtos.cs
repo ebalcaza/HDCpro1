@@ -29,8 +29,8 @@ public abstract class RegistroBaseRequest
     [MaxLength(30), TelefonoArgentino]
     public string? Telefono { get; set; }
 
-    [Required(ErrorMessage = "El domicilio es obligatorio")]
-    public DomicilioRequest Domicilio { get; set; } = new();
+    /// <summary>Opcional (v2.9): quien solo colabora no necesita un domicilio propio. Si viene, se valida completo.</summary>
+    public DomicilioRequest? Domicilio { get; set; }
 }
 
 public class RegistroIndividuoRequest : RegistroBaseRequest

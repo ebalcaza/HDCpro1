@@ -8,8 +8,8 @@ import { Campo, errores, reglas, useFormulario } from '../../components/comunes/
 import Modal from '../../components/comunes/Modal.jsx'
 import TablaPaginada from '../../components/comunes/TablaPaginada.jsx'
 import { SelectorMes, SelectorTipos } from '../../components/comunes/Selectores.jsx'
-import { aMes, desdeMes, ESTADOS_COLABORACION, mesActual, numero, periodo } from '../../utils/formato'
-import { FormConvocatoria, ModalUnirse, PestanaConvocatorias } from './Convocatorias.jsx'
+import { aMes, desdeMes, ESTADOS_COLABORACION, fecha, mesActual, numero, periodo } from '../../utils/formato'
+import { EstadoConvocatoria, FormConvocatoria, ModalUnirse, PestanaConvocatorias } from './Convocatorias.jsx'
 
 function Estado({ c }) {
   const e = ESTADOS_COLABORACION[c.estado]
@@ -63,7 +63,8 @@ function FormInvitacion({ abierto, colaboracion, domicilios, tipos, onCerrar, on
       pie={<><button type="button" className="btn btn-outline-secondary" onClick={onCerrar}>Cancelar</button>
         <BotonCarga cargando={f.enviando} form="form-colab">{editando ? 'Guardar' : 'Enviar invitación'}</BotonCarga></>}>
       <form id="form-colab" noValidate onSubmit={guardar} className="row g-3">
-        <Campo className="col-md-6" etiqueta="Domicilio" requerido error={f.errores.idDomicilio} tocado={t.idDomicilio}>
+        <Campo className="col-md-6" etiqueta="Domicilio" requerido error={f.errores.idDomicilio} tocado={t.idDomicilio}
+          ayuda={domicilios.length === 0 ? 'Primero agregá un domicilio en la sección Domicilios' : undefined}>
           <select {...f.campo('idDomicilio')} className={f.claseValidacion('idDomicilio', 'form-select')} disabled={editando}>
             <option value="">Seleccioná</option>
             {domicilios.map((d) => <option key={d.idDomicilio} value={d.idDomicilio}>{d.descripcion}</option>)}
@@ -93,13 +94,127 @@ function FormInvitacion({ abierto, colaboracion, domicilios, tipos, onCerrar, on
   )
 }
 
+/** Adónde lleva el botón Cargar: el domicilio y la convocatoria ya quedan definidos en el formulario */
+const urlCargar = (c) => `/emisiones/nuevo?domicilio=${c.idDomicilio}${c.idConvocatoria ? `&convocatoria=${c.idConvocatoria}` : ''}`
+
+/** Un dato del detalle: etiqueta chica arriba y valor abajo */
+function Dato({ etiqueta, children }) {
+  return <div className="col-sm-6"><div className="small text-muted">{etiqueta}</div><div>{children}</div></div>
+}
+
+/** Cuánto se cargó y cuánto falta, en cifras */
+function Cifra({ valor, texto, destacada }) {
+  return <div className="col-4"><div className={`fs-5 fw-bold ${destacada ? 'text-primary' : ''}`}>{valor}</div><div className="small text-muted">{texto}</div></div>
+}
+
+/** Explica por qué no hay carga disponible cuando la colaboración no está aceptada */
+const AVISO_ESTADO = {
+  PENDIENTE: 'Todavía no respondiste esta invitación. Vas a poder cargar cuando la aceptes.',
+  SOLICITADA: 'El titular todavía no aprobó tu solicitud. Vas a poder cargar cuando la apruebe.',
+  RECHAZADA: 'Esta colaboración fue rechazada: no se puede cargar nada nuevo.',
+  REVOCADA: 'Esta colaboración terminó: no se puede cargar nada nuevo. Lo que ya guardaste se conserva.',
+}
+
+/**
+ * Detalle de una fila de "Donde colaboro" (v2.11): la tabla muestra poco y acá está todo.
+ * Se monta recién al abrirla, así la consulta se hace solo para la colaboración elegida.
+ */
+function ModalDetalleColaboracion({ idColaboracion, onCerrar }) {
+  const { datos: d, error, recargar } = useCarga(() => colaboracionesApi.detalle(idColaboracion), [idColaboracion])
+  const c = d?.colaboracion
+  const mesesCargados = d ? new Set(d.registros.map((r) => r.periodo)).size : 0
+
+  return (
+    <Modal abierto onCerrar={onCerrar} titulo={c ? c.convocatoria || `Invitación de ${c.titular}` : 'Detalle de la colaboración'} tamano="lg"
+      pie={<>
+        <button type="button" className="btn btn-outline-secondary" onClick={onCerrar}>Cerrar</button>
+        {c?.vigente && <Link to={urlCargar(c)} className="btn btn-primary"><i className="bi bi-plus-lg me-1" />Cargar</Link>}
+      </>}>
+      {error ? <ErrorCarga error={error} onReintentar={recargar} /> : !d ? <div className="text-muted small py-4">Cargando el detalle...</div> : (
+        <div className="d-flex flex-column gap-4">
+          <section>
+            <h3 className="h6 fw-bold mb-1">{c.idConvocatoria ? 'Sobre la convocatoria' : 'Sobre la invitación'}</h3>
+            <p className="small text-muted">Lo definió quien organiza. Indica dónde colaborás, qué período cubre y qué información podés cargar.</p>
+            <div className="row g-3">
+              <Dato etiqueta="Organiza">{c.titular}<div className="small text-muted">{c.emailTitular}</div></Dato>
+              <Dato etiqueta="Domicilio">{c.domicilio}</Dato>
+              <Dato etiqueta="Período que se carga">{rango(c)}</Dato>
+              {d.semanasTraslado != null && <Dato etiqueta="Semanas de actividad del período">{numero(d.semanasTraslado)}</Dato>}
+              <Dato etiqueta="Tu participación"><Estado c={c} /></Dato>
+              {d.estadoConvocatoria && <Dato etiqueta="Estado de la convocatoria"><EstadoConvocatoria estado={d.estadoConvocatoria} /></Dato>}
+              {d.rol && <Dato etiqueta="Tu rol">{d.rol}</Dato>}
+              {d.aprobacionAutomatica != null && <Dato etiqueta="Aprobación">{d.aprobacionAutomatica ? 'Automática' : 'La aprueba el titular'}</Dato>}
+              {d.codigo && d.estadoConvocatoria !== 'FINALIZADA' && <Dato etiqueta="Código"><span className="font-monospace fw-semibold">{d.codigo}</span></Dato>}
+              <Dato etiqueta={c.idConvocatoria ? 'Te sumaste el' : 'Te invitaron el'}>{fecha(c.fechaInvitacion)}</Dato>
+              {(d.descripcion || c.mensaje) && <div className="col-12"><div className="small text-muted">{d.descripcion ? 'Instrucciones' : 'Mensaje'}</div><div className="fst-italic">“{d.descripcion || c.mensaje}”</div></div>}
+              <div className="col-12">
+                <div className="small text-muted mb-1">Información que podés cargar</div>
+                <div className="d-flex flex-wrap gap-1">{c.tiposEmision.map((t) => <span key={t.idTipoEmision} className="badge-suave badge-gris" title={t.alcance}>{t.nombre}</span>)}</div>
+              </div>
+            </div>
+          </section>
+
+          {AVISO_ESTADO[c.estado]
+            ? <div className="small"><i className="bi bi-info-circle me-1" />{AVISO_ESTADO[c.estado]}</div>
+            : (
+              <section>
+                <h3 className="h6 fw-bold mb-1">Lo que te falta cargar</h3>
+                <p className="small text-muted">Un mes cuenta como cargado si guardaste al menos un registro en él.</p>
+                <div className="row g-2 text-center mb-3">
+                  <Cifra valor={mesesCargados} texto="Meses cargados" />
+                  <Cifra valor={d.mesesPendientes.length} texto="Meses que faltan" destacada={d.mesesPendientes.length > 0} />
+                  <Cifra valor={d.mesesFuturos} texto="Todavía no empezaron" />
+                </div>
+                {d.mesesPendientes.length > 0
+                  ? <div className="d-flex flex-wrap gap-1">{d.mesesPendientes.map((m) => <span key={m} className="badge-suave badge-marron">{periodo(m)}</span>)}</div>
+                  : <div className="small"><i className="bi bi-check2-circle me-1" />No te falta ningún mes de los que ya empezaron.</div>}
+                {d.mesesFuturos > 0 && <div className="form-text">Los meses que todavía no empezaron se pueden cargar cuando comiencen.</div>}
+              </section>
+            )}
+
+          <section>
+            <h3 className="h6 fw-bold mb-1">Registros que ya guardaste</h3>
+            {d.registros.length === 0 ? <p className="small text-muted mb-0">Todavía no guardaste ningún registro en esta colaboración.</p> : <>
+              <p className="small text-muted">
+                En total aportaste <b>{numero(c.totalKgCo2Aportado)} kg CO₂</b> en {d.registros.length === 1 ? '1 registro' : `${d.registros.length} registros`}.
+                Para corregir un dato, tocá <b>Editar</b>. Los meses de un traslado se editan juntos.
+              </p>
+              <div className="table-responsive">
+                <table className="table table-sm align-middle mb-0">
+                  <thead><tr><th>Mes</th><th>Qué cargaste</th><th className="text-end">kg CO₂</th><th>Guardado</th><th /></tr></thead>
+                  <tbody>
+                    {d.registros.map((r) => (
+                      <tr key={r.idRegistro}>
+                        <td className="text-nowrap">{periodo(r.periodo)}</td>
+                        <td>{r.fuentes.join(', ')}{r.esTraslado && <span className="badge-suave badge-azul ms-1">Traslado</span>}</td>
+                        <td className="text-end">{numero(r.totalKgCo2)}</td>
+                        <td className="small text-nowrap">{fecha(r.fechaCreacion)}</td>
+                        <td className="text-end text-nowrap">
+                          <Link to={`/emisiones/${r.idRegistro}`} className="btn btn-icono" title="Ver registro" aria-label={`Ver el registro de ${periodo(r.periodo)}`}><i className="bi bi-eye" /></Link>
+                          <Link to={`/emisiones/${r.idRegistro}/editar`} className="btn btn-icono" title="Editar" aria-label={`Editar el registro de ${periodo(r.periodo)}`}><i className="bi bi-pencil-square" /></Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>}
+          </section>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 export default function Colaboraciones() {
   const ui = useUI()
   const { tienePermiso } = useAuth()
   const puedeInvitar = tienePermiso(P.GESTIONAR_COLABORACIONES)
   const puedeColaborar = tienePermiso(P.COLABORAR)
   const [query] = useSearchParams()
-  const [pestana, setPestana] = useState(query.get('pestana') || (puedeInvitar ? 'enviadas' : 'recibidas'))
+  // La sección abre en Convocatorias; quien solo colabora no tiene pestañas y ve "Donde colaboro"
+  const [pestana, setPestana] = useState(query.get('pestana') || (puedeInvitar ? 'convocatorias' : 'recibidas'))
+  const [detalle, setDetalle] = useState(null)
   const enviadas = useCarga(() => (puedeInvitar ? colaboracionesApi.enviadas() : Promise.resolve([])), [])
   const convocatorias = useCarga(() => (puedeInvitar ? convocatoriasApi.listar() : Promise.resolve([])), [])
   const [formConv, setFormConv] = useState({ abierto: false, convocatoria: null, clave: 0 })
@@ -144,19 +259,17 @@ export default function Colaboraciones() {
     { clave: 'totalKgCo2Aportado', titulo: 'Aporte kg CO₂', numerico: true, ordenable: true, render: (c) => <span title={`${c.cantidadRegistros} registros`}>{numero(c.totalKgCo2Aportado)}</span> },
   ]
 
+  // Tabla breve (v2.11): período, tipos, mensaje, kg y registros están en la ventana de detalle
   const columnasRecibidas = [
-    { clave: 'titular', titulo: 'Titular', ordenable: true, render: (c) => (
+    { clave: 'titular', titulo: 'Colaboración', ordenable: true, render: (c) => (
       <div>
-        <div className="fw-semibold">{c.titular}</div>
-        <div className="small text-muted">{c.emailTitular}</div>
-        {c.convocatoria && <span className="badge-suave badge-azul" title="Te sumaste con un código"><i className="bi bi-megaphone me-1" />{c.convocatoria}</span>}
+        <div className="fw-semibold">{c.convocatoria || 'Invitación por email'}</div>
+        <div className="small text-muted">{c.titular}</div>
       </div>
     ) },
-    { clave: 'domicilio', titulo: 'Domicilio', ordenable: true, render: (c) => <div>{c.domicilio}{c.mensaje && <div className="small text-muted fst-italic">“{c.mensaje}”</div>}</div> },
-    { clave: 'periodoDesde', titulo: 'Período', ordenable: true, render: rango },
-    // Acá no va la columna "Puede cargar": al entrar a cargar, el formulario ya muestra las fuentes disponibles
+    { clave: 'domicilio', titulo: 'Domicilio', ordenable: true },
     { clave: 'estado', titulo: 'Estado', ordenable: true, render: (c) => <Estado c={c} /> },
-    { clave: 'totalKgCo2Aportado', titulo: 'Tu aporte kg CO₂', numerico: true, ordenable: true, render: (c) => numero(c.totalKgCo2Aportado) },
+    { clave: 'cantidadRegistros', titulo: 'Registros guardados', numerico: true, ordenable: true },
   ]
 
   const activa = (c) => c.estado === 'PENDIENTE' || c.estado === 'ACEPTADA'
@@ -193,12 +306,12 @@ export default function Colaboraciones() {
 
       {puedeInvitar && (
         <ul className="nav nav-pills gap-2 mb-3">
-          <li className="nav-item"><button type="button" className={`btn ${pestana === 'enviadas' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setPestana('enviadas')}>Invitaciones por email</button></li>
           <li className="nav-item">
             <button type="button" className={`btn ${pestana === 'convocatorias' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setPestana('convocatorias')}>
               Convocatorias {porAprobar > 0 && <span className="badge rounded-pill bg-light text-dark ms-1" title="Solicitudes por aprobar">{porAprobar}</span>}
             </button>
           </li>
+          <li className="nav-item"><button type="button" className={`btn ${pestana === 'enviadas' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setPestana('enviadas')}>Invitaciones por email</button></li>
           {puedeColaborar && (
             <li className="nav-item">
               <button type="button" className={`btn ${pestana === 'recibidas' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setPestana('recibidas')}>
@@ -227,12 +340,18 @@ export default function Colaboraciones() {
         )
       ) : (
         recibidas.error ? <ErrorCarga error={recibidas.error} onReintentar={recibidas.recargar} /> : (
+          <>
+          <p className="small text-muted">
+            Estas son las convocatorias e invitaciones en las que participás. Tocá una fila para ver todos sus datos, los registros que ya guardaste y los meses que te faltan cargar.
+          </p>
           <TablaPaginada
             columnas={columnasRecibidas} datos={recibidas.datos} cargando={recibidas.cargando}
             idFila={(c) => c.idColaboracion} resaltarId={resaltado}
             vacio="Todavía no colaborás en ningún domicilio. Si te pasaron un código, usá «Sumarme con un código»." iconoVacio="bi-envelope-paper"
+            alClickFila={(c) => setDetalle(c.idColaboracion)}
             acciones={(c) => (
               <>
+                <button type="button" className="btn btn-icono me-1" title="Ver detalle" aria-label="Ver detalle" onClick={() => setDetalle(c.idColaboracion)}><i className="bi bi-eye" /></button>
                 {c.estado === 'PENDIENTE' && <>
                   <button type="button" className="btn btn-sm btn-primary me-1" onClick={() => accion(c, 'aceptar')}><i className="bi bi-check2 me-1" />Aceptar</button>
                   <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => accion(c, 'rechazar')}>Rechazar</button>
@@ -241,14 +360,17 @@ export default function Colaboraciones() {
                   <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => accion(c, 'revocar')}>Cancelar solicitud</button>
                 )}
                 {c.estado === 'ACEPTADA' && <>
-                  {c.vigente && <Link to={`/emisiones/nuevo?domicilio=${c.idDomicilio}`} className="btn btn-sm btn-suave me-1"><i className="bi bi-plus-lg me-1" />Cargar</Link>}
+                  {c.vigente && <Link to={urlCargar(c)} className="btn btn-sm btn-suave me-1"><i className="bi bi-plus-lg me-1" />Cargar</Link>}
                   <button type="button" className="btn btn-icono peligro" title="Dejar de colaborar" aria-label="Dejar de colaborar" onClick={() => accion(c, 'revocar')}><i className="bi bi-box-arrow-right" /></button>
                 </>}
               </>
             )}
           />
+          </>
         )
       )}
+
+      {detalle && <ModalDetalleColaboracion key={detalle} idColaboracion={detalle} onCerrar={() => setDetalle(null)} />}
 
       {puedeInvitar && (
         <FormInvitacion
@@ -258,7 +380,8 @@ export default function Colaboraciones() {
           domicilios={domicilios.datos || []}
           tipos={tipos.datos || []}
           onCerrar={() => setForm((f) => ({ ...f, abierto: false }))}
-          onGuardado={(c) => { setForm((f) => ({ ...f, abierto: false })); setResaltado(c.idColaboracion); enviadas.recargar() }}
+          // Se pasa a esa pestaña porque la sección ahora abre en Convocatorias y no se vería la invitación recién enviada
+          onGuardado={(c) => { setForm((f) => ({ ...f, abierto: false })); setPestana('enviadas'); setResaltado(c.idColaboracion); enviadas.recargar() }}
         />
       )}
 

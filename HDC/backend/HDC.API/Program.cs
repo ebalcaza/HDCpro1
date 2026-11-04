@@ -52,6 +52,28 @@ builder.Services
             NameClaimType = "sub",
             RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
         };
+        // Un token firmado sigue siendo válido hasta que vence. Por eso, en cada pedido se comprueba que la
+        // cuenta siga activa: si el administrador la dio de baja, pierde el acceso al instante (v2.9).
+        const string CuentaInactiva = "cuentaInactiva";
+        o.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async ctx =>
+            {
+                var auth = ctx.HttpContext.RequestServices.GetRequiredService<AuthServicio>();
+                if (!long.TryParse(ctx.Principal?.FindFirst("sub")?.Value, out var idUsuario) || !await auth.CuentaActivaAsync(idUsuario))
+                {
+                    ctx.HttpContext.Items[CuentaInactiva] = true;
+                    ctx.Fail("La cuenta está deshabilitada");
+                }
+            },
+            OnChallenge = async ctx =>
+            {
+                if (!ctx.HttpContext.Items.ContainsKey(CuentaInactiva)) return;
+                ctx.HandleResponse();
+                ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await ctx.Response.WriteAsJsonAsync(new { mensaje = "Tu cuenta fue deshabilitada. Contactá al administrador." });
+            }
+        };
     });
 
 builder.Services.AddAuthorization(o =>

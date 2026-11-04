@@ -7,27 +7,41 @@ import Modal from '../../components/comunes/Modal.jsx'
 import TablaPaginada from '../../components/comunes/TablaPaginada.jsx'
 import { fecha, numero } from '../../utils/formato'
 
-function FormFuente({ fuente, cat, abierto, onCerrar, onGuardado }) {
+function FormFuente({ fuente, fuentes, cat, abierto, onCerrar, onGuardado }) {
   const ui = useUI()
   const [alcance, setAlcance] = useState(fuente ? String(fuente.idAlcance) : '')
+  // Solo los viajes institucionales pueden calcular su factor desde un combustible o la electricidad
+  const esViaje = (v) => cat.tipos.find((t) => t.idTipoEmision === Number(v.idTipoEmision))?.modoCarga === 'VIAJE'
+  const esDerivada = (v) => esViaje(v) && !!v.idFuenteBase
   const f = useFormulario(fuente
-    ? { nombre: fuente.nombre, valorFactorEmision: String(fuente.valorFactorEmision), idUnidadMedida: fuente.idUnidadMedida, idTipoEmision: fuente.idTipoEmision, descripcion: fuente.descripcion || '' }
-    : { nombre: '', valorFactorEmision: '', idUnidadMedida: '', idTipoEmision: '', descripcion: '' },
+    ? { nombre: fuente.nombre, valorFactorEmision: String(fuente.valorFactorEmision), idUnidadMedida: fuente.idUnidadMedida, idTipoEmision: fuente.idTipoEmision, descripcion: fuente.descripcion || '', idFuenteBase: fuente.idFuenteBase || '', consumoPorKm: fuente.consumoPorKm != null ? String(fuente.consumoPorKm) : '' }
+    : { nombre: '', valorFactorEmision: '', idUnidadMedida: '', idTipoEmision: '', descripcion: '', idFuenteBase: '', consumoPorKm: '' },
   (v) => errores({
     nombre: reglas.requerido(v.nombre),
-    valorFactorEmision: reglas.requerido(v.valorFactorEmision) || reglas.noNegativo(v.valorFactorEmision),
+    // Con una fuente base, el factor no se escribe: lo calcula el sistema
+    valorFactorEmision: esDerivada(v) ? null : reglas.requerido(v.valorFactorEmision) || reglas.noNegativo(v.valorFactorEmision),
+    consumoPorKm: esDerivada(v) && !(Number(v.consumoPorKm) > 0) ? 'Debe ser mayor a 0' : null,
     idUnidadMedida: reglas.requerido(v.idUnidadMedida, 'Elegí la unidad'),
     idTipoEmision: reglas.requerido(v.idTipoEmision, 'Elegí el tipo de emisión'),
     descripcion: reglas.maximo(v.descripcion.trim(), 500),
   }))
   const tipos = cat.tipos.filter((t) => !alcance || t.idAlcance === Number(alcance))
+  // Bases posibles: consumos activos con factor propio, sin traslados ni otros viajes
+  const bases = fuentes.filter((x) => x.activa && !x.idFuenteBase && !['VIAJE', 'TRASLADO'].includes(x.modoCarga) && x.idFuenteEmision !== fuente?.idFuenteEmision)
+  const fuenteBase = fuentes.find((x) => x.idFuenteEmision === Number(f.valores.idFuenteBase))
+  const factorCalculado = (fuenteBase?.valorFactorEmision || 0) * (Number(f.valores.consumoPorKm) || 0)
 
   const guardar = async (e) => {
     e.preventDefault()
     if (!f.validarTodo()) return ui.error('Revisá los campos marcados en rojo', 'Datos incompletos')
     f.setEnviando(true)
     try {
-      const datos = { nombre: f.valores.nombre.trim(), valorFactorEmision: Number(f.valores.valorFactorEmision), idUnidadMedida: Number(f.valores.idUnidadMedida), idTipoEmision: Number(f.valores.idTipoEmision), descripcion: f.valores.descripcion.trim() || null }
+      const derivada = esDerivada(f.valores)
+      const datos = {
+        nombre: f.valores.nombre.trim(), valorFactorEmision: derivada ? factorCalculado : Number(f.valores.valorFactorEmision),
+        idUnidadMedida: Number(f.valores.idUnidadMedida), idTipoEmision: Number(f.valores.idTipoEmision), descripcion: f.valores.descripcion.trim() || null,
+        idFuenteBase: derivada ? Number(f.valores.idFuenteBase) : null, consumoPorKm: derivada ? Number(f.valores.consumoPorKm) : null,
+      }
       const r = fuente ? await fuentesApi.actualizar(fuente.idFuenteEmision, datos) : await fuentesApi.crear(datos)
       ui.exito(`La fuente "${r.nombre}" se ${fuente ? 'actualizó' : 'creó'}`)
       onGuardado(r)
@@ -61,14 +75,32 @@ function FormFuente({ fuente, cat, abierto, onCerrar, onGuardado }) {
         </Campo>
         <Campo className="col-md-6" etiqueta="Factor de emisión" requerido error={f.errores.valorFactorEmision} tocado={f.tocados.valorFactorEmision}
           ayuda={`kg CO₂ por ${unidad || 'unidad'}`}>
-          <input type="number" min="0" step="any" inputMode="decimal" {...f.campo('valorFactorEmision')} />
+          {esDerivada(f.valores)
+            ? <input className="form-control" readOnly value={numero(factorCalculado, 6)} aria-label="Factor calculado" />
+            : <input type="number" min="0" step="any" inputMode="decimal" {...f.campo('valorFactorEmision')} />}
         </Campo>
+        {esViaje(f.valores) && (
+          <>
+            <Campo className="col-md-6" etiqueta="El factor sale de" exito={null} ayuda="Vacío = el factor se escribe a mano">
+              <select {...f.campo('idFuenteBase')} className="form-select">
+                <option value="">Sin fuente base</option>
+                {bases.map((x) => <option key={x.idFuenteEmision} value={x.idFuenteEmision}>{x.nombre} ({numero(x.valorFactorEmision, 4)} kg/{x.unidadMedida})</option>)}
+              </select>
+            </Campo>
+            {esDerivada(f.valores) && (
+              <Campo className="col-md-6" etiqueta={`Consumo por km (${fuenteBase?.unidadMedida || 'unidad'}/km)`} requerido error={f.errores.consumoPorKm} tocado={f.tocados.consumoPorKm}
+                ayuda="Convierte la distancia en consumo. Factor = factor de la fuente × este valor">
+                <input type="number" min="0" step="any" inputMode="decimal" {...f.campo('consumoPorKm')} />
+              </Campo>
+            )}
+          </>
+        )}
         {/* Texto de ayuda que ven los usuarios en la sección "Fuentes de emisión" de Mi huella */}
         <Campo className="col-12" etiqueta="Descripción para los usuarios" error={f.errores.descripcion} tocado={f.tocados.descripcion} exito={null}
           ayuda={`Qué es y dónde encuentra el usuario el dato del consumo (${f.valores.descripcion.length}/500)`}>
           <textarea rows={3} maxLength={500} {...f.campo('descripcion')} placeholder="Ej.: El consumo en kWh figura en la factura de luz." />
         </Campo>
-        {fuente && <div className="col-12 small text-muted"><i className="bi bi-info-circle me-1" />Cambiar el factor no altera los registros ya cargados: conservan el factor con el que se calcularon.</div>}
+        {fuente && <div className="col-12 small text-muted"><i className="bi bi-info-circle me-1" />Cambiar el factor no altera los registros ya cargados: conservan el factor con el que se calcularon. Los viajes calculados desde esta fuente toman el factor nuevo.</div>}
       </form>
     </Modal>
   )
@@ -104,7 +136,7 @@ export default function Fuentes() {
     { clave: 'tipoEmision', titulo: 'Tipo de emisión', ordenable: true },
     { clave: 'alcance', titulo: 'Alcance', ordenable: true, render: (x) => <span className="badge-suave badge-verde">{x.alcance}</span> },
     { clave: 'unidadMedida', titulo: 'Unidad', ordenable: true },
-    { clave: 'valorFactorEmision', titulo: 'Factor (kg CO₂/u)', numerico: true, ordenable: true, render: (x) => numero(x.valorFactorEmision, 6) },
+    { clave: 'valorFactorEmision', titulo: 'Factor (kg CO₂/u)', numerico: true, ordenable: true, render: (x) => <>{numero(x.valorFactorEmision, 6)}{x.idFuenteBase && <span className="d-block small text-muted">Calculado</span>}</> },
     { clave: 'fechaModificacion', titulo: 'Modificada', ordenable: true, valor: (x) => x.fechaModificacion || x.fechaAlta, render: (x) => <span className="small text-muted">{fecha(x.fechaModificacion || x.fechaAlta)}</span> },
   ]
 
@@ -136,7 +168,7 @@ export default function Fuentes() {
           )} />
       )}
       {cat.datos && (
-        <FormFuente key={form.k} fuente={form.fuente} cat={cat.datos} abierto={form.abierto}
+        <FormFuente key={form.k} fuente={form.fuente} fuentes={datos || []} cat={cat.datos} abierto={form.abierto}
           onCerrar={() => setForm((f) => ({ ...f, abierto: false }))}
           onGuardado={(r) => { setForm((f) => ({ ...f, abierto: false })); setResaltado(r.idFuenteEmision); recargar() }} />
       )}

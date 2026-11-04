@@ -75,7 +75,7 @@ public class CatalogoServicio(
     public Task<List<TipoEmisionDto>> ListarTiposAsync() =>
         cache.ObtenerAsync(CacheCatalogos.GrupoCatalogos, "tipos", async () =>
             (await tipos.ListarConUsoAsync())
-                .Select(x => new TipoEmisionDto(x.Tipo.IdTipoEmision, x.Tipo.IdAlcance, x.Tipo.Alcance.Nombre, x.Tipo.Nombre, x.Fuentes))
+                .Select(x => new TipoEmisionDto(x.Tipo.IdTipoEmision, x.Tipo.IdAlcance, x.Tipo.Alcance.Nombre, x.Tipo.Nombre, x.Fuentes, x.Tipo.ModoCarga))
                 .ToList());
 
     public async Task<TipoEmisionDto> GuardarTipoAsync(long? id, TipoEmisionRequest req)
@@ -89,7 +89,7 @@ public class CatalogoServicio(
         if (id is null) tipos.Agregar(t);
         await tipos.GuardarAsync();
         cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
-        return new TipoEmisionDto(t.IdTipoEmision, t.IdAlcance, alcance.Nombre, t.Nombre, 0);
+        return new TipoEmisionDto(t.IdTipoEmision, t.IdAlcance, alcance.Nombre, t.Nombre, 0, t.ModoCarga);
     }
 
     public async Task EliminarTipoAsync(long id)
@@ -125,9 +125,9 @@ public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedid
 
     public async Task<FuenteEmisionDto> CrearAsync(FuenteEmisionRequest req)
     {
-        await ValidarAsync(req);
+        var fuenteBase = await ValidarAsync(req, null);
         var f = new FuenteEmision { FechaAlta = DateTime.Now };
-        Aplicar(f, req);
+        Aplicar(f, req, fuenteBase);
         fuentes.Agregar(f);
         await fuentes.GuardarAsync();
         cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
@@ -136,10 +136,16 @@ public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedid
 
     public async Task<FuenteEmisionDto> ActualizarAsync(long id, FuenteEmisionRequest req)
     {
-        await ValidarAsync(req);
+        var fuenteBase = await ValidarAsync(req, id);
         var f = await fuentes.ObtenerCompletaAsync(id) ?? throw new NoEncontradoException("Fuente de emisión no encontrada");
-        Aplicar(f, req);
+        Aplicar(f, req, fuenteBase);
         f.FechaModificacion = DateTime.Now;
+        // Las fuentes calculadas desde esta siguen su factor. Lo ya cargado conserva el factor con el que se calculó.
+        foreach (var derivada in await fuentes.DerivadasDeAsync(id))
+        {
+            derivada.ValorFactorEmision = FactorDerivado(f.ValorFactorEmision, derivada.ConsumoPorKm!.Value);
+            derivada.FechaModificacion = f.FechaModificacion;
+        }
         await fuentes.GuardarAsync();
         cache.Invalidar(CacheCatalogos.GrupoCatalogos); // los listados cacheados quedaron viejos
         return Mapeos.ToDto((await fuentes.ObtenerCompletaAsync(id))!);
@@ -149,7 +155,8 @@ public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedid
     public async Task<bool> EliminarAsync(long id)
     {
         var f = await fuentes.ObtenerPorIdAsync(id) ?? throw new NoEncontradoException("Fuente de emisión no encontrada");
-        if (await fuentes.EnUsoAsync(id))
+        // Si otra fuente calcula su factor con esta, tampoco se puede borrar: se da de baja
+        if (await fuentes.EnUsoAsync(id) || await fuentes.TieneDerivadasAsync(id))
         {
             f.FechaBaja = DateTime.Now;
             await fuentes.GuardarAsync();
@@ -172,17 +179,41 @@ public class FuenteEmisionServicio(FuenteEmisionRepositorio fuentes, UnidadMedid
         return Mapeos.ToDto(f);
     }
 
-    private async Task ValidarAsync(FuenteEmisionRequest req)
+    /// <summary>Valida el pedido y devuelve la fuente base, si el factor se calcula desde otra fuente.</summary>
+    private async Task<FuenteEmision?> ValidarAsync(FuenteEmisionRequest req, long? idPropia)
     {
         _ = await unidades.ObtenerPorIdAsync(req.IdUnidadMedida) ?? throw new NegocioException("La unidad de medida no existe");
-        _ = await tipos.ObtenerPorIdAsync(req.IdTipoEmision) ?? throw new NegocioException("El tipo de emisión no existe");
+        var tipo = await tipos.ObtenerPorIdAsync(req.IdTipoEmision) ?? throw new NegocioException("El tipo de emisión no existe");
+
+        if (req.IdFuenteBase is not long idBase)
+        {
+            if (req.ConsumoPorKm != null) throw new NegocioException("Elegí de qué fuente sale el factor");
+            return null;
+        }
+        if (req.ConsumoPorKm is null) throw new NegocioException("Indicá el consumo por km");
+        if (tipo.ModoCarga != ModoCarga.Viaje) throw new NegocioException("Solo los viajes institucionales calculan su factor desde otra fuente");
+        if (idBase == idPropia) throw new NegocioException("Una fuente no puede calcular su factor desde sí misma");
+
+        var fuenteBase = await fuentes.ObtenerCompletaAsync(idBase) ?? throw new NegocioException("La fuente de la que sale el factor no existe");
+        if (fuenteBase.FechaBaja != null) throw new NegocioException($"La fuente \"{fuenteBase.Nombre}\" fue dada de baja");
+        // Un solo nivel: la base tiene que ser un consumo con factor propio, para que el cálculo se pueda seguir
+        if (fuenteBase.IdFuenteBase != null || fuenteBase.TipoEmision.ModoCarga is ModoCarga.Viaje or ModoCarga.Traslado)
+            throw new NegocioException($"\"{fuenteBase.Nombre}\" no se puede usar como base: elegí un combustible o la electricidad");
+        if (idPropia is long propia && await fuentes.TieneDerivadasAsync(propia))
+            throw new NegocioException("Otras fuentes calculan su factor con esta: no puede depender de otra");
+        return fuenteBase;
     }
 
-    private static void Aplicar(FuenteEmision f, FuenteEmisionRequest req)
+    private static decimal FactorDerivado(decimal factorBase, decimal consumoPorKm) => Math.Round(factorBase * consumoPorKm, 6);
+
+    private static void Aplicar(FuenteEmision f, FuenteEmisionRequest req, FuenteEmision? fuenteBase)
     {
         f.Nombre = req.Nombre.Trim();
         f.Descripcion = Mapeos.Limpiar(req.Descripcion);
-        f.ValorFactorEmision = req.ValorFactorEmision;
+        // Con una fuente base, el factor siempre se calcula: se ignora el valor que venga en el pedido
+        f.ValorFactorEmision = fuenteBase != null ? FactorDerivado(fuenteBase.ValorFactorEmision, req.ConsumoPorKm!.Value) : req.ValorFactorEmision;
+        f.IdFuenteBase = fuenteBase?.IdFuenteEmision;
+        f.ConsumoPorKm = fuenteBase != null ? req.ConsumoPorKm : null;
         f.IdUnidadMedida = req.IdUnidadMedida;
         f.IdTipoEmision = req.IdTipoEmision;
     }

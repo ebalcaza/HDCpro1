@@ -92,7 +92,7 @@ export const domiciliosApi = {
 }
 
 export const registrosApi = {
-  /** Página de registros: params = { pagina, tamanio, orden, asc, busqueda, idDomicilio, desde, hasta } → { items, total, totalKgCo2 } */
+  /** Página de registros: params = { pagina, tamanio, orden, asc, busqueda, idDomicilio, desde, hasta, origen } → { items, total, totalKgCo2 } */
   listar: (params) => api.get('/registros', { params }),
   /** Domicilios con registros visibles (para el filtro de Mis emisiones) */
   domicilios: () => api.get('/registros/domicilios'),
@@ -100,6 +100,16 @@ export const registrosApi = {
   crear: (d) => api.post('/registros', d),
   actualizar: (id, d) => api.put(`/registros/${id}`, d),
   eliminar: (id) => api.delete(`/registros/${id}`),
+}
+
+/** Traslados (v2.6): una carga genera un registro por mes y se edita o elimina completa */
+export const trasladosApi = {
+  /** Roles y meses disponibles en un domicilio */
+  opciones: (idDomicilio) => api.get('/traslados/opciones', { params: { idDomicilio } }),
+  obtener: (id) => api.get(`/traslados/${id}`),
+  crear: (d) => api.post('/traslados', d),
+  actualizar: (id, d) => api.put(`/traslados/${id}`, d),
+  eliminar: (id) => api.delete(`/traslados/${id}`),
 }
 
 /** Convocatorias (v2.2): colaboración masiva por código */
@@ -111,15 +121,19 @@ export const convocatoriasApi = {
   cambiarEstado: (id, estado) => api.put(`/convocatorias/${id}/estado`, { estado }),
   eliminar: (id) => api.delete(`/convocatorias/${id}`),
   miembros: (id, params) => api.get(`/convocatorias/${id}/miembros`, { params }),
+  /** Detalle de lo que cargaron los colaboradores: params = { pagina, tamanio, orden, asc, busqueda, idUsuario } */
+  aportes: (id, params) => api.get(`/convocatorias/${id}/aportes`, { params }),
   accion: (id, d) => api.post(`/convocatorias/${id}/miembros/accion`, d),
   // Colaborador: ver a qué corresponde un código y sumarse
   vistaPrevia: (codigo) => api.post('/convocatorias/codigo/vista-previa', { codigo }),
-  unirse: (codigo) => api.post('/convocatorias/unirse', { codigo }),
+  unirse: (codigo, idConvocatoriaRol) => api.post('/convocatorias/unirse', { codigo, idConvocatoriaRol }),
 }
 
 export const colaboracionesApi = {
   enviadas: () => api.get('/colaboraciones/enviadas'),
   recibidas: () => api.get('/colaboraciones/recibidas'),
+  /** Detalle para quien colabora: datos de la convocatoria, registros guardados y meses que faltan */
+  detalle: (id) => api.get(`/colaboraciones/${id}/detalle`),
   invitar: (d) => api.post('/colaboraciones', d),
   actualizar: (id, d) => api.put(`/colaboraciones/${id}`, d),
   aceptar: (id) => api.post(`/colaboraciones/${id}/aceptar`),

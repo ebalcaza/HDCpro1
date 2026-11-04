@@ -33,6 +33,9 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
     public DbSet<RecuperacionContrasena> RecuperacionesContrasena => Set<RecuperacionContrasena>();
     public DbSet<Convocatoria> Convocatorias => Set<Convocatoria>();
     public DbSet<ConvocatoriaTipoEmision> ConvocatoriaTiposEmision => Set<ConvocatoriaTipoEmision>();
+    public DbSet<ConvocatoriaRol> ConvocatoriaRoles => Set<ConvocatoriaRol>();
+    public DbSet<CargaTraslado> CargasTraslado => Set<CargaTraslado>();
+    public DbSet<CargaTrasladoMedio> CargasTrasladoMedios => Set<CargaTrasladoMedio>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
@@ -157,6 +160,7 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.IdTipoEmision).HasColumnName("ID_TIPO_EMISION");
             e.Property(x => x.IdAlcance).HasColumnName("ID_ALCANCE");
             e.Property(x => x.Nombre).HasColumnName("NOMBRE").HasMaxLength(100);
+            e.Property(x => x.ModoCarga).HasColumnName("MODO_CARGA").HasMaxLength(20);
             e.HasOne(x => x.Alcance).WithMany(a => a.TiposEmision).HasForeignKey(x => x.IdAlcance);
         });
 
@@ -170,6 +174,8 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.Nombre).HasColumnName("NOMBRE").HasMaxLength(250);
             e.Property(x => x.Descripcion).HasColumnName("DESCRIPCION").HasMaxLength(500);
             e.Property(x => x.ValorFactorEmision).HasColumnName("VALOR_FACTOR_EMISION").HasPrecision(18, 6);
+            e.Property(x => x.IdFuenteBase).HasColumnName("ID_FUENTE_BASE");
+            e.Property(x => x.ConsumoPorKm).HasColumnName("CONSUMO_POR_KM").HasPrecision(18, 6);
             e.Property(x => x.FechaAlta).HasColumnName("FECHA_ALTA").HasColumnType("timestamp(0) without time zone");
             e.Property(x => x.FechaBaja).HasColumnName("FECHA_BAJA").HasColumnType("timestamp(0) without time zone");
             e.Property(x => x.FechaModificacion).HasColumnName("FECHA_MODIFICACION").HasColumnType("timestamp(0) without time zone");
@@ -213,6 +219,56 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.FechaUltimaModificacion).HasColumnName("FECHA_ULTIMA_MODIFICACION").HasColumnType("timestamp(3) without time zone");
             e.HasOne(x => x.Domicilio).WithMany().HasForeignKey(x => x.IdDomicilio);
             e.HasOne(x => x.UsuarioCarga).WithMany().HasForeignKey(x => x.IdUsuarioCarga);
+            e.Property(x => x.IdCargaTraslado).HasColumnName("ID_CARGA_TRASLADO");
+            e.Property(x => x.IdConvocatoria).HasColumnName("ID_CONVOCATORIA");
+            e.HasOne(x => x.Convocatoria).WithMany().HasForeignKey(x => x.IdConvocatoria).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.CargaTraslado).WithMany(c => c.Registros).HasForeignKey(x => x.IdCargaTraslado).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        mb.Entity<CargaTraslado>(e =>
+        {
+            e.ToTable("CARGA_TRASLADO");
+            e.HasKey(x => x.IdCargaTraslado);
+            e.Property(x => x.IdCargaTraslado).HasColumnName("ID_CARGA_TRASLADO");
+            e.Property(x => x.IdDomicilio).HasColumnName("ID_DOMICILIO");
+            e.Property(x => x.IdUsuarioCarga).HasColumnName("ID_USUARIO_CARGA");
+            e.Property(x => x.IdConvocatoria).HasColumnName("ID_CONVOCATORIA");
+            e.Property(x => x.MesesPeriodo).HasColumnName("MESES_PERIODO");
+            e.Property(x => x.IdConvocatoriaRol).HasColumnName("ID_CONVOCATORIA_ROL");
+            e.Property(x => x.Periodicidad).HasColumnName("PERIODICIDAD").HasMaxLength(20);
+            e.Property(x => x.PeriodoDesde).HasColumnName("PERIODO_DESDE");
+            e.Property(x => x.PeriodoHasta).HasColumnName("PERIODO_HASTA");
+            e.Property(x => x.Semanas).HasColumnName("SEMANAS").HasPrecision(5, 2);
+            e.Property(x => x.CantidadPersonas).HasColumnName("CANTIDAD_PERSONAS");
+            e.Property(x => x.FechaCreacion).HasColumnName("FECHA_CREACION").HasColumnType("timestamp(3) without time zone");
+            e.HasOne(x => x.Domicilio).WithMany().HasForeignKey(x => x.IdDomicilio);
+            e.HasOne(x => x.UsuarioCarga).WithMany().HasForeignKey(x => x.IdUsuarioCarga);
+            e.HasOne(x => x.Convocatoria).WithMany().HasForeignKey(x => x.IdConvocatoria).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.ConvocatoriaRol).WithMany().HasForeignKey(x => x.IdConvocatoriaRol).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        mb.Entity<CargaTrasladoMedio>(e =>
+        {
+            e.ToTable("CARGA_TRASLADO_MEDIO");
+            e.HasKey(x => x.IdCargaTrasladoMedio);
+            e.Property(x => x.IdCargaTrasladoMedio).HasColumnName("ID_CARGA_TRASLADO_MEDIO");
+            e.Property(x => x.IdCargaTraslado).HasColumnName("ID_CARGA_TRASLADO");
+            e.Property(x => x.IdFuenteEmision).HasColumnName("ID_FUENTE_EMISION");
+            e.Property(x => x.DistanciaKm).HasColumnName("DISTANCIA_KM").HasPrecision(10, 2);
+            e.Property(x => x.DiasSemana).HasColumnName("DIAS_SEMANA").HasPrecision(3, 1);
+            e.Property(x => x.ValorFactorEmision).HasColumnName("VALOR_FACTOR_EMISION").HasPrecision(18, 6);
+            e.HasOne(x => x.CargaTraslado).WithMany(c => c.Medios).HasForeignKey(x => x.IdCargaTraslado).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.FuenteEmision).WithMany().HasForeignKey(x => x.IdFuenteEmision);
+        });
+
+        mb.Entity<ConvocatoriaRol>(e =>
+        {
+            e.ToTable("CONVOCATORIA_ROL");
+            e.HasKey(x => x.IdConvocatoriaRol);
+            e.Property(x => x.IdConvocatoriaRol).HasColumnName("ID_CONVOCATORIA_ROL");
+            e.Property(x => x.IdConvocatoria).HasColumnName("ID_CONVOCATORIA");
+            e.Property(x => x.Nombre).HasColumnName("NOMBRE").HasMaxLength(100);
+            e.HasOne(x => x.Convocatoria).WithMany(c => c.Roles).HasForeignKey(x => x.IdConvocatoria).OnDelete(DeleteBehavior.Cascade);
         });
 
         mb.Entity<DetalleRegistro>(e =>
@@ -225,6 +281,8 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.Consumo).HasColumnName("CONSUMO").HasPrecision(18, 4);
             e.Property(x => x.ValorFactorEmision).HasColumnName("VALOR_FACTOR_EMISION").HasPrecision(18, 6);
             e.Property(x => x.KgCo2).HasColumnName("KG_CO2").HasPrecision(18, 6);
+            e.Property(x => x.Kilometros).HasColumnName("KILOMETROS").HasPrecision(18, 2);
+            e.Property(x => x.FechaViaje).HasColumnName("FECHA_VIAJE");
             e.HasOne(x => x.Registro).WithMany(r => r.Detalles).HasForeignKey(x => x.IdRegistro).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.FuenteEmision).WithMany().HasForeignKey(x => x.IdFuenteEmision);
         });
@@ -245,6 +303,7 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.HasOne(x => x.Domicilio).WithMany().HasForeignKey(x => x.IdDomicilio);
             e.Property(x => x.IdConvocatoria).HasColumnName("ID_CONVOCATORIA");
             e.Property(x => x.IdUsuarioBaja).HasColumnName("ID_USUARIO_BAJA");
+            e.Property(x => x.IdConvocatoriaRol).HasColumnName("ID_CONVOCATORIA_ROL");
             e.HasOne(x => x.Colaborador).WithMany().HasForeignKey(x => x.IdUsuarioColaborador);
             e.HasOne(x => x.Convocatoria).WithMany(c => c.Miembros).HasForeignKey(x => x.IdConvocatoria);
         });
@@ -261,6 +320,7 @@ public class HdcDbContext(DbContextOptions<HdcDbContext> options) : DbContext(op
             e.Property(x => x.PeriodoDesde).HasColumnName("PERIODO_DESDE");
             e.Property(x => x.PeriodoHasta).HasColumnName("PERIODO_HASTA");
             e.Property(x => x.AprobacionAutomatica).HasColumnName("APROBACION_AUTOMATICA");
+            e.Property(x => x.SemanasTraslado).HasColumnName("SEMANAS_TRASLADO").HasPrecision(5, 2);
             e.Property(x => x.Estado).HasColumnName("ESTADO").HasMaxLength(20);
             e.Property(x => x.FechaCreacion).HasColumnName("FECHA_CREACION").HasColumnType("timestamp(3) without time zone");
             e.Property(x => x.FechaModificacion).HasColumnName("FECHA_MODIFICACION").HasColumnType("timestamp(3) without time zone");

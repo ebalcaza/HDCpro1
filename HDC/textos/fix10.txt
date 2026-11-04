@@ -1,0 +1,20 @@
++cuando me sumo a una convocatoria que tiene roles definidos, puedo elegir que rol voy a utilizar, para no tener que llenarlo
+una y otra vez.
+
++los factores de viaje en colectivo a gasoil, motocicleta a nafta, subte electrico, etc,
+deberan ser deducidos de las demas fuentes que ya tenemos sus valores, porque son las mismas, en el caso de 
+viaje en colectivo a gasoil, hay que usar el factor del gasoil, y pedir la distancia recorrida en kilometros, para hacer
+la cuenta que necesito para sacar los kg de CO_2.
+
++cuando creo un nuevo registro como colaborador, y voy a cargar un traslado, cuando agrego un medio de transporte,
+el formulario del medio, que tiene el select de medios de transporte, y los input de distancia por dia ida yu vuelta,
+y dias por semana, acomodalo un poco mas para que se vea mas prolijo. 
+
++cuando registro un usuario nuevo no es necesario cargar un domicilio, eso quiere decir que 
+puede haber usuarios sin domicilio registrado, porque tal vez, solo son colaboradores, y ahorro el tiempo
+de cargar un domicilio, al crear una cuenta.
+
++cuando cargo consumos que ningun campo acepte el valor 0, ya que no tiene sentido cargar un consumo que sea 0.
+
++cuando doy de baja una cuenta como administrador, restringirle el acceso inmediatamente, no esperar a que caduque el tiempo
+de sesion.

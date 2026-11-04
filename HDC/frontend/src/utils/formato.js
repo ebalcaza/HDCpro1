@@ -53,6 +53,16 @@ export const mesActual = () => {
 export const fecha = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—')
 export const fechaHora = (f) => (f ? new Date(f).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : '—')
 
+/** Períodos de un traslado: meses que cubre, semanas propuestas (se pueden editar) y máximo permitido */
+export const PERIODICIDADES = {
+  MENSUAL: { texto: 'Mensual', meses: 1, semanas: 4, semanasMaximas: 5 },
+  SEMESTRAL: { texto: 'Semestral', meses: 6, semanas: 26, semanasMaximas: 27 },
+  ANUAL: { texto: 'Anual', meses: 12, semanas: 52, semanasMaximas: 53 },
+}
+
+/** Cómo se cargó un traslado: las de arriba, o el período completo de una convocatoria */
+export const textoPeriodicidad = (p) => (p === 'PERIODO' ? 'Período completo' : PERIODICIDADES[p]?.texto || p)
+
 export const ESTADOS_COLABORACION = {
   PENDIENTE: { texto: 'Pendiente', clase: 'badge-marron', icono: 'bi-hourglass-split' },
   // Se sumó con el código de una convocatoria y espera la aprobación del titular

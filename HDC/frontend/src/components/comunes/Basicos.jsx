@@ -22,9 +22,10 @@ export function Vacio({ icono = 'bi-inbox', titulo, children }) {
   )
 }
 
-export function BotonCarga({ cargando, children, className = 'btn btn-primary', type = 'submit', ...props }) {
+export function BotonCarga({ cargando, children, className = 'btn btn-primary', type = 'submit', disabled, ...props }) {
   return (
-    <button type={type} className={className} disabled={cargando || props.disabled} {...props}>
+    // disabled va separado de props: si no, disabled={false} dejaría el botón activo mientras guarda
+    <button type={type} className={className} disabled={cargando || disabled} {...props}>
       {cargando && <span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />}
       {children}
     </button>

@@ -1,6 +1,6 @@
 # Guía del desarrollador — Huella de Carbono (HDC)
 
-> **Última actualización:** 02/11/2026 · Versión del sistema: 2.4 (ver [CHANGELOG](CHANGELOG.md))
+> **Última actualización:** 03/11/2026 · Versión del sistema: 2.8 (ver [CHANGELOG](CHANGELOG.md))
 
 Cómo levantar el proyecto, trabajarlo como desarrollador y ponerlo en producción.
 La arquitectura y las decisiones técnicas están en la [Documentación técnica](DOCUMENTACION_TECNICA.md).
@@ -91,19 +91,29 @@ Con `DATOS_PRUEBA=true` en el `.env`, la API crea estas cuentas la primera vez q
 | Cuenta                         | Tipo          | Contraseña               | Qué tiene                                                   |
 |--------------------------------|---------------|--------------------------|-------------------------------------------------------------|
 | `ADMIN_EMAIL` (`admin@hdc.com`)| Administrador | `ADMIN_CONTRASENA` del `.env` | Panel de administración completo                        |
-| `maria.gomez@prueba.com`       | Individuo     | `Prueba2026`             | Casa con 12 meses de consumos; Juan colabora cargando transporte; invitación pendiente de EcoSur |
+| `maria.gomez@prueba.com`       | Individuo     | `Prueba2026`             | Casa con 12 meses de consumos; Juan colabora cargando traslados; invitación pendiente de EcoSur |
 | `juan.perez@prueba.com`        | Individuo     | `Prueba2026`             | Casa con 12 meses de consumos; colabora en la casa de María |
 | `contacto@ecosur.prueba.com`   | Organización  | `Prueba2026`             | Planta industrial con 12 meses de consumos; invitó a María; convocatoria **ECSR-2K26** |
-| `empleado01@ecosur.prueba.com` … `empleado30@…` | Individuo | `Prueba2026` | Miembros de la convocatoria de EcoSur: 01–20 activos con consumos, 21–27 esperando aprobación, 28–30 dados de baja |
+| `empleado01@ecosur.prueba.com` … `empleado30@…` | Individuo | `Prueba2026` | Miembros de la convocatoria de EcoSur (roles Operario y Administrativo): 01–20 activos con traslados mensuales, 21–27 esperando aprobación, 28–30 dados de baja |
+| `contacto@facultad.prueba.com` | Organización  | `Prueba2026`             | Sede con 12 meses de consumos, viajes institucionales, un grupo de 150 personas y convocatoria **FACU-2K26** (aprobación automática) |
+| `estudiante01@facultad.prueba.com` … `estudiante18@…` | Individuo | `Prueba2026` | Rol Estudiantes: 01–16 cargaron todo el período (los pares, con dos medios); 17 y 18 sin cargar, para probar el formulario |
+| `docente01@facultad.prueba.com` … `docente08@…` | Individuo | `Prueba2026` | Rol Personal docente, con todo el período cargado |
+| `nodocente01@facultad.prueba.com` … `nodocente06@…` | Individuo | `Prueba2026` | Rol Personal no docente: cargaron mes por mes los últimos 3 meses; les faltan los anteriores |
 
 - Los consumos son inventados pero realistas: más gas en invierno, más electricidad en verano. Así el
   Dashboard, los gráficos y los reportes muestran variaciones.
+- Entre todos los escenarios se usan **las 45 fuentes** del catálogo y los 8 medios de transporte. Las convocatorias de prueba
+  terminan en el mes actual, como si ya hubiera transcurrido todo su período.
+- Para **volver a una base sin datos de prueba**: poné `DATOS_PRUEBA=false` y seguí "Dejar la base limpia antes de publicar"
+  (sección 9). Con `true`, vuelven a crearse al reiniciar la API.
 - Para probar las convocatorias: entrá como `maria.gomez@prueba.com` → Colaboraciones → **Sumarme con un código** →
-  `ECSR-2K26`. Después entrá como EcoSur → Colaboraciones → Convocatorias → **Colaboradores** para aprobarla.
+  `ECSR-2K26`. Después entrá como EcoSur → Colaboraciones → Convocatorias → **Detalles** para aprobarla.
 - Es idempotente por bloques: si `maria.gomez@prueba.com` ya existe no se recrean los usuarios; si la
-  convocatoria `ECSR2K26` ya existe no se recrea. Por eso una base de una versión anterior recibe los bloques nuevos.
+  convocatoria `ECSR2K26` o `contacto@facultad.prueba.com` ya existen, tampoco. Por eso una base de una versión anterior
+  recibe los bloques nuevos, pero sus consumos viejos no cambian.
 - Para **regenerarlos**: `docker compose down -v` (borra la base) y `docker compose up -d`.
-- El código está en `backend/HDC.BLL/Servicios/DatosPruebaServicio.cs`.
+- El código está en `backend/HDC.BLL/Servicios/DatosPruebaServicio.cs`. Busca las fuentes por nombre: si cambiás el nombre de
+  una fuente del catálogo inicial, actualizalo también ahí.
 - **En producción `DATOS_PRUEBA` debe ser `false`.**
 
 ---
@@ -317,7 +327,23 @@ borró nada. El script se cancela también si no hay un administrador activo.
 > El administrador **conserva su contraseña actual**: `ADMIN_CONTRASENA` solo se usa cuando se crea la cuenta, así
 > que cambiar el `.env` no la modifica. Si se usó una contraseña de desarrollo, cambiala desde la aplicación.
 
+### Cargar el catálogo definitivo de fuentes
+Una base nueva ya lo recibe del script de inicio. En una base existente, primero levantá la versión nueva de la API para
+que cree las tablas y columnas, y después ejecutá desde la carpeta `HDC`, en Linux o Git Bash:
+
+```bash
+docker compose stop api
+docker compose exec -T db psql -U hdc -d huellacarbono < scripts/cargar_catalogo_definitivo.sql
+docker compose up -d api
+```
+
+El resultado termina en `COMMIT` con un resumen por tipo. Se puede repetir, pero **pisa los cambios hechos desde el panel**
+en las fuentes de la lista. Las fuentes que ya no están se borran o, si tienen consumos, se dan de baja. Los consumos
+cargados conservan su factor. Para agregar o editar fuentes después, usá **Administración → Fuentes de emisión**.
+
 ### Proveedor de email (SMTP)
+Pasos completos para quitar Mailpit y enviar a casillas reales: [Emails reales en el servidor](GUIA_EMAIL_PRODUCCION.md).
+
 Recomendación: un **servicio de email transaccional** con un remitente de un **dominio propio o institucional**
 que tenga **SPF y DKIM** configurados; si no, los emails suelen terminar en spam. Opciones:
 
@@ -363,6 +389,7 @@ La documentación está toda en `HDC/docs/` y se organiza así:
 | `README.md` (raíz) | Todos: portada e índice | Cambia la forma de arrancar o se agrega un documento |
 | `docs/MANUAL_USUARIO.md` | Usuarios finales | Cambia una pantalla o una funcionalidad visible |
 | `docs/GUIA_DESARROLLADOR.md` | Desarrolladores | Cambia la instalación, variables, comandos o convenciones |
+| `docs/GUIA_EMAIL_PRODUCCION.md` | Quien administra el servidor | Cambia la configuración o el envío de emails |
 | `docs/DOCUMENTACION_TECNICA.md` | Equipo técnico | Cambia la arquitectura, el modelo de datos, la API o la seguridad |
 | `docs/CHANGELOG.md` | Todos | **Siempre**: cada cambio agrega una entrada |
 

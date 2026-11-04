@@ -72,6 +72,31 @@ public class RegistrosController(RegistroServicio registros) : ControladorBase
     }
 }
 
+/// <summary>Traslados (v2.6): una carga genera un registro por mes y se edita o elimina completa.</summary>
+[Route("api/traslados"), Authorize(Policy = Politicas.CargarEmisiones)]
+public class TrasladosController(TrasladoServicio traslados) : ControladorBase
+{
+    /// <summary>Roles y meses disponibles para cargar en un domicilio.</summary>
+    [HttpGet("opciones")]
+    public async Task<OpcionesTrasladoDto> Opciones([FromQuery] long idDomicilio) => await traslados.OpcionesAsync(IdUsuario, idDomicilio);
+
+    [HttpGet("{id:long}")]
+    public async Task<TrasladoDto> Obtener(long id) => await traslados.ObtenerAsync(IdUsuario, id);
+
+    [HttpPost]
+    public async Task<TrasladoDto> Crear(TrasladoRequest req) => await traslados.CrearAsync(IdUsuario, req);
+
+    [HttpPut("{id:long}")]
+    public async Task<TrasladoDto> Editar(long id, TrasladoRequest req) => await traslados.ActualizarAsync(IdUsuario, id, req);
+
+    [HttpDelete("{id:long}")]
+    public async Task<MensajeDto> Eliminar(long id)
+    {
+        await traslados.EliminarAsync(IdUsuario, id);
+        return new MensajeDto("Carga de traslado eliminada");
+    }
+}
+
 [Route("api/colaboraciones"), Authorize(Policy = Politicas.Colaboraciones)]
 public class ColaboracionesController(ColaboracionServicio colaboraciones) : ControladorBase
 {
@@ -80,6 +105,10 @@ public class ColaboracionesController(ColaboracionServicio colaboraciones) : Con
 
     [HttpGet("recibidas"), Authorize(Policy = Permisos.Colaborar)]
     public async Task<List<ColaboracionDto>> Recibidas() => await colaboraciones.ListarRecibidasAsync(IdUsuario);
+
+    /// <summary>Detalle para quien colabora: datos de la convocatoria, registros guardados y meses que faltan.</summary>
+    [HttpGet("{id:long}/detalle"), Authorize(Policy = Permisos.Colaborar)]
+    public async Task<ColaboracionDetalleDto> Detalle(long id) => await colaboraciones.ObtenerDetalleAsync(IdUsuario, id);
 
     /// <summary>RFU03 - Agregar un colaborador.</summary>
     [HttpPost, Authorize(Policy = Permisos.GestionarColaboraciones)]

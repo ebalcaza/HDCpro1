@@ -25,7 +25,7 @@ public class UnidadMedidaRequest
     public string Nombre { get; set; } = string.Empty;
 }
 
-public record TipoEmisionDto(long IdTipoEmision, long IdAlcance, string Alcance, string Nombre, int CantidadFuentes);
+public record TipoEmisionDto(long IdTipoEmision, long IdAlcance, string Alcance, string Nombre, int CantidadFuentes, string ModoCarga);
 
 public class TipoEmisionRequest
 {
@@ -50,7 +50,10 @@ public record FuenteEmisionDto(
     DateTime? FechaBaja,
     DateTime? FechaModificacion,
     bool Activa,
-    string? Descripcion);
+    string? Descripcion,
+    string ModoCarga,
+    long? IdFuenteBase,
+    decimal? ConsumoPorKm);
 
 public class FuenteEmisionRequest
 {
@@ -65,6 +68,14 @@ public class FuenteEmisionRequest
 
     [Range(1, long.MaxValue, ErrorMessage = "El tipo de emisión es obligatorio")]
     public long IdTipoEmision { get; set; }
+
+    /// <summary>Solo viajes institucionales: fuente de la que sale el factor. Con ella, el factor lo calcula el servidor.</summary>
+    public long? IdFuenteBase { get; set; }
+
+    /// <summary>Litros o kWh por km. Se usa junto con IdFuenteBase.</summary>
+    [Range(typeof(decimal), "0.000001", "999999", ErrorMessage = "El consumo por km debe ser mayor a 0",
+        ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
+    public decimal? ConsumoPorKm { get; set; }
 
     /// <summary>Ayuda que ven los usuarios en la sección "Fuentes de emisión" (opcional).</summary>
     [MaxLength(500, ErrorMessage = "La descripción admite hasta 500 caracteres")]

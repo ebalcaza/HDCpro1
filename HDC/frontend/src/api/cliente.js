@@ -24,8 +24,9 @@ cliente.interceptors.response.use(
   (error) => {
     const status = error.response?.status
     const url = error.config?.url || ''
-    if (status === 401 && !url.includes('/auth/login')) alExpirarSesion?.()
     const data = error.response?.data
+    // El servidor explica el motivo cuando la cuenta fue deshabilitada; si no hay motivo, la sesión venció
+    if (status === 401 && !url.includes('/auth/login')) alExpirarSesion?.(data?.mensaje)
     const err = new Error(
       data?.mensaje ||
       (status === 403 ? 'No tenés permiso para realizar esta acción' :

@@ -12,12 +12,25 @@ import SelectorFuente from '../../components/formularios/SelectorFuente.jsx'
 import { aMes, desdeMes, mesActual, numero, periodo, toneladas } from '../../utils/formato'
 
 let siguienteClave = 1
-const filaVacia = (idFuenteEmision = '') => ({ clave: siguienteClave++, idFuenteEmision, consumo: '' })
+const filaVacia = (idFuenteEmision = '') => ({ clave: siguienteClave++, idFuenteEmision, consumo: '', kilometros: '', fechaViaje: '' })
+
+/** Texto del campo de cantidad según el tipo de la fuente */
+const ETIQUETA_CONSUMO = { VEHICULO: 'Litros consumidos', VIAJE: 'Distancia recorrida' }
+
+/** Fecha máxima de un viaje: el último día del período, sin pasar de hoy */
+const fechaMaximaViaje = (mes) => {
+  const [a, m] = mes.split('-').map(Number)
+  const ultimo = new Date(a, m, 0)
+  const hoy = new Date()
+  const f = ultimo < hoy ? ultimo : hoy
+  return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`
+}
 
 /**
  * RFR01 / RFR03: alta y edición de un registro de emisiones.
  * Cada fila muestra a la vista las fuentes disponibles en el domicilio elegido, sin filtros.
  * Quien carga como colaborador no ve los kg de CO₂ y debe completar una fila antes de agregar otra.
+ * Los traslados tienen su propio formulario (TrasladoForm.jsx); los registros de una carga se editan desde ahí.
  */
 export default function RegistroForm() {
   const { id } = useParams()
@@ -30,6 +43,9 @@ export default function RegistroForm() {
   const [cat, setCat] = useState(null)
   const [error, setError] = useState(null)
   const [idDomicilio, setIdDomicilio] = useState(query.get('domicilio') || '')
+  // Convocatoria elegida con el botón Cargar de "Donde colaboro": lo cargado queda como aporte de ella
+  const convocatoriaElegida = query.get('convocatoria') || ''
+  const sufijoConvocatoria = convocatoriaElegida ? `&convocatoria=${convocatoriaElegida}` : ''
   const [mes, setMes] = useState(mesActual())
   const [observaciones, setObservaciones] = useState('')
   // Desde la sección "Fuentes de emisión" se puede llegar con ?fuente=ID&consumo=N para precargar la primera fila
@@ -49,12 +65,19 @@ export default function RegistroForm() {
       setCat({ fuentes, domicilios, colaboraciones: colaboraciones.filter((c) => c.estado === 'ACEPTADA') })
       // Si la fuente precargada por la URL no existe (o está dada de baja), se empieza con la fila vacía
       if (!registro && fuenteInicial && !fuentes.some((f) => f.idFuenteEmision === fuenteInicial)) setFilas([filaVacia()])
+      // Si llegó con un medio de transporte, va directo al formulario de traslados
+      if (!registro && fuentes.find((f) => f.idFuenteEmision === fuenteInicial)?.modoCarga === 'TRASLADO') {
+        navigate(`/traslados/nuevo?fuente=${fuenteInicial}`, { replace: true })
+        return
+      }
       if (registro) {
         if (!registro.puedeEditar) { ui.error('No podés editar este registro'); navigate('/emisiones'); return }
+        // Los registros generados por un traslado se editan desde su carga
+        if (registro.traslado) { navigate(`/traslados/${registro.traslado.idCargaTraslado}/editar`, { replace: true }); return }
         setIdDomicilio(String(registro.idDomicilio))
         setMes(aMes(registro.periodo))
         setObservaciones(registro.observaciones || '')
-        setFilas(registro.detalles.map((d) => ({ ...filaVacia(d.idFuenteEmision), consumo: String(Number(d.consumo)), factorGuardado: d.valorFactorEmision, nombreFuente: d.fuente })))
+        setFilas(registro.detalles.map((d) => ({ ...filaVacia(d.idFuenteEmision), consumo: String(Number(d.consumo)), factorGuardado: d.valorFactorEmision, nombreFuente: d.fuente, kilometros: d.kilometros != null ? String(Number(d.kilometros)) : '', fechaViaje: d.fechaViaje || '' })))
       }
     }).catch(setError)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -65,7 +88,9 @@ export default function RegistroForm() {
     if (!cat || !idDomicilio) return null
     const propio = cat.domicilios.some((d) => d.idDomicilio === Number(idDomicilio))
     if (propio) return null
-    const colabs = cat.colaboraciones.filter((c) => c.idDomicilio === Number(idDomicilio))
+    const delDomicilio = cat.colaboraciones.filter((c) => c.idDomicilio === Number(idDomicilio))
+    const deLaConvocatoria = delDomicilio.filter((c) => String(c.idConvocatoria) === convocatoriaElegida)
+    const colabs = deLaConvocatoria.length ? deLaConvocatoria : delDomicilio
     return colabs.length ? { tipos: new Set(colabs.flatMap((c) => c.tiposEmision.map((t) => t.idTipoEmision))), colabs } : null
   }, [cat, idDomicilio])
 
@@ -75,8 +100,20 @@ export default function RegistroForm() {
   // Las fuentes dependen del domicilio: sin domicilio elegido no se sabe cuáles están disponibles
   const fuentesPermitidas = useMemo(() => {
     if (!cat || !idDomicilio) return []
-    return cat.fuentes.filter((f) => !colaboracion || colaboracion.tipos.has(f.idTipoEmision))
+    return cat.fuentes.filter((f) => f.modoCarga !== 'TRASLADO' && (!colaboracion || colaboracion.tipos.has(f.idTipoEmision)))
   }, [cat, idDomicilio, colaboracion])
+
+  // ¿Se pueden cargar traslados en este domicilio? Se hacen en su propio formulario
+  const permiteTraslados = useMemo(() => !!cat && !!idDomicilio
+    && cat.fuentes.some((f) => f.modoCarga === 'TRASLADO' && (!colaboracion || colaboracion.tipos.has(f.idTipoEmision))), [cat, idDomicilio, colaboracion])
+
+  // Si a quien colabora solo le habilitaron traslados, este formulario no tiene nada que ofrecerle
+  useEffect(() => {
+    if (!editando && colaboracion && permiteTraslados && fuentesPermitidas.length === 0) {
+      navigate(`/traslados/nuevo?domicilio=${idDomicilio}${sufijoConvocatoria}`, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [colaboracion, permiteTraslados, fuentesPermitidas])
 
   // Al cambiar de domicilio se quitan las fuentes elegidas que ya no están disponibles en el nuevo
   useEffect(() => {
@@ -111,10 +148,18 @@ export default function RegistroForm() {
    * (ej: "20000.5"), así que se puede convertir directo con Number().
    * Agregá acá tus propias reglas por fila, ej: consumo: ... || (Number(f.consumo) > TOPE ? 'Revisá el valor' : null)
    */
-  const errorFila = (f) => ({
-    fuente: !f.idFuenteEmision ? 'Elegí una fuente de la lista' : repetidas.has(f.idFuenteEmision) ? 'Fuente repetida' : null,
-    consumo: !f.consumo || Number(f.consumo) <= 0 ? 'Debe ser mayor a 0' : null,
-  })
+  const errorFila = (f) => {
+    const modo = mapaFuentes.get(Number(f.idFuenteEmision))?.modoCarga
+    return {
+      fuente: !f.idFuenteEmision ? 'Elegí una fuente de la lista' : repetidas.has(f.idFuenteEmision) ? 'Fuente repetida' : null,
+      consumo: !f.consumo || Number(f.consumo) <= 0 ? 'Debe ser mayor a 0' : null,
+      // Los km son opcionales, pero un 0 no aporta nada: se deja vacío o se indica la distancia real
+      kilometros: f.kilometros !== '' && Number(f.kilometros) <= 0 ? 'Debe ser mayor a 0. Si no lo sabés, dejalo vacío' : null,
+      // Solo los viajes institucionales piden fecha, y debe caer dentro del período elegido
+      fechaViaje: modo !== 'VIAJE' ? null : !f.fechaViaje ? 'Indicá la fecha'
+        : f.fechaViaje.slice(0, 7) !== mes || f.fechaViaje > fechaMaximaViaje(mes) ? 'Debe estar dentro del período, sin ser futura' : null,
+    }
+  }
   const erroresGenerales = {
     domicilio: !idDomicilio ? 'Elegí el domicilio' : null,
     periodo: !mes ? 'Elegí el período' : mes > mesActual() ? 'No puede ser futuro' : null,
@@ -135,7 +180,11 @@ export default function RegistroForm() {
       idDomicilio: Number(idDomicilio),
       periodo: desdeMes(mes),
       observaciones: observaciones || null,
-      detalles: filas.map((f) => ({ idFuenteEmision: Number(f.idFuenteEmision), consumo: Number(f.consumo) })),
+      idConvocatoria: !editando && convocatoriaElegida ? Number(convocatoriaElegida) : null,
+      detalles: filas.map((f) => ({
+        idFuenteEmision: Number(f.idFuenteEmision), consumo: Number(f.consumo),
+        kilometros: f.kilometros !== '' ? Number(f.kilometros) : null, fechaViaje: f.fechaViaje || null,
+      })),
     }
     setEnviando(true)
     try {
@@ -178,7 +227,7 @@ export default function RegistroForm() {
               <div className="row g-3">
                 <div className="col-md-7">
                   <label className="form-label">Domicilio<span className="req">*</span></label>
-                  <select className={clase('form-select', erroresGenerales.domicilio)} value={idDomicilio} disabled={editando} onChange={(e) => setIdDomicilio(e.target.value)}>
+                  <select className={clase('form-select', erroresGenerales.domicilio)} value={idDomicilio} disabled={editando || !!convocatoriaElegida} onChange={(e) => setIdDomicilio(e.target.value)}>
                     <option value="">Seleccioná</option>
                     {cat.domicilios.length > 0 && (
                       <optgroup label="Mis domicilios">
@@ -201,6 +250,13 @@ export default function RegistroForm() {
                   {intentoEnvio && erroresGenerales.periodo && <div className="invalid-feedback d-block">{erroresGenerales.periodo}</div>}
                 </div>
               </div>
+              {permiteTraslados && (
+                <div className="mt-3 small d-flex flex-wrap align-items-center gap-2">
+                  <i className="bi bi-bus-front" />
+                  <span>¿Querés cargar cómo viaja una persona o un grupo hasta este domicilio?</span>
+                  <Link to={`/traslados/nuevo?domicilio=${idDomicilio}${sufijoConvocatoria}`} className="btn btn-sm btn-suave">Cargar traslado</Link>
+                </div>
+              )}
               {colaboracion && (
                 <div className="alert alert-info mt-3 mb-0 small d-flex gap-2" style={{ background: 'color-mix(in srgb, var(--azul) 10%, transparent)', borderColor: 'transparent', color: 'var(--texto)' }}>
                   <i className="bi bi-people" />
@@ -241,7 +297,7 @@ export default function RegistroForm() {
                           {intentoEnvio && err.fuente && <div className="invalid-feedback d-block">{err.fuente}</div>}
                         </div>
                         <div className="col-md-6">
-                          <label className="form-label small">Consumo<span className="req">*</span></label>
+                          <label className="form-label small">{ETIQUETA_CONSUMO[fuente?.modoCarga] || 'Consumo'}<span className="req">*</span></label>
                           <div className="input-group input-group-sm">
                             {/* Los puntos de miles se agregan solos (ver InputMiles.jsx); los decimales van con coma */}
                             <InputMiles className={clase('form-control', err.consumo)} placeholder="Ej: 20.000"
@@ -252,6 +308,29 @@ export default function RegistroForm() {
                             ? <div className="invalid-feedback d-block">{err.consumo}</div>
                             : <div className="form-text">Los puntos de miles se agregan solos. Decimales con coma (,).</div>}
                         </div>
+                        {/* Vehículos: los km son opcionales y no intervienen en el cálculo */}
+                        {fuente?.modoCarga === 'VEHICULO' && (
+                          <div className="col-md-6">
+                            <label className="form-label small" htmlFor={`km-${f.clave}`}>Kilómetros recorridos (opcional)</label>
+                            <div className="input-group input-group-sm">
+                              <InputMiles id={`km-${f.clave}`} className={clase('form-control', err.kilometros)} placeholder="Ej: 1.200" valor={f.kilometros} onChange={(kilometros) => actualizarFila(f.clave, { kilometros })} />
+                              <span className="input-group-text">km</span>
+                            </div>
+                            {intentoEnvio && err.kilometros && <div className="invalid-feedback d-block">{err.kilometros}</div>}
+                          </div>
+                        )}
+                        {/* Viajes institucionales: la distancia se convierte en emisiones con el factor de la fuente. El que tiene factor 0 queda como dato */}
+                        {fuente?.modoCarga === 'VIAJE' && (
+                          <div className="col-md-6">
+                            <label className="form-label small" htmlFor={`fecha-${f.clave}`}>Fecha del viaje<span className="req">*</span></label>
+                            <input id={`fecha-${f.clave}`} type="date" className={clase('form-control form-control-sm', err.fechaViaje)} value={f.fechaViaje}
+                              min={mes ? `${mes}-01` : undefined} max={mes ? fechaMaximaViaje(mes) : undefined}
+                              onChange={(e) => actualizarFila(f.clave, { fechaViaje: e.target.value })} />
+                            {intentoEnvio && err.fechaViaje
+                              ? <div className="invalid-feedback d-block">{err.fechaViaje}</div>
+                              : <div className="form-text">{Number(f.factorGuardado ?? fuente.valorFactorEmision) === 0 ? 'Se guarda como dato: no suma emisiones.' : 'Las emisiones se calculan con la distancia recorrida.'} Para varios viajes con el mismo medio, usá otro registro.</div>}
+                          </div>
+                        )}
                         {/* El factor y los kg de CO₂ de la fila no se le muestran al colaborador */}
                         {!comoColaborador && (
                           <div className="col-md-6 d-flex align-items-end justify-content-md-end">

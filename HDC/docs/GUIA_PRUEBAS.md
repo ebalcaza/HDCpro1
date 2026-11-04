@@ -1,4 +1,4 @@
-# Guía de pruebas — Huella de Carbono (HDC) v2.3
+# Guía de pruebas — Huella de Carbono (HDC) v2.12
 
 Resumen de lo que se hizo en las últimas versiones y **cómo probarlo paso a paso** en el navegador.
 El detalle de cada cambio (archivos, motivos) está en el [CHANGELOG](CHANGELOG.md).
@@ -113,6 +113,52 @@ transporte de todo el personal. Invitar a miles de personas una por una por emai
 
 Como `empleado01@ecosur.prueba.com` → **Colaboraciones → Donde colaboro**.
 
+> Desde la v2.6, la convocatoria de EcoSur solo habilita traslados, así que **Cargar** abre el formulario de traslados.
+> Para probar esta tabla, editá la convocatoria y habilitá otro tipo, como *Residuos*. Los traslados se prueban en la tabla siguiente.
+
+Para los traslados, usá la facultad: `estudiante17@facultad.prueba.com` todavía no cargó nada;
+`nodocente01@facultad.prueba.com` cargó algunos meses, y `contacto@facultad.prueba.com` es quien organiza.
+
+| ✔ | Traslados (v2.8) | Esperado |
+|---|---|---|
+| ☐ | Como `estudiante17`, tocar **Cargar** | Se abre **Cargar traslado** con el domicilio y la convocatoria elegidos, y el período del organizador a la vista |
+| ☐ | Mirar la sección **Período** | Muestra meses y semanas, sin campos para cambiarlos, y ofrece **Todo el período** o **Un mes por vez** |
+| ☐ | Guardar sin rol | Se marca el campo y no se guarda |
+| ☐ | Cargar colectivo, tocar **Agregar otro medio** y cargar bicicleta | Se calculan los km totales y se explica el cálculo; no se ven los kg de CO₂ |
+| ☐ | Guardar con **Todo el período** | Se abre el registro con los dos medios; en **Mis emisiones** hay uno por mes |
+| ☐ | Como `nodocente01`, elegir **Un mes por vez** | Indica los meses que ya cargó y los que le faltan |
+| ☐ | Cargar de nuevo el mismo medio y mes | Avisa que ya está cargado |
+| ☐ | Editar un mes y cambiar la distancia | Se abre el formulario de la carga y cambian todos sus meses |
+| ☐ | Como `contacto@facultad`, en **Detalles** elegir **Detalle de aportes** | Una fila por persona, fuente y mes, con rol y datos declarados; se puede buscar y ordenar |
+| ☐ | En **Colaboradores**, tocar **Ver aportes** de una persona | Muestra solo lo suyo; **Ver los de todos** quita el filtro |
+| ☐ | Crear una convocatoria con traslados | Propone el año completo y 52 semanas; **Otro período** exige principio y fin |
+| ☐ | Eliminar desde **Mis emisiones** | El mensaje avisa que se eliminan todos los meses |
+| ☐ | Como `contacto@ecosur.prueba.com`, abrir **Detalles** de la convocatoria | Aparece **Traslados por rol** con colaboradores y kg CO₂ |
+| ☐ | Editar la convocatoria | Se pueden agregar roles; quitar uno ya usado muestra un aviso |
+| ☐ | Como titular, en **Nuevo registro**, cargar nafta con km y un viaje en colectivo con fecha | Se guardan; 100 km en colectivo suman 9,42 kg y el detalle muestra los km y la fecha |
+
+| ✔ | Cambios de la v2.9 | Esperado |
+|---|---|---|
+| ☐ | Crear una cuenta sin activar **Agregar un domicilio ahora** | Se crea; el dashboard y **Domicilios** aparecen vacíos, sin errores |
+| ☐ | Con esa cuenta, sumarse con `FACU-2K26` sin elegir rol | Marca el campo y no la suma |
+| ☐ | Elegir un rol y sumarse; después tocar **Cargar** | **Tu rol** ya aparece elegido |
+| ☐ | Mirar **Medios de transporte** y agregar otro medio | El medio ocupa toda la línea; distancia y días quedan alineados debajo |
+| ☐ | En un consumo, escribir 0; en un vehículo, 0 km | Se marcan en rojo y no se guarda; los km vacíos sí se aceptan |
+| ☐ | Como administrador, editar **Gasoil para vehículos** | **Viaje en colectivo a gasoil** toma el factor nuevo; lo ya cargado no cambia (después, volver al valor original) |
+| ☐ | v2.10: en **Donde colaboro**, tocar **Cargar** en una fila de convocatoria | Domicilio, convocatoria y rol ya vienen definidos; **Cambiar** permite otro rol |
+| ☐ | v2.10: con cargas en una convocatoria, sumarse a otra del mismo titular | La nueva muestra 0 kg y 0 registros en todas sus vistas |
+| ☐ | v2.10: elegir un rol y después cargar en esa convocatoria | **Traslados por rol** cuenta a la persona al sumarse y suma sus kg al cargar; se actualiza al volver a la pestaña |
+| ☐ | v2.11: como titular, entrar a **Colaboraciones** | Abre en **Convocatorias** |
+| ☐ | v2.11: tocar **Eliminar** en una convocatoria con colaboradores y confirmar | El aviso indica personas y kg; desaparece, baja el total del domicilio y los colaboradores ya no ven esos registros |
+| ☐ | v2.11: como colaborador, cargar todo el período y volver a **Cargar** | Aparece «Ya cargaste tu traslado», con **Guardar** y los medios desactivados y un botón **Editar** |
+| ☐ | v2.11: cargar un solo mes y volver a **Cargar** | **Todo el período** está desactivado y la lista de meses no incluye el ya cargado |
+| ☐ | v2.11: en **Mis emisiones**, elegir cada opción de **Origen** | Cambian las filas y el **Total filtrado** |
+| ☐ | v2.11: en **Donde colaboro**, tocar una fila | La tabla tiene pocas columnas; la ventana muestra la convocatoria, los meses que faltan y los registros guardados |
+| ☐ | v2.12: en un traslado, cargar colectivo y bicicleta en el mismo mes | Se guarda, con dos medios en un solo registro del mes |
+| ☐ | v2.12: en un traslado, escribir 0,5 u 8 días por semana | Se marca en rojo y no se guarda |
+| ☐ | v2.12: como colaborador, guardar dos registros de consumos del mismo mes | El segundo avisa que hay que editar el que ya existe |
+| ☐ | Con la sesión de un usuario abierta, darlo de baja desde otro navegador | En su próxima acción ve el aviso de cuenta deshabilitada y vuelve al inicio de sesión |
+
 | ✔ | Paso | Esperado |
 |---|---|---|
 | ☐ | Mirar la tabla | No aparece la columna **Puede cargar** |
@@ -216,7 +262,7 @@ Como **EcoSur** → **Nueva convocatoria**.
 | ☐ | **Cerrar** la convocatoria | Juan sigue pudiendo cargar; otra persona no puede sumarse con el código |
 | ☐ | **Abrir** de nuevo | El código vuelve a funcionar |
 | ☐ | **Finalizar** | Juan ya no puede cargar; la convocatoria no se puede reabrir |
-| ☐ | **Eliminar** una convocatoria que tiene miembros | No se permite (para no perder el historial) |
+| ☐ | **Eliminar** una convocatoria que tiene miembros | Pide confirmación y borra la convocatoria, sus miembros y sus registros (v2.11). Para conservar el historial, usar **Finalizar** |
 | ☐ | Crear otra sin que nadie se sume y **Eliminarla** | Se elimina |
 
 ### 4.6 Lo que no tiene que haber cambiado

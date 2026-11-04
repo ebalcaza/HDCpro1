@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { convocatoriasApi } from '../../api/servicios'
 import { useUI } from '../../context/UIContext.jsx'
 import { EncabezadoPagina, ErrorCarga, useCarga } from '../../components/comunes/Basicos.jsx'
 import TablaPaginada, { consultaAParams } from '../../components/comunes/TablaPaginada.jsx'
-import { ESTADOS_COLABORACION, fecha, numero } from '../../utils/formato'
+import { ESTADOS_COLABORACION, fecha, numero, periodo } from '../../utils/formato'
 import { copiarCodigo, EstadoConvocatoria, rangoPeriodos } from './Convocatorias.jsx'
 
 /** Filtro de estado de los miembros (los mismos estados de una colaboración, sin PENDIENTE que es de invitaciones) */
@@ -37,15 +37,42 @@ export default function ConvocatoriaDetalle() {
   const { id } = useParams()
   const ui = useUI()
   const conv = useCarga(() => convocatoriasApi.obtener(id), [id])
+  // Al volver a esta pestaña se actualizan los conteos: los colaboradores pudieron cargar mientras tanto
+  useEffect(() => {
+    const actualizar = () => conv.recargar()
+    window.addEventListener('focus', actualizar)
+    return () => window.removeEventListener('focus', actualizar)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [estado, setEstado] = useState('')
   const [consulta, setConsulta] = useState(null)
   const [seleccion, setSeleccion] = useState(() => new Set())
   const [procesando, setProcesando] = useState(false)
+  // Pestaña inferior y persona elegida para ver solo sus aportes
+  const [vista, setVista] = useState('colaboradores')
+  const [persona, setPersona] = useState(null)
+  const [consultaAportes, setConsultaAportes] = useState(null)
 
   const miembros = useCarga(
     () => (consulta ? convocatoriasApi.miembros(id, { ...consultaAParams(consulta), estado: estado || undefined }) : Promise.resolve(null)),
     [consulta],
   )
+  const aportes = useCarga(
+    () => (vista === 'aportes' && consultaAportes
+      ? convocatoriasApi.aportes(id, { ...consultaAParams(consultaAportes), idUsuario: persona?.idUsuario || undefined })
+      : Promise.resolve(null)),
+    [consultaAportes, vista],
+  )
+  const verAportes = (m) => { setPersona(m ? { idUsuario: m.idColaborador, nombre: m.colaborador } : null); setVista('aportes') }
+  const columnasAportes = [
+    { clave: 'colaborador', titulo: 'Colaborador', ordenable: true, render: (a) => <div><div className="fw-semibold">{a.colaborador}</div><div className="small text-muted">{a.rol || a.email}</div></div> },
+    { clave: 'periodo', titulo: 'Mes', ordenable: true, render: (a) => periodo(a.periodo) },
+    { clave: 'fuente', titulo: 'Fuente', ordenable: true, render: (a) => <div><div>{a.fuente}</div><div className="small text-muted">{a.tipoEmision}</div></div> },
+    { clave: 'declarado', titulo: 'Declarado', render: (a) => (a.distanciaKm != null ? <span className="small">{numero(a.distanciaKm)} km por día, {numero(a.diasSemana, 1)} días por semana</span> : <span className="text-muted">—</span>) },
+    { clave: 'consumo', titulo: 'Cantidad', numerico: true, render: (a) => `${numero(a.consumo)} ${a.unidad}` },
+    { clave: 'kgCo2', titulo: 'kg CO₂', numerico: true, ordenable: true, clase: 'fw-bold', render: (a) => numero(a.kgCo2) },
+  ]
+
   const items = miembros.datos?.items || []
   const total = miembros.datos?.total ?? 0
   const finalizada = conv.datos?.estado === 'FINALIZADA'
@@ -128,6 +155,24 @@ export default function ConvocatoriaDetalle() {
         </div>
       )}
 
+      {/* Resultados por rol: colaboradores que eligieron cada rol y kg CO₂ de sus traslados */}
+      {c?.roles.length > 0 && (
+        <div className="tarjeta tarjeta-cuerpo mb-3">
+          <h2 className="tarjeta-titulo mb-1">Traslados por rol</h2>
+          <div className="form-text mb-3">Colaboradores: quienes eligieron el rol al sumarse o cargaron con él. Los kg CO₂ suman lo que ya cargaron.</div>
+          <div className="table-responsive">
+            <table className="table table-sm align-middle mb-0">
+              <thead><tr><th>Rol</th><th className="text-end">Colaboradores</th><th className="text-end">kg CO₂</th></tr></thead>
+              <tbody>
+                {c.roles.map((r) => (
+                  <tr key={r.idConvocatoriaRol}><td>{r.nombre}</td><td className="text-end">{r.colaboradores}</td><td className="text-end">{numero(r.kgCo2)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Barra de acciones masivas: aparece cuando hay seleccionados */}
       {seleccion.size > 0 && (
         <div className="tarjeta tarjeta-cuerpo mb-3 d-flex flex-wrap gap-2 align-items-center" role="region" aria-label="Acciones sobre los seleccionados">
@@ -142,7 +187,40 @@ export default function ConvocatoriaDetalle() {
         </div>
       )}
 
-      {miembros.error ? <ErrorCarga error={miembros.error} onReintentar={miembros.recargar} /> : (
+      {/* Dos vistas: quiénes participan y qué cargó cada persona, mes a mes */}
+      <div className="btn-group mb-3" role="group" aria-label="Elegir vista">
+        <button type="button" className={`btn btn-sm ${vista === 'colaboradores' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setVista('colaboradores')}>
+          <i className="bi bi-people me-1" />Colaboradores
+        </button>
+        <button type="button" className={`btn btn-sm ${vista === 'aportes' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => verAportes(null)}>
+          <i className="bi bi-list-ul me-1" />Detalle de aportes
+        </button>
+      </div>
+
+      {vista === 'aportes' && (aportes.error ? <ErrorCarga error={aportes.error} onReintentar={aportes.recargar} /> : (
+        <>
+          {persona && (
+            <div className="small mb-2 d-flex align-items-center gap-2">
+              <span>Mostrando los aportes de <b>{persona.nombre}</b>.</span>
+              <button type="button" className="btn btn-sm btn-link p-0" onClick={() => setPersona(null)}>Ver los de todos</button>
+            </div>
+          )}
+          <TablaPaginada
+            columnas={columnasAportes}
+            datos={aportes.datos?.items || []}
+            total={aportes.datos?.total ?? 0}
+            onConsulta={setConsultaAportes}
+            claveFiltros={persona?.idUsuario || 'todos'}
+            cargando={aportes.cargando}
+            idFila={(a) => a.idDetalle}
+            textoBusqueda="Buscar por colaborador, rol o fuente..."
+            vacio={persona ? 'Esta persona todavía no cargó nada.' : 'Todavía no hay aportes cargados.'}
+            iconoVacio="bi-list-ul"
+          />
+        </>
+      ))}
+
+      {vista === 'colaboradores' && (miembros.error ? <ErrorCarga error={miembros.error} onReintentar={miembros.recargar} /> : (
         <TablaPaginada
           columnas={columnas}
           datos={items}
@@ -179,6 +257,9 @@ export default function ConvocatoriaDetalle() {
           </>}
           acciones={(m) => !finalizada && (
             <div className="d-flex gap-1 justify-content-end">
+              <button type="button" className="btn btn-sm btn-outline-secondary" title="Ver lo que cargó" onClick={() => verAportes(m)}>
+                <i className="bi bi-eye" /><span className="d-none d-xl-inline ms-1">Ver aportes</span>
+              </button>
               {Object.entries(ACCIONES).filter(([, a]) => a.aplica(m)).map(([k, a]) => (
                 <button key={k} type="button" className={`btn btn-sm ${a.clase}`} title={a.texto} disabled={procesando}
                   onClick={() => ejecutar(k, { ids: [m.idColaboracion], cantidad: 1 })}>
@@ -188,7 +269,7 @@ export default function ConvocatoriaDetalle() {
             </div>
           )}
         />
-      )}
+      ))}
     </>
   )
 }

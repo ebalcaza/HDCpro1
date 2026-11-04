@@ -39,22 +39,42 @@ export function EstadoConvocatoria({ estado }) {
 export function FormConvocatoria({ abierto, convocatoria, domicilios, tipos, onCerrar, onGuardado }) {
   const ui = useUI()
   const editando = !!convocatoria
+  const [rolNuevo, setRolNuevo] = useState('')
+  // El período es anual por defecto. Otro rango de meses queda como última opción
+  const esAnual = (c) => !c || (aMes(c.periodoDesde).endsWith('-01') && aMes(c.periodoHasta).endsWith('-12') && aMes(c.periodoDesde).slice(0, 4) === aMes(c.periodoHasta).slice(0, 4))
+  const [periodoAnual, setPeriodoAnual] = useState(esAnual(convocatoria))
+  const anioActual = new Date().getFullYear()
   const f = useFormulario(editando ? {
     idDomicilio: convocatoria.idDomicilio, nombre: convocatoria.nombre, descripcion: convocatoria.descripcion || '',
     desde: aMes(convocatoria.periodoDesde), hasta: aMes(convocatoria.periodoHasta),
     idsTiposEmision: convocatoria.tiposEmision.map((t) => t.idTipoEmision), aprobacionAutomatica: convocatoria.aprobacionAutomatica,
+    roles: convocatoria.roles.map((r) => r.nombre), semanasTraslado: convocatoria.semanasTraslado != null ? String(Number(convocatoria.semanasTraslado)) : '52',
   } : {
-    idDomicilio: domicilios.length === 1 ? domicilios[0].idDomicilio : '', nombre: '', descripcion: '', desde: mesActual(), hasta: '',
-    // Por defecto: transporte de colaboradores (el caso típico: el personal que viaja al domicilio)
-    idsTiposEmision: tipos.filter((t) => /transporte/i.test(t.nombre)).map((t) => t.idTipoEmision), aprobacionAutomatica: false,
+    idDomicilio: domicilios.length === 1 ? domicilios[0].idDomicilio : '', nombre: '', descripcion: '', desde: `${new Date().getFullYear()}-01`, hasta: `${new Date().getFullYear()}-12`, semanasTraslado: '52',
+    // Por defecto: traslados (el caso típico: las personas que viajan al domicilio)
+    idsTiposEmision: tipos.filter((t) => t.modoCarga === 'TRASLADO').map((t) => t.idTipoEmision), aprobacionAutomatica: false, roles: [],
   }, (v) => errores({
     idDomicilio: !v.idDomicilio ? 'Elegí el domicilio' : null,
     nombre: reglas.requerido(v.nombre) || reglas.maximo(v.nombre, 150),
     descripcion: reglas.maximo(v.descripcion, 500),
     desde: !v.desde ? 'Elegí desde qué período' : null,
-    hasta: v.hasta && v.hasta < v.desde ? 'Debe ser posterior al período desde' : null,
+    hasta: v.hasta && v.hasta < v.desde ? 'Debe ser posterior al período desde'
+      : !v.hasta && tipos.some((t) => t.modoCarga === 'TRASLADO' && v.idsTiposEmision.includes(t.idTipoEmision)) ? 'Indicá hasta qué mes va el período' : null,
+    semanasTraslado: tipos.some((t) => t.modoCarga === 'TRASLADO' && v.idsTiposEmision.includes(t.idTipoEmision)) && !(Number(v.semanasTraslado) >= 1) ? 'Indicá las semanas de actividad' : null,
     idsTiposEmision: v.idsTiposEmision.length === 0 ? 'Elegí al menos un tipo de emisión' : null,
   }))
+
+  // Los roles solo tienen sentido si la convocatoria habilita cargar traslados
+  const habilitaTraslados = tipos.some((t) => t.modoCarga === 'TRASLADO' && f.valores.idsTiposEmision.includes(t.idTipoEmision))
+
+  const agregarRol = () => {
+    const nombre = rolNuevo.trim()
+    if (!nombre) return
+    if (f.valores.roles.some((r) => r.toLowerCase() === nombre.toLowerCase())) return ui.error('Ese rol ya está en la lista')
+    if (f.valores.roles.length >= 20) return ui.error('Podés definir hasta 20 roles')
+    f.cambiar('roles', [...f.valores.roles, nombre])
+    setRolNuevo('')
+  }
 
   const guardar = async (e) => {
     e.preventDefault()
@@ -65,6 +85,8 @@ export function FormConvocatoria({ abierto, convocatoria, domicilios, tipos, onC
         nombre: f.valores.nombre.trim(), descripcion: f.valores.descripcion.trim() || null,
         periodoDesde: desdeMes(f.valores.desde), periodoHasta: desdeMes(f.valores.hasta),
         idsTiposEmision: f.valores.idsTiposEmision, aprobacionAutomatica: f.valores.aprobacionAutomatica,
+        roles: habilitaTraslados ? f.valores.roles : [],
+        semanasTraslado: habilitaTraslados ? Number(f.valores.semanasTraslado) : null,
       }
       const r = editando
         ? await convocatoriasApi.actualizar(convocatoria.idConvocatoria, datos)
@@ -84,7 +106,7 @@ export function FormConvocatoria({ abierto, convocatoria, domicilios, tipos, onC
         <BotonCarga cargando={f.enviando} form="form-convocatoria">{editando ? 'Guardar' : 'Crear y obtener código'}</BotonCarga></>}>
       <form id="form-convocatoria" noValidate onSubmit={guardar} className="row g-3">
         <Campo className="col-md-6" etiqueta="Domicilio" requerido error={f.errores.idDomicilio} tocado={t.idDomicilio}
-          ayuda={editando ? 'El domicilio no se puede cambiar' : 'Donde van a sumar sus consumos'}>
+          ayuda={editando ? 'El domicilio no se puede cambiar' : domicilios.length === 0 ? 'Primero agregá un domicilio en la sección Domicilios' : 'Donde van a sumar sus consumos'}>
           <select {...f.campo('idDomicilio')} className={f.claseValidacion('idDomicilio', 'form-select')} disabled={editando}>
             <option value="">Seleccioná</option>
             {domicilios.map((d) => <option key={d.idDomicilio} value={d.idDomicilio}>{d.descripcion}</option>)}
@@ -94,18 +116,78 @@ export function FormConvocatoria({ abierto, convocatoria, domicilios, tipos, onC
           <input {...f.campo('nombre')} maxLength={150} placeholder="Ej: Transporte del personal 2026" />
         </Campo>
         <Campo className="col-12" etiqueta="Instrucciones para los colaboradores (opcional)" error={f.errores.descripcion} tocado={t.descripcion} exito={null}>
-          <textarea rows={2} maxLength={500} {...f.campo('descripcion')} placeholder="Ej: Cargá los km que hacés cada mes para venir a la oficina." />
+          <textarea rows={2} maxLength={500} {...f.campo('descripcion')} placeholder="Ej: Cargá cómo venís a la facultad: medios de transporte, distancia y días por semana." />
         </Campo>
-        <Campo className="col-md-6" etiqueta="Desde" requerido error={f.errores.desde} tocado={t.desde} exito={null}>
-          <SelectorMes valor={f.valores.desde} onChange={(v) => f.cambiar('desde', v)} max={`${new Date().getFullYear() + 1}-12`} />
-        </Campo>
-        <Campo className="col-md-6" etiqueta="Hasta (opcional)" error={f.errores.hasta} tocado={t.hasta} exito={null} ayuda="Vacío = sin fecha de fin">
-          <SelectorMes valor={f.valores.hasta} permitirVacio onChange={(v) => f.cambiar('hasta', v)} max={`${new Date().getFullYear() + 2}-12`} />
-        </Campo>
+        <div className="col-12">
+          <div className="form-label mb-1">Período que se va a cargar<span className="req">*</span></div>
+          <div className="form-text mt-0 mb-2">
+            Lo definís vos: los colaboradores no lo pueden cambiar. Abrí la convocatoria al final del período, por ejemplo en
+            diciembre, para que puedan cargar todo el año. Los meses que todavía no empezaron no se cargan.
+          </div>
+          <label className="form-check">
+            <input type="radio" className="form-check-input" name="tipo-periodo" checked={periodoAnual} onChange={() => {
+              setPeriodoAnual(true)
+              f.cambiar('desde', `${anioActual}-01`)
+              f.cambiar('hasta', `${anioActual}-12`)
+            }} />
+            <span className="form-check-label"><b>Un año completo</b> <span className="text-muted">(recomendado)</span></span>
+          </label>
+          <label className="form-check">
+            <input type="radio" className="form-check-input" name="tipo-periodo" checked={!periodoAnual} onChange={() => setPeriodoAnual(false)} />
+            <span className="form-check-label">Otro período <span className="text-muted">(solo si no corresponde un año completo)</span></span>
+          </label>
+        </div>
+        {periodoAnual ? (
+          <Campo className="col-md-6" etiqueta="Año" requerido error={f.errores.desde} tocado={t.desde} exito={null}>
+            <select className="form-select" aria-label="Año del período" value={f.valores.desde.slice(0, 4)} onChange={(e) => {
+              f.cambiar('desde', `${e.target.value}-01`)
+              f.cambiar('hasta', `${e.target.value}-12`)
+            }}>
+              {/* El organizador puede abrir una convocatoria de años ya terminados */}
+              {[...new Set([...Array.from({ length: 12 }, (_, i) => anioActual + 1 - i), Number(f.valores.desde.slice(0, 4))])].sort((a, b) => b - a).map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </Campo>
+        ) : <>
+          <Campo className="col-md-6" etiqueta="Desde" requerido error={f.errores.desde} tocado={t.desde} exito={null}>
+            <SelectorMes valor={f.valores.desde} onChange={(v) => f.cambiar('desde', v)} max={`${anioActual + 1}-12`} />
+          </Campo>
+          <Campo className="col-md-6" etiqueta={habilitaTraslados ? 'Hasta' : 'Hasta (opcional)'} requerido={habilitaTraslados} error={f.errores.hasta} tocado={t.hasta} exito={null}
+            ayuda={habilitaTraslados ? 'Los traslados necesitan un período con principio y fin' : 'Vacío = sin fecha de fin'}>
+            <SelectorMes valor={f.valores.hasta} permitirVacio onChange={(v) => f.cambiar('hasta', v)} max={`${anioActual + 2}-12`} />
+          </Campo>
+        </>}
+        {habilitaTraslados && (
+          <Campo className="col-md-6" etiqueta="Semanas de actividad del período" requerido error={f.errores.semanasTraslado} tocado={t.semanasTraslado} exito={null}
+            ayuda="Semanas en que hubo asistencia. Si hay receso o vacaciones, restalas. Ejemplo: 32 en una facultad.">
+            <input {...f.campo('semanasTraslado')} inputMode="decimal" />
+          </Campo>
+        )}
         <Campo className="col-12" etiqueta="Información que pueden cargar" requerido error={f.errores.idsTiposEmision} tocado={t.idsTiposEmision} exito={null}
           ayuda="Los colaboradores solo verán las fuentes de emisión de estos tipos.">
           <SelectorTipos tipos={tipos} seleccion={f.valores.idsTiposEmision} onChange={(v) => f.cambiar('idsTiposEmision', v)} />
         </Campo>
+        {habilitaTraslados && (
+          <div className="col-12">
+            <label className="form-label" htmlFor="rol-nuevo">Roles de los colaboradores (opcional)</label>
+            <div className="input-group">
+              <input id="rol-nuevo" className="form-control" maxLength={100} placeholder="Ej: Estudiantes" value={rolNuevo} onChange={(e) => setRolNuevo(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarRol() } }} />
+              <button type="button" className="btn btn-suave" onClick={agregarRol}><i className="bi bi-plus-lg me-1" />Agregar</button>
+            </div>
+            <div className="form-text">Cada colaborador elige el suyo al cargar su traslado, y ves los resultados por rol en los detalles de la convocatoria. Ejemplo: estudiantes, personal docente y personal no docente.</div>
+            {f.valores.roles.length > 0 && (
+              <div className="d-flex flex-wrap gap-1 mt-2">
+                {f.valores.roles.map((r) => (
+                  <span key={r} className="badge-suave badge-azul d-inline-flex align-items-center gap-1">
+                    {r}
+                    <button type="button" className="btn-close" style={{ fontSize: '0.55rem' }} aria-label={`Quitar el rol ${r}`}
+                      onClick={() => f.cambiar('roles', f.valores.roles.filter((x) => x !== r))} />
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div className="col-12">
           <div className="form-check form-switch">
             <input className="form-check-input" type="checkbox" id="aprob-auto" checked={f.valores.aprobacionAutomatica}
@@ -137,18 +219,27 @@ export function ModalUnirse({ abierto, onCerrar, onUnido }) {
   const [codigo, setCodigo] = useState('')
   const [vista, setVista] = useState(null)
   const [cargando, setCargando] = useState(false)
+  const [idRol, setIdRol] = useState('')
+  const [faltaRol, setFaltaRol] = useState(false)
 
   const buscar = async (e) => {
     e.preventDefault()
     if (!codigo.trim()) return ui.error('Escribí el código que te compartieron')
     setCargando(true)
-    try { setVista(await convocatoriasApi.vistaPrevia(codigo)) } catch (err) { ui.error(err) } finally { setCargando(false) }
+    try {
+      const v = await convocatoriasApi.vistaPrevia(codigo)
+      setVista(v)
+      // Si ya estuvo en la convocatoria, se propone el rol que había elegido
+      setIdRol(v.idRolActual ? String(v.idRolActual) : '')
+      setFaltaRol(false)
+    } catch (err) { ui.error(err) } finally { setCargando(false) }
   }
 
   const confirmar = async () => {
+    if (vista.roles.length > 0 && !idRol) { setFaltaRol(true); return ui.error('Elegí tu rol en la convocatoria', 'Datos incompletos') }
     setCargando(true)
     try {
-      const r = await convocatoriasApi.unirse(vista.codigo)
+      const r = await convocatoriasApi.unirse(vista.codigo, idRol ? Number(idRol) : null)
       ui.exito(r.estado === 'ACEPTADA'
         ? `Te sumaste a "${vista.nombre}". Ya podés cargar consumos.`
         : `Te sumaste a "${vista.nombre}". ${vista.titular} tiene que aprobar tu solicitud.`)
@@ -193,6 +284,19 @@ export function ModalUnirse({ abierto, onCerrar, onUnido }) {
             <div className="text-muted mb-1">Vas a poder cargar</div>
             <div className="d-flex flex-wrap gap-1">{vista.tiposEmision.map((t) => <span key={t.idTipoEmision} className="badge-suave badge-gris" title={t.alcance}>{t.nombre}</span>)}</div>
           </div>
+          {/* El rol se elige una sola vez: el formulario de traslados ya lo trae elegido */}
+          {vista.roles.length > 0 && !yaEsta && (
+            <div>
+              <label className="form-label" htmlFor="unirse-rol">Tu rol<span className="req">*</span></label>
+              <select id="unirse-rol" className={`form-select ${faltaRol && !idRol ? 'is-invalid' : ''}`} value={idRol} onChange={(e) => setIdRol(e.target.value)}>
+                <option value="">Seleccioná</option>
+                {vista.roles.map((r) => <option key={r.idConvocatoriaRol} value={r.idConvocatoriaRol}>{r.nombre}</option>)}
+              </select>
+              {faltaRol && !idRol
+                ? <div className="invalid-feedback d-block">Elegí tu rol</div>
+                : <div className="form-text">Lo elegís una vez y no tenés que completarlo en cada carga. Si cambia, podés modificarlo al cargar.</div>}
+            </div>
+          )}
           {vista.estadoActual && (
             <div className="small"><i className="bi bi-info-circle me-1" />
               {yaEsta ? `Ya formás parte de esta convocatoria (${ESTADOS_COLABORACION[vista.estadoActual].texto.toLowerCase()}).` : 'Ya estuviste en esta convocatoria.'}
@@ -221,8 +325,14 @@ export function PestanaConvocatorias({ consulta, onEditar, onNueva }) {
     try { await convocatoriasApi.cambiarEstado(c.idConvocatoria, estado); ui.exito(`La convocatoria quedó ${ESTADOS_CONVOCATORIA[estado].texto.toLowerCase()}`); recargar() } catch (err) { ui.error(err) }
   }
   const eliminar = async (c) => {
-    if (!(await ui.confirmar({ titulo: `¿Eliminar "${c.nombre}"?`, mensaje: 'Solo se puede eliminar si nadie se sumó todavía.', tipo: 'peligro', textoConfirmar: 'Eliminar' }))) return
-    try { await convocatoriasApi.eliminar(c.idConvocatoria); ui.exito('Convocatoria eliminada'); recargar() } catch (err) { ui.error(err) }
+    // Se borra también lo que cargaron otras personas: el mensaje dice cuánto, y ofrece Finalizar si se quiere conservar
+    const personas = c.aceptados + c.solicitudes + c.bajas
+    const alcance = personas === 0
+      ? 'Todavía no se sumó nadie.'
+      : `Se borran ${personas === 1 ? 'su colaborador' : `sus ${personas} colaboradores`} y todos los registros que cargaron en ella (${numero(c.totalKgCo2Aportado)} kg CO₂): dejan de sumar a la huella del domicilio y desaparecen de Mis emisiones de cada persona.`
+    const alternativa = personas > 0 && c.estado !== 'FINALIZADA' ? ' Para conservar lo cargado, usá Finalizar.' : ''
+    if (!(await ui.confirmar({ titulo: `¿Eliminar "${c.nombre}" por completo?`, mensaje: `${alcance} Esta acción no se puede deshacer.${alternativa}`, tipo: 'peligro', textoConfirmar: 'Eliminar por completo' }))) return
+    try { await convocatoriasApi.eliminar(c.idConvocatoria); ui.exito('La convocatoria se eliminó por completo'); recargar() } catch (err) { ui.error(err) }
   }
 
   if (error) return <ErrorCarga error={error} onReintentar={recargar} />
@@ -282,12 +392,11 @@ export function PestanaConvocatorias({ consulta, onEditar, onNueva }) {
                     <button type="button" className="btn btn-sm btn-icono" data-bs-toggle="dropdown" aria-label="Más acciones"><i className="bi bi-three-dots-vertical" /></button>
                     <ul className="dropdown-menu dropdown-menu-end">
                       <li><button type="button" className="dropdown-item text-danger" onClick={() => cambiarEstado(c, 'FINALIZADA')}><i className="bi bi-flag me-2" />Finalizar</button></li>
-                      {c.aceptados + c.solicitudes + c.bajas === 0 && (
-                        <li><button type="button" className="dropdown-item text-danger" onClick={() => eliminar(c)}><i className="bi bi-trash3 me-2" />Eliminar</button></li>
-                      )}
                     </ul>
                   </div>
                 </>}
+                {/* Disponible en cualquier estado, también en una convocatoria finalizada */}
+                <button type="button" className="btn btn-sm btn-outline-danger ms-auto" onClick={() => eliminar(c)}><i className="bi bi-trash3 me-1" />Eliminar</button>
               </div>
             </div>
           </div>

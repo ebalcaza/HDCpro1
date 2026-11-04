@@ -25,6 +25,8 @@ export default function Registro() {
   const navigate = useNavigate()
   const [tipo, setTipo] = useState('INDIVIDUO')
   const [paso, setPaso] = useState(0)
+  // El domicilio es opcional: quien solo va a colaborar puede crear la cuenta sin cargarlo
+  const [conDomicilio, setConDomicilio] = useState(false)
 
   const f = useFormulario({
     email: '', contrasena: '', confirmacion: '', telefono: '',
@@ -53,7 +55,7 @@ export default function Registro() {
       cantidadMiembros: v.cantidadMiembros !== '' && (Number(v.cantidadMiembros) < 0 || !Number.isInteger(Number(v.cantidadMiembros))) ? 'Cantidad inválida' : null,
     }),
     // --- Paso 3: domicilio (reglas en CamposDomicilio.jsx) ---
-    ...validarDomicilio(v),
+    ...(conDomicilio ? validarDomicilio(v) : {}),
     // Agregá acá tus propias validaciones del registro, ej: email: reglas.miRegla(v.email),
   }))
 
@@ -75,7 +77,7 @@ export default function Registro() {
       return
     }
     const v = f.valores
-    const base = { email: v.email.trim(), contrasena: v.contrasena, telefono: telefonoARequest(v.telefono), domicilio: domicilioARequest(v) }
+    const base = { email: v.email.trim(), contrasena: v.contrasena, telefono: telefonoARequest(v.telefono), domicilio: conDomicilio ? domicilioARequest(v) : null }
     const datos = tipo === 'INDIVIDUO'
       ? {
         ...base, nombres: normalizarNombre(v.nombres), apellidos: normalizarNombre(v.apellidos), dni: v.dni.trim(),
@@ -89,7 +91,7 @@ export default function Registro() {
     f.setEnviando(true)
     try {
       const u = await registrar(tipo, datos)
-      ui.exito('Tu cuenta fue creada. ¡Ya podés cargar tus consumos!', 'Registro completo')
+      ui.exito(conDomicilio ? 'Tu cuenta fue creada. ¡Ya podés cargar tus consumos!' : 'Tu cuenta fue creada. Podés sumarte a una colaboración o agregar un domicilio.', 'Registro completo')
       navigate(rutaInicio(u), { replace: true })
     } catch (err) {
       ui.error(err)
@@ -178,8 +180,12 @@ export default function Registro() {
 
             {paso === 2 && (
               <div className="aparecer">
-                <p className="text-muted small">Este es el primer domicilio donde vas a medir tus emisiones. Después podés agregar más.</p>
-                <CamposDomicilio f={f} />
+                <p className="text-muted small">Es opcional. Si solo vas a colaborar con otra persona u organización, no lo necesitás. Podés agregarlo después desde <b>Domicilios</b>.</p>
+                <div className="form-check form-switch mb-3">
+                  <input className="form-check-input" type="checkbox" id="registro-con-domicilio" checked={conDomicilio} onChange={(e) => setConDomicilio(e.target.checked)} />
+                  <label className="form-check-label" htmlFor="registro-con-domicilio">Agregar un domicilio ahora</label>
+                </div>
+                {conDomicilio && <CamposDomicilio f={f} />}
               </div>
             )}
 

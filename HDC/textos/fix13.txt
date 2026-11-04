@@ -1,0 +1,10 @@
++cuando agrego colaboraciones, que en un mismo mes se permita cargar mas de una forma de traslado al lugar,
+requiriendo los datos de kilometros y cantidad de dias de asistencia por semana, entre 1 y 7, para hacer la cuenta. 
+puedo poner mas de un medio de transporte en el mismo dia, y mas de uno por tipo, por ejemplo puedo tomar 3 colectivos,
+para llegar. LO que no puedo tener es mas de un registro del mismo mes, en la colaboracion. 
++La solucion fue de sumar todos los kilometros de, por ejemplo, todas las lineas de colectivo usadas, y cargar la cantidad
+total.
+
++todo lo demas muy bien. ahora, cuando veo el detalle, en la ventana modal, de una convocatoria, como en un mes puedo
+tener mas de un registro, voy a mostrar una lista con pocos detalles, y habra un boton para ver todos los detalles cargados de 
+un mes, con el dibujo del "ojo", como lo estas haciendo.

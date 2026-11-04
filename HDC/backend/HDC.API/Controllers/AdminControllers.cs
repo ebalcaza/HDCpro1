@@ -84,7 +84,7 @@ public class CatalogosController(CatalogoServicio catalogos, FuenteEmisionServic
         var fisica = await fuentes.EliminarAsync(id);
         return new MensajeDto(fisica
             ? "Fuente de emisión eliminada"
-            : "La fuente tiene registros asociados: se dio de baja y se conserva en el historial");
+            : "La fuente está en uso: se dio de baja y se conserva en el historial");
     }
 
     // ----- Geografía -----

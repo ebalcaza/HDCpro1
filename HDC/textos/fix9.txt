@@ -1,0 +1,12 @@
++cuando un colaborador carga informacion en una convocatoria en la que carga el transporte, 
+el periodo de esta solo debera ser anual, y como ultima opcion debera ser configurado por el organizador 
+de la convocatoria y no por el usuario que participa en ella.
+Deberan ser anuales, pero el usuario podra cargarlas de forma mensual, o de forma total definida por el periodo
+que agregue el usuario que crea la convocatoria. debe haber mas informacion para el usuario, sobre el periodo que esta 
+cargando, mas textos de ayuda para facilitar la tarea del usuario.
+
++el colaborador tambien puede tener mas de una forma de transportarse y puede utilizarlas,
+amplia esa funcionalidad.
+
++como creador de la convocatoria, debo poder visualizar, si quisiera, el detalle completo de una colaboracion
+de parte de todos los colaboradores.

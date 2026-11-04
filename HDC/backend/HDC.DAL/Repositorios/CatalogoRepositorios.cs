@@ -68,4 +68,9 @@ public class FuenteEmisionRepositorio(HdcDbContext ctx) : Repositorio<FuenteEmis
         Completas().Where(f => ids.Contains(f.IdFuenteEmision)).ToListAsync();
 
     public Task<bool> EnUsoAsync(long id) => Ctx.DetallesRegistro.AnyAsync(d => d.IdFuenteEmision == id);
+
+    /// <summary>Fuentes cuyo factor se calcula a partir de esta (v2.9).</summary>
+    public Task<List<FuenteEmision>> DerivadasDeAsync(long id) => Ctx.FuentesEmision.Where(f => f.IdFuenteBase == id).ToListAsync();
+
+    public Task<bool> TieneDerivadasAsync(long id) => Ctx.FuentesEmision.AnyAsync(f => f.IdFuenteBase == id);
 }

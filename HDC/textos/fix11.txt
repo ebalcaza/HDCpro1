@@ -1,0 +1,11 @@
++en la vista colaboraciones -> donde colaboro -> lista -> "+ cargar"
+cuando hago click en el boton "cargar" de la lista, me lleva a un formulario que me vuelve a pedir
+que elija la convocatoria y el rol, esto ya debe quedar seteado, porque sabe de que convocatoria esta viniendo, agregar
+esa fuincionalidad al boton "+ cargar".
+
+
++en el usuario individuo si ya pertenezco a otras convocatorias , cuando me inscribo en una nueva convocatoria, del mismo
+dueño del que ya tengo otras convocatorias de otros periodos activos, se crean aportes de dioxido de carbono sin que yo los cargue. 
+
++en la vista colaboraciones -> convocatorias -> detalles: en la tabla "traslados por rol", no se estan actualizando los valores,
+la tabla con los tres campos "rol", "colaboradores", y kgCO_2.

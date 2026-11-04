@@ -105,14 +105,14 @@ public class ConvocatoriaServicio(
         return await ObtenerAsync(idTitular, id);
     }
 
-    /// <summary>Solo se puede eliminar si nadie se sumó todavía; si no, hay que finalizarla (se conserva el historial).</summary>
+    /// <summary>
+    /// Elimina la convocatoria por completo, en cualquier estado (v2.11): también sus miembros y todo lo que cargaron en ella,
+    /// que deja de sumar a la huella del domicilio. Para conservar lo cargado, hay que finalizarla. No se puede deshacer.
+    /// </summary>
     public async Task EliminarAsync(long idTitular, long id)
     {
         var c = await ObtenerPropiaAsync(idTitular, id);
-        if (await convocatorias.TieneMiembrosAsync(id))
-            throw new ConflictoException("La convocatoria ya tiene colaboradores: finalizala en lugar de eliminarla para conservar el historial");
-        convocatorias.Eliminar(c);
-        await convocatorias.GuardarAsync();
+        await convocatorias.EliminarConAportesAsync(c);
     }
 
     /// <summary>Página de miembros de la convocatoria (filtro por estado, búsqueda y orden se resuelven en SQL).</summary>
@@ -120,6 +120,13 @@ public class ConvocatoriaServicio(
     {
         await ObtenerPropiaAsync(idTitular, id); // solo valida que sea del titular
         return await convocatorias.PaginarMiembrosAsync(id, idTitular, filtro);
+    }
+
+    /// <summary>Detalle de lo que cargaron los colaboradores, todos o una persona (v2.8). Solo lo ve el titular.</summary>
+    public async Task<PaginaDto<AporteConvocatoriaDto>> ListarAportesAsync(long idTitular, long id, FiltroAportes filtro)
+    {
+        var c = await ObtenerPropiaAsync(idTitular, id);
+        return await convocatorias.PaginarAportesAsync(c, filtro);
     }
 
     /// <summary>
@@ -173,15 +180,18 @@ public class ConvocatoriaServicio(
         return new VistaPreviaConvocatoriaDto(
             FormatearCodigo(c.Codigo), c.Nombre, c.Descripcion,
             Mapeos.NombreMostrar(c.Domicilio.Usuario), $"{Mapeos.DescripcionCorta(c.Domicilio)} - {c.Domicilio.Ciudad.Nombre}",
-            c.PeriodoDesde, c.PeriodoHasta, c.AprobacionAutomatica, Tipos(c), miembro?.Estado);
+            c.PeriodoDesde, c.PeriodoHasta, c.AprobacionAutomatica, Tipos(c), miembro?.Estado,
+            c.Roles.OrderBy(r => r.Nombre).Select(r => new RolOpcionDto(r.IdConvocatoriaRol, r.Nombre, c.Nombre)).ToList(),
+            miembro?.IdConvocatoriaRol);
     }
 
     /// <summary>Sumarse a una convocatoria con su código.</summary>
-    public async Task<ColaboracionDto> UnirseAsync(long idUsuario, string codigoIngresado)
+    public async Task<ColaboracionDto> UnirseAsync(long idUsuario, string codigoIngresado, long? idRol)
     {
         var c = await BuscarPorCodigoAsync(codigoIngresado);
         if (c.Domicilio.IdUsuario == idUsuario) throw new NegocioException("Es una convocatoria tuya: no podés sumarte como colaborador");
         if (c.Estado != EstadoConvocatoria.Abierta) throw new NegocioException("La convocatoria no está recibiendo nuevos colaboradores");
+        var rol = ValidarRolAlSumarse(c, idRol);
 
         var estado = c.AprobacionAutomatica ? EstadoColaboracion.Aceptada : EstadoColaboracion.Solicitada;
         var ahora = DateTime.Now;
@@ -198,6 +208,7 @@ public class ConvocatoriaServicio(
             existente.FechaInvitacion = ahora;
             existente.FechaRespuesta = c.AprobacionAutomatica ? ahora : null;
             existente.IdUsuarioBaja = null;
+            existente.IdConvocatoriaRol = rol;
             existente.PeriodoDesde = c.PeriodoDesde;
             existente.PeriodoHasta = c.PeriodoHasta;
             await convocatorias.GuardarAsync();
@@ -209,6 +220,7 @@ public class ConvocatoriaServicio(
             IdDomicilio = c.IdDomicilio,
             IdUsuarioColaborador = idUsuario,
             IdConvocatoria = c.IdConvocatoria,
+            IdConvocatoriaRol = rol,
             PeriodoDesde = c.PeriodoDesde,
             PeriodoHasta = c.PeriodoHasta,
             Estado = estado,
@@ -221,6 +233,15 @@ public class ConvocatoriaServicio(
     }
 
     // ======================= Auxiliares =======================
+
+    /// <summary>Si la convocatoria tiene roles, quien se suma elige uno y no se le vuelve a pedir en cada carga (v2.9).</summary>
+    private static long? ValidarRolAlSumarse(Convocatoria c, long? idRol)
+    {
+        if (c.Roles.Count == 0) return null;
+        if (idRol is null) throw new NegocioException("Elegí tu rol en la convocatoria");
+        if (c.Roles.All(r => r.IdConvocatoriaRol != idRol)) throw new NegocioException("El rol elegido no corresponde a esta convocatoria");
+        return idRol;
+    }
 
     private async Task<Convocatoria> ObtenerPropiaAsync(long idTitular, long id)
     {
@@ -253,11 +274,46 @@ public class ConvocatoriaServicio(
         c.PeriodoHasta = hasta;
         c.AprobacionAutomatica = req.AprobacionAutomatica;
 
+        // Con traslados, el organizador define el período completo y sus semanas: quien colabora ya no los elige (v2.8)
+        var tiposElegidos = await tipos.ObtenerPorIdsAsync(ids);
+        if (tiposElegidos.Any(t => t.ModoCarga == ModoCarga.Traslado))
+        {
+            if (hasta is null) throw new NegocioException("Indicá hasta qué mes va el período: los colaboradores cargan sus traslados dentro de él");
+            if (req.SemanasTraslado is not decimal semanas) throw new NegocioException("Indicá las semanas de actividad del período");
+            var maximo = Periodicidad.MesesEntre(desde, hasta.Value) * 5;
+            if (semanas > maximo) throw new NegocioException($"Ese período tiene como máximo {maximo} semanas");
+            c.SemanasTraslado = semanas;
+        }
+        else
+        {
+            c.SemanasTraslado = null;
+        }
+
         var quitar = c.TiposEmision.Where(t => !ids.Contains(t.IdTipoEmision)).ToList();
         convocatorias.QuitarTipos(quitar);
         foreach (var q in quitar) c.TiposEmision.Remove(q);
         foreach (var id in ids.Where(id => c.TiposEmision.All(t => t.IdTipoEmision != id)))
             c.TiposEmision.Add(new ConvocatoriaTipoEmision { IdTipoEmision = id });
+
+        await AplicarRolesAsync(c, req.Roles);
+    }
+
+    /// <summary>Sincroniza los roles por nombre, sin distinguir mayúsculas. Un rol ya elegido en un traslado no se puede quitar.</summary>
+    private async Task AplicarRolesAsync(Convocatoria c, List<string> nombres)
+    {
+        var limpios = nombres.Select(n => n?.Trim() ?? string.Empty).Where(n => n.Length > 0)
+            .DistinctBy(n => n.ToLowerInvariant()).ToList();
+        if (limpios.Any(n => n.Length > 100)) throw new NegocioException("El nombre de un rol puede tener hasta 100 caracteres");
+
+        foreach (var rol in c.Roles.Where(r => !limpios.Contains(r.Nombre, StringComparer.OrdinalIgnoreCase)).ToList())
+        {
+            if (await convocatorias.RolEnUsoAsync(rol.IdConvocatoriaRol))
+                throw new ConflictoException($"El rol \"{rol.Nombre}\" ya fue elegido en traslados cargados: no se puede quitar");
+            convocatorias.QuitarRol(rol);
+            c.Roles.Remove(rol);
+        }
+        foreach (var nombre in limpios.Where(n => !c.Roles.Any(r => string.Equals(r.Nombre, n, StringComparison.OrdinalIgnoreCase))))
+            c.Roles.Add(new ConvocatoriaRol { Nombre = nombre });
     }
 
     /// <summary>Código aleatorio criptográficamente seguro de 8 caracteres (32^8 ≈ 1 billón de combinaciones).</summary>
@@ -287,6 +343,7 @@ public class ConvocatoriaServicio(
         var ids = lista.Select(c => c.IdConvocatoria).ToList();
         var conteos = await convocatorias.ContarPorEstadoAsync(ids);
         var aportes = await convocatorias.AportesAsync(ids);
+        var porRol = await convocatorias.ResultadosPorRolAsync(lista.SelectMany(c => c.Roles).Select(r => r.IdConvocatoriaRol).ToList());
         int N(long id, string estado) => conteos.GetValueOrDefault((id, estado));
 
         return lista.Select(c => new ConvocatoriaDto(
@@ -296,6 +353,12 @@ public class ConvocatoriaServicio(
             N(c.IdConvocatoria, EstadoColaboracion.Aceptada),
             N(c.IdConvocatoria, EstadoColaboracion.Solicitada),
             N(c.IdConvocatoria, EstadoColaboracion.Revocada) + N(c.IdConvocatoria, EstadoColaboracion.Rechazada),
-            aportes.GetValueOrDefault(c.IdConvocatoria))).ToList();
+            aportes.GetValueOrDefault(c.IdConvocatoria),
+            c.Roles.OrderBy(r => r.Nombre).Select(r =>
+            {
+                var resultado = porRol.GetValueOrDefault(r.IdConvocatoriaRol);
+                return new RolConvocatoriaDto(r.IdConvocatoriaRol, r.Nombre, resultado.Colaboradores, resultado.Kg);
+            }).ToList(),
+            c.SemanasTraslado)).ToList();
     }
 }

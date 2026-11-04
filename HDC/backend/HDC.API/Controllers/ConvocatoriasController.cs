@@ -47,6 +47,11 @@ public class ConvocatoriasController(ConvocatoriaServicio convocatorias) : Contr
     public async Task<PaginaDto<MiembroConvocatoriaDto>> Miembros(long id, [FromQuery] FiltroMiembros filtro) =>
         await convocatorias.ListarMiembrosAsync(IdUsuario, id, filtro);
 
+    /// <summary>Detalle de lo que cargaron los colaboradores, paginado en el servidor (?pagina, tamanio, orden, asc, busqueda, idUsuario).</summary>
+    [HttpGet("{id:long}/aportes"), Authorize(Policy = Permisos.GestionarColaboraciones)]
+    public async Task<PaginaDto<AporteConvocatoriaDto>> Aportes(long id, [FromQuery] FiltroAportes filtro) =>
+        await convocatorias.ListarAportesAsync(IdUsuario, id, filtro);
+
     /// <summary>Aceptar, rechazar, dar de baja o reactivar a varios miembros (seleccionados o todos los filtrados).</summary>
     [HttpPost("{id:long}/miembros/accion"), Authorize(Policy = Permisos.GestionarColaboraciones)]
     public async Task<ResultadoAccionDto> AccionMiembros(long id, AccionMiembrosRequest req) =>
@@ -61,6 +66,6 @@ public class ConvocatoriasController(ConvocatoriaServicio convocatorias) : Contr
 
     /// <summary>Sumarse a la convocatoria del código.</summary>
     [HttpPost("unirse"), Authorize(Policy = Permisos.Colaborar), EnableRateLimiting(LimitesPedidos.CodigoConvocatoria)]
-    public async Task<ColaboracionDto> Unirse(CodigoConvocatoriaRequest req) =>
-        await convocatorias.UnirseAsync(IdUsuario, req.Codigo);
+    public async Task<ColaboracionDto> Unirse(UnirseConvocatoriaRequest req) =>
+        await convocatorias.UnirseAsync(IdUsuario, req.Codigo, req.IdConvocatoriaRol);
 }

@@ -35,7 +35,7 @@ export function AuthProvider({ children }) {
   }, [navigate, ui])
 
   useEffect(() => {
-    registrarExpiracion(() => cerrarSesion('Tu sesión expiró. Iniciá sesión nuevamente.'))
+    registrarExpiracion((motivo) => cerrarSesion(motivo || 'Tu sesión expiró. Iniciá sesión nuevamente.'))
   }, [cerrarSesion])
 
   // Restaura la sesión guardada al recargar la página

@@ -14,6 +14,9 @@ public class RegistroRepositorio(HdcDbContext ctx) : Repositorio<Registro>(ctx)
         .Include(r => r.UsuarioCarga).ThenInclude(u => u.Organizacion)
         .Include(r => r.Detalles).ThenInclude(d => d.FuenteEmision).ThenInclude(f => f.UnidadMedida)
         .Include(r => r.Detalles).ThenInclude(d => d.FuenteEmision).ThenInclude(f => f.TipoEmision).ThenInclude(t => t.Alcance)
+        .Include(r => r.CargaTraslado).ThenInclude(c => c!.ConvocatoriaRol)
+        .Include(r => r.CargaTraslado).ThenInclude(c => c!.Convocatoria)
+        .Include(r => r.CargaTraslado).ThenInclude(c => c!.Medios).ThenInclude(m => m.FuenteEmision)
         .AsSplitQuery();
 
     /// <summary>Registros de los domicilios del usuario más los que él cargó como colaborador (sin Includes: es la base para filtrar).</summary>
@@ -34,6 +37,9 @@ public class RegistroRepositorio(HdcDbContext ctx) : Repositorio<Registro>(ctx)
         if (f.IdDomicilio is long idDom) q = q.Where(r => r.IdDomicilio == idDom);
         if (f.Desde is DateOnly desde) q = q.Where(r => r.Periodo >= desde);
         if (f.Hasta is DateOnly hasta) q = q.Where(r => r.Periodo <= hasta);
+        // Origen (v2.11): mismo criterio que la etiqueta "Colaboración" del listado
+        if (f.Origen == "PROPIAS") q = q.Where(r => r.IdUsuarioCarga == r.Domicilio.IdUsuario);
+        else if (f.Origen == "COLABORACIONES") q = q.Where(r => r.IdUsuarioCarga != r.Domicilio.IdUsuario);
 
         // Buscador: domicilio, ciudad, quién cargó, alcance o fuente de alguno de sus consumos.
         // ILIKE: en PostgreSQL LIKE distingue mayúsculas; ILIKE no (ver ExtensionesConsulta.PatronContiene).
@@ -91,6 +97,15 @@ public class RegistroRepositorio(HdcDbContext ctx) : Repositorio<Registro>(ctx)
 
     public async Task<decimal> SumarPorDomicilioAsync(long idDomicilio) =>
         await Ctx.Registros.Where(r => r.IdDomicilio == idDomicilio).SumAsync(r => (decimal?)r.TotalKgCo2) ?? 0m;
+
+    /// <summary>
+    /// ¿La persona ya tiene un registro de consumos de ese mes en esa colaboración? (v2.12). Una colaboración se identifica
+    /// por domicilio, persona y convocatoria. Los traslados tienen su propio control, en TrasladoServicio.
+    /// </summary>
+    public Task<bool> ExisteConsumoDelMesAsync(long idUsuario, long idDomicilio, long? idConvocatoria, DateOnly periodo, long excluirId = 0) =>
+        Ctx.Registros.AnyAsync(r => r.IdRegistro != excluirId && r.IdCargaTraslado == null
+            && r.IdUsuarioCarga == idUsuario && r.IdDomicilio == idDomicilio
+            && r.IdConvocatoria == idConvocatoria && r.Periodo == periodo);
 
     public void QuitarDetalles(IEnumerable<DetalleRegistro> detalles) => Ctx.DetallesRegistro.RemoveRange(detalles);
 
@@ -249,6 +264,21 @@ public class ColaboracionRepositorio(HdcDbContext ctx) : Repositorio<Colaboracio
 
     public Task<Colaboracion?> ObtenerCompletaAsync(long id) => Completas().FirstOrDefaultAsync(c => c.IdColaboracion == id);
 
+    /// <summary>Colaboración de solo lectura para el detalle: además incluye los roles de su convocatoria (v2.11).</summary>
+    public Task<Colaboracion?> ObtenerDetalleAsync(long id) => Completas().AsNoTracking()
+        .Include(c => c.Convocatoria).ThenInclude(cv => cv!.Roles)
+        .FirstOrDefaultAsync(c => c.IdColaboracion == id);
+
+    /// <summary>Lo que una persona guardó en una colaboración. Usa el mismo criterio que AportesAsync: domicilio, persona y convocatoria.</summary>
+    public Task<List<RegistroColaboracionDto>> RegistrosDeColaboracionAsync(long idDomicilio, long idUsuario, long? idConvocatoria) => Ctx.Registros.AsNoTracking()
+        .Where(r => r.IdDomicilio == idDomicilio && r.IdUsuarioCarga == idUsuario && r.IdConvocatoria == idConvocatoria)
+        .OrderBy(r => r.Periodo).ThenBy(r => r.IdRegistro)
+        .Select(r => new RegistroColaboracionDto(
+            r.IdRegistro, r.Periodo,
+            r.Detalles.OrderBy(d => d.FuenteEmision.Nombre).Select(d => d.FuenteEmision.Nombre).ToList(),
+            r.TotalKgCo2, r.FechaCreacion, r.IdCargaTraslado != null))
+        .ToListAsync();
+
     /// <summary>Colaboraciones aceptadas del usuario en ese domicilio que cubren el período.</summary>
     public Task<List<Colaboracion>> ObtenerVigentesAsync(long idColaborador, long idDomicilio, DateOnly periodo) => Ctx.Colaboraciones
         .Include(c => c.TiposEmision)
@@ -264,14 +294,15 @@ public class ColaboracionRepositorio(HdcDbContext ctx) : Repositorio<Colaboracio
                        && (excluirId == null || c.IdColaboracion != excluirId));
 
     /// <summary>Aportes (cantidad de registros y kg CO2) de cada colaborador por domicilio.</summary>
-    public async Task<Dictionary<(long Domicilio, long Usuario), (int Registros, decimal Kg)>> AportesAsync(IReadOnlyCollection<long> idsDomicilios)
+    public async Task<Dictionary<(long Domicilio, long Usuario, long? Convocatoria), (int Registros, decimal Kg)>> AportesAsync(IReadOnlyCollection<long> idsDomicilios)
     {
         var datos = await Ctx.Registros
             .Where(r => idsDomicilios.Contains(r.IdDomicilio) && r.IdUsuarioCarga != r.Domicilio.IdUsuario)
-            .GroupBy(r => new { r.IdDomicilio, r.IdUsuarioCarga })
-            .Select(g => new { g.Key.IdDomicilio, g.Key.IdUsuarioCarga, n = g.Count(), kg = g.Sum(r => r.TotalKgCo2) })
+            // Una persona puede tener varias colaboraciones en el domicilio: cada una ve solo lo suyo (v2.10)
+            .GroupBy(r => new { r.IdDomicilio, r.IdUsuarioCarga, r.IdConvocatoria })
+            .Select(g => new { g.Key.IdDomicilio, g.Key.IdUsuarioCarga, g.Key.IdConvocatoria, n = g.Count(), kg = g.Sum(r => r.TotalKgCo2) })
             .ToListAsync();
-        return datos.ToDictionary(d => (d.IdDomicilio, d.IdUsuarioCarga), d => (d.n, d.kg));
+        return datos.ToDictionary(d => (d.IdDomicilio, d.IdUsuarioCarga, d.IdConvocatoria), d => (d.n, d.kg));
     }
 
     public void QuitarTipos(IEnumerable<ColaboracionTipoEmision> tipos) => Ctx.ColaboracionTiposEmision.RemoveRange(tipos);
