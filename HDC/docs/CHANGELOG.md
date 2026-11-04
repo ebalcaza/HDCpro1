@@ -27,6 +27,8 @@ colectivos para llegar e impedir más de un registro del mismo mes en una colabo
 | `backend/HDC.BLL/Servicios/TrasladoServicio.cs` | Mensaje al repetir un medio y explicación de la regla |
 | `backend/HDC.BLL/Servicios/RegistroServicio.cs`, `backend/HDC.DAL/Repositorios/EmisionRepositorios.cs` | Un registro de consumos por mes para quien colabora |
 
+**Corrección posterior:** con varias convocatorias, el menú ⋮ (**Finalizar**) quedaba debajo de la tarjeta siguiente, porque `backdrop-filter` hace de cada `.tarjeta` una capa propia. Ahora la tarjeta se sube mientras su menú está abierto (`frontend/src/styles/tema.css`).
+
 Sin cambios en la base de datos. Documentos actualizados: MANUAL_USUARIO (§ 5), DOCUMENTACION_TECNICA (traslados), GUIA_PRUEBAS (§ 3.1) y README.
 
 ---

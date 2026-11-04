@@ -266,6 +266,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--texto); font-weight: 800; letter-spacing: 
   position: relative;
   transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
 }
+/* backdrop-filter hace de cada tarjeta una capa propia: un menú abierto no puede pasar por encima de la tarjeta
+   siguiente, por más z-index que tenga. Por eso se sube la tarjeta entera mientras su menú está abierto. */
+.tarjeta:has(.dropdown-menu.show) { z-index: 10; }
 .tarjeta::after {
   /* Línea de brillo superior: detalle claro que da contraste en modo oscuro */
   content: '';
